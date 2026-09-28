@@ -1,0 +1,286 @@
+.page {
+  min-height: 100%;
+}
+
+.header {
+  max-width: 1000px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.statPill {
+  flex-shrink: 0;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+
+.info {
+  max-width: 1000px;
+  margin: 0 auto;
+  color: #6b7280;
+}
+
+.errorBox {
+  max-width: 1000px;
+  margin: 0 auto 16px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.toast {
+  max-width: 1000px;
+  margin: 0 auto 16px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.card {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.listItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.itemMain {
+  min-width: 0;
+}
+
+.itemRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.actionRow {
+  display: flex;
+  gap: 6px;
+}
+
+.metaText {
+  color: #9ca3af;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.reasonText {
+  color: #b91c1c;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.deadlineOverdue {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.mutedText {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0;
+}
+
+.rejectForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.reasonInput {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  width: 200px;
+}
+
+.primaryBtn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover {
+  background: #4338ca;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.secondaryBtn:hover {
+  background: #f3f4f6;
+}
+
+.dangerBtn {
+  padding: 6px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dangerBtn:hover {
+  background: #fee2e2;
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.AWAITING_DOCUMENTS,
+.PENDING_REVIEW {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.APPROVED {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.REJECTED {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.flagText {
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  margin-top: 6px;
+  cursor: pointer;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.detailBox {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.detailLabel {
+  color: #9ca3af;
+  font-weight: 600;
+  flex-shrink: 0;
+}
