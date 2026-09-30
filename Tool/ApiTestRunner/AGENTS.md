@@ -34,7 +34,7 @@ ApiTestRunner/
 ```json
 {
   "baseUrl": "https://localhost:7080",
-  "maskSecrets": false,                      // optional, default true. false = real passwords/JWTs in logs and UI (local dev)
+  "maskSecrets": false,                      // optional, default false = real passwords/JWTs in logs and UI (local dev). true = masked
   "steps": [
     {
       "name": "Login alice by username",     // required, unique-ish, shown everywhere

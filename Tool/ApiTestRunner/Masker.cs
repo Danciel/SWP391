@@ -12,7 +12,7 @@ public static class Masker
         new(@"(""accessToken""\s*:\s*"")([^""]{1,12})[^""]*("")", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>Set from plan "maskSecrets", --mask/--no-mask, or the UI checkbox. When false, logs show real values.</summary>
-    public static bool Enabled { get; set; } = true;
+    public static bool Enabled { get; set; } = false;
 
     public static string Mask(string text)
     {

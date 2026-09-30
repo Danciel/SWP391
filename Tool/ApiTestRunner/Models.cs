@@ -7,7 +7,7 @@ public sealed class TestPlan
     public string BaseUrl { get; set; } = "https://localhost:7080";
 
     /// <summary>true = hide passwords / shorten JWTs in logs and UI. false = show real values (local development).</summary>
-    public bool MaskSecrets { get; set; } = true;
+    public bool MaskSecrets { get; set; } = false;
     public List<TestStep> Steps { get; set; } = new();
 }
 

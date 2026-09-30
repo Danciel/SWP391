@@ -181,6 +181,13 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lc = k => k.charAt(0).toLowerCase() + k.slice(1);
 const STATUS_TEXT = {200:'OK',201:'Created',204:'No Content',400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',409:'Conflict',422:'Unprocessable Entity',429:'Too Many Requests',500:'Server Error',502:'Bad Gateway',503:'Unavailable'};
+
+function describeUp(status) {
+  if (status >= 200 && status < 400) return `Server is up (HTTP ${status}).`;
+  if (status === 404 || status === 405) return `Server is up. HTTP ${status} on "/" is normal for an API - it just has no page at the root address. Press Run to test the real endpoints.`;
+  if (status === 401 || status === 403) return `Server is up (HTTP ${status} on "/" - it wants authentication, which the tests supply).`;
+  return `Something is listening (HTTP ${status} on "/"), but it answered with an error - check it is the right API.`;
+
 const METHODS = ['GET','POST','PUT','PATCH','DELETE'];
 
 async function api(path, opt = {}) {
@@ -573,7 +580,7 @@ async function probe(verbose) {
   setDot('busy', 'checking...');
   try {
     const r = await api('/api/probe', { method: 'POST', body: JSON.stringify({ baseUrl: S.baseUrl }) });
-    if (r.ok) { setDot('ok', `Reachable - HTTP ${r.status} in ${r.ms} ms`); if (verbose) toast(`Server answered: HTTP ${r.status} (${r.ms} ms)`); remember(S.baseUrl); }
+    if (r.ok) { setDot('ok', describeUp(r.status)); if (verbose) toast('Connected. ' + describeUp(r.status), r.status >= 500); remember(S.baseUrl); }
     else { setDot('bad', 'Not reachable: ' + r.error); if (verbose) toast('Nothing answered at this address: ' + r.error + '. Is the API running? Check the port (try Detect).', true); }
   } catch (e) { setDot('bad', e.message); }
 }
@@ -713,7 +720,7 @@ async function loadPlan() {
     S.baseUrl = saved || S.plan.baseUrl; $('#baseUrl').value = S.baseUrl;
     remember(S.plan.baseUrl); if (saved) remember(saved);
     let mk = null; try { mk = localStorage.getItem('atr.mask'); } catch {}
-    $('#maskSecrets').checked = mk === null ? S.plan.maskSecrets !== false : mk === '1';
+    $('#maskSecrets').checked = mk === null ? S.plan.maskSecrets === true : mk === '1';
     S.sel = 1; syncTabs(); setRunButtons(); renderSidebar(); renderDetail();
     probe(); await loadRuns();
   } catch (e) {

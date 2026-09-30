@@ -1,5 +1,6 @@
 {
-  "baseUrl": "https://localhost:5080",
+  "baseUrl": "https://localhost:7080",
+  "maskSecrets": false,
   "steps": [
     {
       "name": "Register alice",
