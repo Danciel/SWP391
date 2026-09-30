@@ -1,0 +1,176 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.logo {
+  width: 160px;
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 24px;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submitError {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: -6px 0 16px;
+}
+
+.successBanner {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -6px 0 18px;
+  font-size: 13px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.inlineLink {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.footerText {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.footerText a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.demoHint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.quickLoginDivider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin-top: 20px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.quickLoginDivider::before,
+.quickLoginDivider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.quickLoginDivider span {
+  padding: 0 10px;
+}
+
+.quickLoginRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quickLoginBtn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quickLoginBtn:hover {
+  background: #e0e7ff;
+}
+
+.quickLoginBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
