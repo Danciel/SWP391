@@ -1,0 +1,6 @@
+{
+  "username": "pwmin{{runId}}",
+  "email": "pwmin{{runId}}@test.local",
+  "password": "Abcdefg1",
+  "role": "BENEFICIARY"
+}

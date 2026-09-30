@@ -11,8 +11,12 @@ public static class Masker
     private static readonly Regex Token =
         new(@"(""accessToken""\s*:\s*"")([^""]{1,12})[^""]*("")", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>Set from plan "maskSecrets", --mask/--no-mask, or the UI checkbox. When false, logs show real values.</summary>
+    public static bool Enabled { get; set; } = true;
+
     public static string Mask(string text)
     {
+        if (!Enabled) return text;
         text = Password.Replace(text, "$1***$2");
         return Token.Replace(text, "$1$2...$3");
     }

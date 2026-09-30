@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Test Runner</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#fff; --panel2:#f0f2f5; --line:#dfe3e8; --text:#1f2933; --muted:#6b7785;
+  --accent:#2563eb; --accent-fg:#fff; --pass:#16a34a; --pass-bg:#e7f6ec; --fail:#dc2626; --fail-bg:#fdeaea;
+  --warn:#d97706; --code-bg:#f7f8fa; --k:#7c3aed; --s:#0f766e; --n:#b45309; --b:#be185d;
+  --get:#2b7fd6; --post:#1f9d6b; --put:#e08a12; --patch:#0ea5a5; --delete:#dc3b3b; --other:#6b7785;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171c; --panel:#1b2027; --panel2:#232a33; --line:#2d3540; --text:#e6eaef; --muted:#93a0af;
+    --accent:#4f8bff; --pass:#34d399; --pass-bg:#12312a; --fail:#f87171; --fail-bg:#3a1c1f; --warn:#fbbf24;
+    --code-bg:#161a20; --k:#c4b5fd; --s:#5eead4; --n:#fbbf24; --b:#f9a8d4; }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{white-space:nowrap;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 11px}
+button:hover{background:var(--panel2)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+button.primary:hover{filter:brightness(1.1)}
+button.danger{color:var(--fail)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{border-color:transparent;background:transparent}
+button.small{padding:2px 8px;font-size:12px}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:100%}
+textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);border-color:var(--accent)}
+code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+
+/* header */
+header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0;white-space:nowrap}
+header h1 small{display:block;font-weight:400;color:var(--muted);font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.target{display:flex;align-items:center;gap:6px;flex:1;min-width:340px;max-width:640px;position:relative}
+.target input{flex:1;min-width:170px}
+.target label{font-weight:600;color:var(--muted);font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:#9aa5b1;flex:none}
+.dot.ok{background:var(--pass)} .dot.bad{background:var(--fail)} .dot.busy{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.spacer{flex:1}
+.pop{position:absolute;top:100%;left:0;margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;z-index:20;min-width:320px}
+.pop .opt{display:flex;justify-content:space-between;gap:12px;padding:6px 8px;border-radius:6px;cursor:pointer}
+.pop .opt:hover{background:var(--panel2)}
+.hint{color:var(--muted);font-size:12px}
+.dirty{display:flex;gap:8px;align-items:center;background:color-mix(in srgb,var(--warn) 18%,transparent);border:1px solid var(--warn);border-radius:6px;padding:3px 8px;font-size:12px}
+
+/* layout */
+main{flex:1;display:grid;grid-template-columns:400px 1fr;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 14px;color:var(--muted)}
+.tabs button.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.summary{padding:10px 12px;border-bottom:1px solid var(--line)}
+.bar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;display:flex;margin-top:6px}
+.bar i{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)}
+.filters{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.filters select{width:auto}
+.list{overflow:auto;flex:1;min-height:0}
+.grp{position:sticky;top:0;background:var(--panel2);padding:5px 12px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between;border-bottom:1px solid var(--line);z-index:1}
+.row{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line);cursor:pointer;border-left:3px solid transparent}
+.row:hover{background:var(--panel2)}
+.row.sel{background:color-mix(in srgb,var(--accent) 12%,transparent);border-left-color:var(--accent)}
+.row .no{color:var(--muted);width:22px;text-align:right;font-size:11px;flex:none}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .st{font-size:11.5px;font-weight:700;flex:none;min-width:36px;text-align:right}
+.row.pass .st{color:var(--pass)} .row.fail .st{color:var(--fail)} .row.fail{background:color-mix(in srgb,var(--fail) 6%,transparent)}
+.row.running .st{color:var(--warn)}
+.m{display:inline-block;min-width:46px;text-align:center;font-size:10.5px;font-weight:800;color:#fff;border-radius:4px;padding:2px 0;flex:none;background:var(--other)}
+.m.GET{background:var(--get)} .m.POST{background:var(--post)} .m.PUT{background:var(--put)} .m.PATCH{background:var(--patch)} .m.DELETE{background:var(--delete)}
+.runrow{padding:7px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.runrow:hover{background:var(--panel2)} .runrow.sel{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.pill{display:inline-block;border-radius:10px;padding:0 7px;font-size:11.5px;font-weight:700}
+.pill.p{background:var(--pass-bg);color:var(--pass)} .pill.f{background:var(--fail-bg);color:var(--fail)} .pill.n{background:var(--panel2);color:var(--muted)}
+
+/* detail */
+section.detail{overflow:auto;min-width:0;padding:16px 20px}
+.urlbar{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.urlbar .u{flex:1;min-width:0;overflow-wrap:anywhere}
+.title{margin:0 0 10px;font-size:17px}
+.strip{display:flex;gap:16px;align-items:center;margin:12px 0;flex-wrap:wrap}
+.strip b.ok{color:var(--pass)} .strip b.bad{color:var(--fail)}
+.dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:6px}
+.dtabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--muted);padding:7px 12px}
+.dtabs button.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.pane{padding-top:12px}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0;overflow:auto;max-height:62vh;white-space:pre-wrap;word-break:break-word}
+.k{color:var(--k)} .s{color:var(--s)} .n{color:var(--n)} .b{color:var(--b)}
+.tools{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.check{display:flex;gap:10px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;background:var(--panel)}
+.check.ok{border-left:4px solid var(--pass)} .check.no{border-left:4px solid var(--fail);background:var(--fail-bg)}
+.check .ic{font-weight:800}.check.ok .ic{color:var(--pass)}.check.no .ic{color:var(--fail)}
+.check .kind{color:var(--muted);font-size:11px;text-transform:uppercase;width:72px;flex:none;padding-top:2px}
+.check .tx{overflow-wrap:anywhere;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+table.kv{border-collapse:collapse;width:100%}
+table.kv td{border-bottom:1px solid var(--line);padding:5px 8px;vertical-align:top;overflow-wrap:anywhere}
+table.kv td:first-child{color:var(--muted);width:230px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+.empty{color:var(--muted);text-align:center;padding:60px 20px}
+.chip{display:inline-block;border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:0 8px;margin:2px 4px 2px 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+
+/* form */
+.form{display:grid;gap:12px;max-width:820px}
+.form .r2{display:grid;grid-template-columns:120px 1fr;gap:10px}
+.form .r3{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px}
+.caprow{display:grid;grid-template-columns:1fr 1.4fr auto;gap:6px;margin-bottom:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+
+/* toast + modal */
+#toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.t{background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:440px}
+.t.err{background:var(--fail);color:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:40}
+.modal>div{background:var(--panel);border-radius:10px;padding:16px;width:min(820px,92vw);max-height:88vh;display:flex;flex-direction:column;gap:10px}
+.modal textarea{height:56vh}
+@media (max-width:900px){ main{grid-template-columns:1fr} aside{max-height:45vh} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>API Test Runner<small id="planPath"></small></h1>
+
+  <div class="target">
+    <label for="baseUrl">Target</label>
+    <span id="dot" class="dot" title="not checked"></span>
+    <input id="baseUrl" list="recent" spellcheck="false" placeholder="https://localhost:7080" autocomplete="off">
+    <datalist id="recent"></datalist>
+    <button id="btnTest" title="Check that something answers at this address">Test</button>
+    <button id="btnDetect" title="Scan common local ports for a running API">Detect</button>
+    <button id="btnDefault" class="ghost small" title="Write this address into plan.json as the default">Set default</button>
+    <div id="detectPop" class="pop" hidden></div>
+  </div>
+
+  <span class="spacer"></span>
+  <div id="dirty" class="dirty" hidden>Unsaved changes
+    <button class="small primary" id="btnSave">Save</button><button class="small" id="btnDiscard">Discard</button></div>
+  <label class="hint" style="display:flex;gap:5px;align-items:center;white-space:nowrap" title="Off = real passwords and tokens are shown in the UI and written to logs"><input type="checkbox" id="maskSecrets" style="width:auto"> mask passwords/tokens</label>
+  <label class="hint" style="display:flex;gap:5px;align-items:center;white-space:nowrap"><input type="checkbox" id="stopOnFail" style="width:auto"> stop on first failure</label>
+  <button id="btnGuide" title="Copy the AGENTS.md brief to paste into an AI agent">Copy agent guide</button>
+  <button id="btnStop" class="danger" hidden>Stop</button>
+  <button id="btnRun" class="primary">&#9654; Run all</button>
+</header>
+
+<main>
+  <aside>
+    <div class="tabs">
+      <button id="tabTests" class="on">Tests</button>
+      <button id="tabHist">History</button>
+    </div>
+    <div id="histBox" hidden style="max-height:34%;overflow:auto;border-bottom:1px solid var(--line)"></div>
+    <div class="summary" id="summary"></div>
+    <div class="filters">
+      <input id="q" placeholder="Filter by name or path">
+      <select id="statusFilter">
+        <option value="all">All</option><option value="fail">Failed</option><option value="pass">Passed</option><option value="idle">Not run</option>
+      </select>
+    </div>
+    <div class="list" id="list"></div>
+    <div style="padding:8px 12px;border-top:1px solid var(--line)" id="addBox"><button id="btnAdd" style="width:100%">+ New test step</button></div>
+  </aside>
+
+  <section class="detail" id="detail"></section>
+</main>
+
+<div id="toast"></div>
+<div id="modalHost"></div>
+
+<script>
+'use strict';
+/* ============================== helpers ============================== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lc = k => k.charAt(0).toLowerCase() + k.slice(1);
+const STATUS_TEXT = {200:'OK',201:'Created',204:'No Content',400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',409:'Conflict',422:'Unprocessable Entity',429:'Too Many Requests',500:'Server Error',502:'Bad Gateway',503:'Unavailable'};
+const METHODS = ['GET','POST','PUT','PATCH','DELETE'];
+
+async function api(path, opt = {}) {
+  const o = { ...opt, headers: { 'X-ATR': '1', ...(opt.body ? { 'Content-Type': 'application/json' } : {}), ...(opt.headers || {}) } };
+  const res = await fetch(path, o);
+  const txt = await res.text();
+  let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { /* not json */ }
+  if (!res.ok) throw new Error((data && data.error) || `${res.status} ${res.statusText}`);
+  return data;
+}
+function toast(msg, err) {
+  const d = document.createElement('div'); d.className = 't' + (err ? ' err' : ''); d.textContent = msg;
+  $('#toast').appendChild(d); setTimeout(() => d.remove(), err ? 6500 : 3200);
+}
+async function copyText(text, okMsg = 'Copied') {
+  try { await navigator.clipboard.writeText(text); toast(okMsg); }
+  catch { showModal('Copy manually', text); }
+}
+function showModal(title, text) {
+  $('#modalHost').innerHTML = `<div class="modal"><div><b>${esc(title)}</b><textarea readonly id="mtxt">${esc(text)}</textarea>
+    <div class="actions"><button class="primary" id="mcopy">Copy</button><button id="mclose">Close</button></div></div></div>`;
+  $('#mtxt').select();
+  $('#mclose').onclick = () => $('#modalHost').innerHTML = '';
+  $('#mcopy').onclick = () => { $('#mtxt').select(); document.execCommand('copy'); toast('Copied'); };
+}
+function hl(src) {
+  const re = /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index));
+    if (m[1]) out += m[2] ? `<span class="k">${esc(m[1])}</span>${esc(m[2])}` : `<span class="s">${esc(m[1])}</span>`;
+    else out += `<span class="${m[3] ? 'b' : 'n'}">${esc(m[0])}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(src.slice(last));
+}
+function pretty(text) {
+  if (text == null || text === '') return { text: '', json: false };
+  try { return { text: JSON.stringify(JSON.parse(text), null, 2), json: true }; } catch { return { text, json: false }; }
+}
+const pathOf = u => { try { const x = new URL(u); return x.pathname + x.search; } catch { return u || ''; } };
+function groupOf(row) {
+  if (row.step && row.step.group) return row.step.group;
+  const p = row.step ? row.step.path : pathOf(row.result && row.result.url);
+  const seg = p.split('?')[0].split('/').filter(Boolean);
+  const g = seg[0] === 'api' ? seg[1] : seg[0];
+  return g ? g.charAt(0).toUpperCase() + g.slice(1) : 'Other';
+}
+function normResult(r) {
+  const o = {}; for (const k of Object.keys(r)) o[lc(k)] = r[k];
+  o.checks = (o.checks || []).map(c => { const x = {}; for (const k of Object.keys(c)) x[lc(k)] = c[k]; return x; });
+  o.problems = o.problems || [];
+  if (!o.checks.length) { // runs written by the older runner
+    o.checks.push({ kind: 'status', ok: o.status === o.expectedStatus,
+      text: o.status === o.expectedStatus ? `Status is ${o.expectedStatus}` : `Status should be ${o.expectedStatus} but was ${o.status ?? 'n/a'}` });
+    o.problems.filter(p => !p.startsWith('expected status')).forEach(p => o.checks.push({ kind: 'problem', ok: false, text: p }));
+  }
+  return o;
+}
+
+/* ============================== state ============================== */
+const S = {
+  plan: { baseUrl: '', steps: [] }, bodies: {}, planPath: '', dirty: false,
+  baseUrl: '', results: {}, resultsLabel: '', runInfo: null,
+  running: false, abort: null, current: 0, follow: false,
+  mode: 'tests', sel: 1, dtab: 'response', pretty: true,
+  q: '', filter: 'all', collapsed: {},
+  runs: [], histFile: null, histData: null,
+};
+const recent = () => { try { return JSON.parse(localStorage.getItem('atr.recent') || '[]'); } catch { return []; } };
+function remember(u) {
+  const l = [u, ...recent().filter(x => x !== u)].slice(0, 8);
+  try { localStorage.setItem('atr.recent', JSON.stringify(l)); } catch {}
+  $('#recent').innerHTML = l.map(x => `<option value="${esc(x)}">`).join('');
+}
+function setDirty(v = true) {
+  S.dirty = v; $('#dirty').hidden = !v;
+}
+window.addEventListener('beforeunload', e => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ============================== rows ============================== */
+function rows() {
+  if (S.mode === 'history') {
+    return S.histData ? S.histData.steps.map(r => ({ index: r.index, step: null, result: r })) : [];
+  }
+  return S.plan.steps.map((st, i) => {
+    const r = S.results[i + 1];
+    return { index: i + 1, step: st, result: r && r.name === st.name ? r : null };
+  });
+}
+function rowState(row) {
+  if (row.result) return row.result.passed ? 'pass' : 'fail';
+  if (S.running && S.mode === 'tests' && row.index === S.current) return 'running';
+  return 'idle';
+}
+
+/* ============================== sidebar ============================== */
+function renderSidebar() {
+  const all = rows();
+  const cnt = { pass: 0, fail: 0, idle: 0 };
+  all.forEach(r => cnt[rowState(r) === 'running' ? 'idle' : rowState(r)]++);
+  const total = all.length || 1;
+  const label = S.mode === 'history'
+    ? (S.histData ? `Run ${esc(S.histData.runId || '')} &middot; ${esc(new Date(S.histData.startedAt).toLocaleString())}` : 'Pick a run above')
+    : (S.resultsLabel ? esc(S.resultsLabel) : 'No results yet');
+  $('#summary').innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px"><b>${cnt.pass} passed</b>
+    <span style="color:${cnt.fail ? 'var(--fail)' : 'var(--muted)'}"><b>${cnt.fail} failed</b></span><span class="hint">${cnt.idle} not run</span></div>
+    <div class="bar"><i class="p" style="width:${cnt.pass / total * 100}%"></i><i class="f" style="width:${cnt.fail / total * 100}%"></i></div>
+    <div class="hint" style="margin-top:6px">${label}${S.mode === 'tests' && S.runInfo ? ` &middot; target ${esc(S.runInfo.baseUrl)}` : ''}</div>`;
+
+  const q = S.q.trim().toLowerCase();
+  const groups = new Map();
+  for (const r of all) {
+    const st = rowState(r);
+    if (S.filter !== 'all' && (S.filter === 'idle' ? st !== 'idle' && st !== 'running' : st !== S.filter)) continue;
+    const path = r.step ? r.step.path : pathOf(r.result && r.result.url);
+    const name = r.step ? r.step.name : r.result.name;
+    if (q && !(name + ' ' + path).toLowerCase().includes(q)) continue;
+    const g = groupOf(r);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(r);
+  }
+  let html = '';
+  for (const [g, list] of groups) {
+    const p = list.filter(r => rowState(r) === 'pass').length, f = list.filter(r => rowState(r) === 'fail').length;
+    const open = !S.collapsed[g];
+    html += `<div class="grp" data-grp="${esc(g)}"><span>${open ? '&#9662;' : '&#9656;'} ${esc(g)}</span>
+      <span style="color:${f ? 'var(--fail)' : ''}">${p}/${list.length}${f ? ` &middot; ${f} failed` : ''}</span></div>`;
+    if (!open) continue;
+    for (const r of list) {
+      const st = rowState(r);
+      const method = (r.step ? r.step.method : r.result.method).toUpperCase();
+      const name = r.step ? r.step.name : r.result.name;
+      const code = r.result ? (r.result.status ?? 'ERR') : (st === 'running' ? '...' : '');
+      html += `<div class="row ${st} ${r.index === S.sel ? 'sel' : ''}" data-idx="${r.index}">
+        <span class="no">${r.index}</span><span class="m ${esc(method)}">${esc(method)}</span>
+        <span class="nm" title="${esc(name)}">${esc(name)}</span><span class="st">${esc(code)}</span></div>`;
+    }
+  }
+  if (!html) html = `<div class="empty">${all.length ? 'No steps match the filter.' : 'Nothing here yet.'}</div>`;
+  $('#list').innerHTML = html;
+  $('#addBox').hidden = S.mode !== 'tests';
+}
+
+/* ============================== detail ============================== */
+function selectedRow() { return rows().find(r => r.index === S.sel) || null; }
+
+function renderDetail() {
+  const box = $('#detail');
+  const row = selectedRow();
+  if (!row) { box.innerHTML = `<div class="empty">Select a test on the left${S.mode === 'tests' ? ', or press <b>Run all</b>' : ''}.</div>`; return; }
+  const { step, result } = row;
+  const method = (step ? step.method : result.method).toUpperCase();
+  const name = step ? step.name : result.name;
+  const url = result && result.url ? result.url : `${S.baseUrl}/${(step ? step.path : '').replace(/^\//, '')}`;
+  const canEdit = S.mode === 'tests';
+
+  let tabs = [['response', 'Response'], ['headers', 'Headers'], ['request', 'Request'],
+              ['checks', result ? `Checks (${result.checks.filter(c => c.ok).length}/${result.checks.length})` : 'Checks'], ['vars', 'Variables']];
+  if (canEdit) tabs.push(['edit', 'Edit test']);
+  if (!tabs.some(t => t[0] === S.dtab)) S.dtab = 'response';
+
+  let strip = '';
+  if (result) {
+    const ok = result.passed;
+    const size = result.responseBody ? new Blob([result.responseBody]).size : 0;
+    strip = `<div class="strip"><span>Status <b class="${ok ? 'ok' : 'bad'}">${result.status ?? 'no response'} ${STATUS_TEXT[result.status] || ''}</b></span>
+      <span>Expected <b>${result.expectedStatus}</b></span><span>Time <b>${result.elapsedMs} ms</b></span><span>Size <b>${size} B</b></span>
+      <span class="pill ${ok ? 'p' : 'f'}">${ok ? 'PASSED' : 'FAILED'}</span></div>` +
+      (result.problems.length ? `<div class="check no"><span class="ic">!</span><div>${result.problems.map(p => `<div class="mono">${esc(p)}</div>`).join('')}</div></div>` : '');
+  } else {
+    strip = `<div class="strip hint">Not run yet in this view.</div>`;
+  }
+
+  box.innerHTML = `
+    <h2 class="title">${esc(name)}</h2>
+    ${step && step.description ? `<p class="hint" style="margin-top:-6px">${esc(step.description)}</p>` : ''}
+    <div class="urlbar"><span class="m ${esc(method)}">${esc(method)}</span><span class="u mono">${esc(url)}</span>
+      ${canEdit ? `<button class="primary small" data-act="runto">&#9654; Run up to here</button>` : ''}
+      ${result ? `<button class="small" data-act="curl">Copy cURL</button>` : ''}</div>
+    ${strip}
+    <div class="dtabs">${tabs.map(t => `<button data-tab="${t[0]}" class="${S.dtab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>
+    <div class="pane" id="pane"></div>`;
+  renderPane(row);
+}
+
+function bodyBlock(text, emptyMsg) {
+  if (text == null || text === '') return `<div class="empty" style="padding:30px">${emptyMsg}</div>`;
+  const p = pretty(text);
+  const shown = S.pretty && p.json ? p.text : text;
+  return `<div class="tools"><button class="small" data-act="toggle">${S.pretty ? 'Show raw' : 'Show pretty'}</button>
+    <button class="small" data-act="copybody">Copy</button><span class="hint">${p.json ? 'JSON' : 'text'}</span></div>
+    <pre class="code" id="bodyPre">${p.json ? hl(shown) : esc(shown)}</pre>`;
+}
+
+function renderPane(row) {
+  const pane = $('#pane'), { step, result } = row;
+  const t = S.dtab;
+  if (t === 'response') {
+    pane.innerHTML = result ? (result.responseBody != null ? bodyBlock(result.responseBody, 'Empty response body.')
+      : `<div class="empty">No response received.</div>`) : `<div class="empty">Run the test to see the response here.</div>`;
+  } else if (t === 'headers') {
+    const h = result && result.responseHeaders;
+    pane.innerHTML = h && Object.keys(h).length
+      ? `<table class="kv">${Object.entries(h).sort().map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`
+      : `<div class="empty">${result ? 'No headers recorded (this run was made by an older runner).' : 'Run the test to see response headers.'}</div>`;
+  } else if (t === 'request') {
+    let html = '';
+    if (step) html += `<table class="kv"><tr><td>Path (template)</td><td>${esc(step.path)}</td></tr>
+       <tr><td>Bearer token variable</td><td>${esc(step.bearer || '-')}</td></tr>
+       <tr><td>Body file</td><td>${esc(step.bodyFile || '-')}</td></tr></table><br>`;
+    if (result && result.requestBody) html += `<b>Body sent</b> <span class="hint">(exactly what was sent - tick "mask passwords/tokens" to hide secrets)</span>` + bodyBlock(result.requestBody, '');
+    else if (step && step.bodyFile) html += `<b>Body template</b> <span class="hint">({{variables}} are filled in at run time)</span>` + bodyBlock(S.bodies[step.bodyFile] || '', 'Body file is empty.');
+    else html += `<div class="hint">This request has no body.</div>`;
+    pane.innerHTML = html;
+  } else if (t === 'checks') {
+    pane.innerHTML = result
+      ? result.checks.map(c => `<div class="check ${c.ok ? 'ok' : 'no'}"><span class="ic">${c.ok ? '&#10003;' : '&#10007;'}</span><span class="kind">${esc(c.kind)}</span><span class="tx">${esc(c.text)}</span></div>`).join('')
+      : (step ? `<div class="hint" style="margin-bottom:8px">What this test will check when it runs:</div>` +
+          `<div class="check"><span class="ic">&bull;</span><span class="kind">status</span><span class="tx">Status is ${step.expectStatus}</span></div>` +
+          (step.expectBodyContains || []).map(x => `<div class="check"><span class="ic">&bull;</span><span class="kind">contains</span><span class="tx">${esc(x)}</span></div>`).join('') +
+          (step.expectBodyNotContains || []).map(x => `<div class="check"><span class="ic">&bull;</span><span class="kind">not contains</span><span class="tx">${esc(x)}</span></div>`).join('') +
+          Object.entries(step.capture || {}).map(([k, v]) => `<div class="check"><span class="ic">&bull;</span><span class="kind">capture</span><span class="tx">${esc(k)} &larr; ${esc(v)}</span></div>`).join('')
+        : '');
+  } else if (t === 'vars') {
+    const cap = result && result.captured;
+    let html = `<b>Captured by this step</b>`;
+    html += cap && Object.keys(cap).length ? `<table class="kv">${Object.entries(cap).map(([k, v]) => `<tr><td>{{${esc(k)}}}</td><td>${esc(v)}</td></tr>`).join('')}</table>`
+      : `<div class="hint" style="margin:6px 0 14px">Nothing captured${step && step.capture ? ' yet - run the test' : ''}.</div>`;
+    const before = rows().filter(r => r.index < row.index && r.result && r.result.captured);
+    html += `<br><b>Available to this step</b><div class="hint" style="margin:4px 0">Use as <code>{{name}}</code> in path, body files and expectations.</div>`;
+    html += `<table class="kv"><tr><td>{{runId}}</td><td>${esc((S.mode === 'history' ? S.histData : S.runInfo)?.runId || '(new random 7-digit number every run)')}</td></tr><tr><td>{{timestamp}}</td><td>(UTC time of the run, yyyyMMddHHmmss)</td></tr>` +
+      before.flatMap(r => Object.entries(r.result.captured).map(([k, v]) => `<tr><td>{{${esc(k)}}}</td><td>${esc(v)} <span class="hint">from step ${r.index}</span></td></tr>`)).join('') + `</table>`;
+    pane.innerHTML = html;
+  } else if (t === 'edit') {
+    renderEditor(row.index - 1);
+  }
+}
+
+/* ============================== editor ============================== */
+function varsBefore(i) {
+  const names = [];
+  S.plan.steps.slice(0, i).forEach(s => Object.keys(s.capture || {}).forEach(k => names.push(k)));
+  return names;
+}
+function renderEditor(i) {
+  const st = S.plan.steps[i];
+  const files = Object.keys(S.bodies).sort();
+  const vars = varsBefore(i);
+  const groups = [...new Set(S.plan.steps.map(s => s.group).filter(Boolean))];
+  $('#pane').innerHTML = `<div class="form">
+    <div class="r3"><div><label>Test name</label><input data-f="name" value="${esc(st.name)}"></div>
+      <div><label>Group (sidebar section)</label><input data-f="group" list="groupList" value="${esc(st.group || '')}"><datalist id="groupList">${groups.map(g => `<option value="${esc(g)}">`).join('')}</datalist></div></div>
+    <div class="r2"><div><label>Method</label><select data-f="method">${METHODS.map(m => `<option ${m === st.method.toUpperCase() ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+      <div><label>Path (+ query) &mdash; supports {{variables}}; write + as %2B</label><input data-f="path" value="${esc(st.path)}"></div></div>
+    <div><label>Note (optional)</label><input data-f="description" value="${esc(st.description || '')}"></div>
+    <div class="r3">
+      <div><label>Send JSON body from file</label><select data-f="bodyFile"><option value="">(no body)</option>
+        ${files.map(f => `<option ${f === st.bodyFile ? 'selected' : ''}>${esc(f)}</option>`).join('')}
+        ${st.bodyFile && !files.includes(st.bodyFile) ? `<option selected>${esc(st.bodyFile)}</option>` : ''}
+        <option value="__new__">+ new body file...</option></select></div>
+      <div><label>Authorization: Bearer &lt;variable&gt;</label><input data-f="bearer" list="varList" value="${esc(st.bearer || '')}" placeholder="e.g. aliceToken">
+        <datalist id="varList">${vars.map(v => `<option value="${esc(v)}">`).join('')}</datalist></div></div>
+    ${st.bodyFile ? `<div><label>Body file: ${esc(st.bodyFile)} <span style="font-weight:400">(JSON; {{variables}} allowed)</span></label>
+      <textarea id="bodyEdit" rows="9" spellcheck="false">${esc(S.bodies[st.bodyFile] ?? '')}</textarea>
+      <div class="actions"><button class="small" data-act="fmt">Format JSON</button></div></div>` : ''}
+    <div class="r2"><div><label>Expected status</label><input type="number" data-f="expectStatus" value="${st.expectStatus ?? 200}"></div><div></div></div>
+    <div class="r3">
+      <div><label>Response must contain (one per line)</label><textarea data-l="expectBodyContains" rows="4" spellcheck="false">${esc((st.expectBodyContains || []).join('\n'))}</textarea></div>
+      <div><label>Response must NOT contain (one per line)</label><textarea data-l="expectBodyNotContains" rows="4" spellcheck="false">${esc((st.expectBodyNotContains || []).join('\n'))}</textarea></div></div>
+    <div class="hint" style="margin-top:-6px">Matching is a plain text search in the raw response, which is compact JSON: write <code>"role":"OWNER"</code>, no spaces after colons.</div>
+    <div><label>Save from response into variables (variable name &larr; JSON path, e.g. accessToken or account.id)</label><div id="caps"></div>
+      <button class="small" data-act="addcap">+ capture</button></div>
+    <div><label>Variables you can use here</label>
+      <span class="chip" data-ins="{{runId}}">{{runId}}</span><span class="chip" data-ins="{{timestamp}}">{{timestamp}}</span>
+      ${vars.map(v => `<span class="chip" data-ins="{{${esc(v)}}}">{{${esc(v)}}}</span>`).join('')}
+      <div class="hint">Click a chip to copy it.</div></div>
+    <div class="actions"><button class="primary" data-act="save">Save changes</button>
+      <button data-act="up">&uarr; Move up</button><button data-act="down">&darr; Move down</button>
+      <button data-act="dup">Duplicate</button><button class="danger" data-act="del">Delete</button></div>
+  </div>`;
+  renderCaps(i);
+}
+function renderCaps(i) {
+  const st = S.plan.steps[i];
+  const ents = Object.entries(st.capture || {});
+  $('#caps').innerHTML = ents.map(([k, v], n) => `<div class="caprow"><input data-cap="k" data-n="${n}" value="${esc(k)}" placeholder="variable">
+    <input data-cap="v" data-n="${n}" value="${esc(v)}" placeholder="json.path"><button class="small danger" data-act="delcap" data-n="${n}">&times;</button></div>`).join('');
+}
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'body'; }
+
+function editorInput(e) {
+  const i = S.sel - 1, st = S.plan.steps[i]; if (!st) return;
+  const t = e.target;
+  if (t.id === 'bodyEdit') { S.bodies[st.bodyFile] = t.value; setDirty(); return; }
+  if (t.dataset.f) {
+    const f = t.dataset.f;
+    if (f === 'bodyFile') {
+      if (t.value === '__new__') {
+        let n = prompt('New body file name (saved in testplan/bodies/):', slug(st.name));
+        if (!n) { renderEditor(i); return; }
+        n = n.trim().replace(/\\/g, '/'); if (!n.includes('/')) n = 'bodies/' + n; if (!n.endsWith('.txt')) n += '.txt';
+        if (!(n in S.bodies)) S.bodies[n] = '{\n  \n}\n';
+        st.bodyFile = n; setDirty(); renderEditor(i); return;
+      }
+      st.bodyFile = t.value || undefined; setDirty(); renderEditor(i); return;
+    }
+    st[f] = f === 'expectStatus' ? (parseInt(t.value, 10) || 200) : (t.value || undefined);
+    if (f === 'name' || f === 'method' || f === 'group') { st.name = st.name || ''; renderSidebar(); }
+    if (f === 'name') $('.title').textContent = st.name;
+    setDirty();
+  } else if (t.dataset.l) {
+    const arr = t.value.split('\n').filter(x => x.length); st[t.dataset.l] = arr.length ? arr : undefined; setDirty();
+  } else if (t.dataset.cap) {
+    const ents = Object.entries(st.capture || {}), n = +t.dataset.n;
+    ents[n][t.dataset.cap === 'k' ? 0 : 1] = t.value;
+    st.capture = Object.fromEntries(ents.filter(([k]) => k !== undefined)); setDirty();
+  }
+}
+
+async function savePlan() {
+  const bad = S.plan.steps.findIndex(s => !s.name || !s.path);
+  if (bad >= 0) { toast(`Step ${bad + 1} needs a name and a path.`, true); return false; }
+  try {
+    const used = new Set(S.plan.steps.map(s => s.bodyFile).filter(Boolean));
+    const bodies = Object.fromEntries(Object.entries(S.bodies).filter(([k]) => used.has(k) || true));
+    const r = await api('/api/plan', { method: 'PUT', body: JSON.stringify({ baseUrl: S.plan.baseUrl, steps: S.plan.steps, bodies }) });
+    S.plan.baseUrl = r.baseUrl; setDirty(false); toast('Saved to plan.json (previous version kept as plan.json.bak)'); return true;
+  } catch (e) { toast('Save failed: ' + e.message, true); return false; }
+}
+
+/* ============================== running ============================== */
+async function runTests(upTo) {
+  if (S.running) return;
+  if (S.dirty && !(await savePlan())) return;
+  if (!S.baseUrl) { toast('Enter the target address first.', true); return; }
+  S.mode = 'tests'; syncTabs();
+  S.running = true; S.abort = new AbortController(); S.results = {}; S.current = 1; S.follow = true;
+  S.resultsLabel = 'Running...'; S.runInfo = null; if (S.dtab === 'edit') S.dtab = 'response';
+  setRunButtons(); renderSidebar(); renderDetail();
+  try {
+    const res = await fetch('/api/run', { method: 'POST', signal: S.abort.signal,
+      headers: { 'X-ATR': '1', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl: S.baseUrl, stopOnFail: $('#stopOnFail').checked, maskSecrets: $('#maskSecrets').checked, upTo: upTo || null }) });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || res.statusText); }
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+    const handle = m => {
+      if (m.type === 'start') { S.runInfo = { runId: m.runId, baseUrl: m.baseUrl }; remember(m.baseUrl); }
+      else if (m.type === 'step') {
+        const r = normResult(m.result); S.results[r.index] = r; S.current = r.index + 1;
+        if (S.follow) S.sel = r.index;
+        if (r.fatal) toast('Server unreachable - is the API running and is the target address right?', true);
+        renderSidebar(); renderDetail();
+        const el = $(`.row[data-idx="${S.sel}"]`); if (el) el.scrollIntoView({ block: 'nearest' });
+      } else if (m.type === 'done') {
+        S.resultsLabel = `Latest run - ${new Date().toLocaleTimeString()}`;
+        toast(`${m.passed} passed, ${m.failed} failed${m.notRun ? `, ${m.notRun} not run` : ''}`, m.failed > 0);
+        const firstFail = Object.values(S.results).sort((a, b) => a.index - b.index).find(r => !r.passed);
+        if (firstFail) S.sel = firstFail.index;
+      }
+    };
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); if (line.trim()) handle(JSON.parse(line)); }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') { S.resultsLabel = 'Stopped'; toast('Run stopped'); }
+    else { S.resultsLabel = 'Run failed'; toast('Run failed: ' + e.message, true); }
+  } finally {
+    S.running = false; S.abort = null; setRunButtons(); renderSidebar(); renderDetail(); loadRuns();
+  }
+}
+function setRunButtons() {
+  $('#btnRun').disabled = S.running; $('#btnStop').hidden = !S.running;
+  $('#btnRun').innerHTML = S.running ? 'Running...' : '&#9654; Run all';
+}
+
+/* ============================== target server ============================== */
+let probeTimer = null;
+function normalizeUrl(v) {
+  v = v.trim().replace(/\/+$/, '');
+  if (v && !/^https?:\/\//i.test(v)) v = 'http://' + v;
+  return v;
+}
+function scheduleProbe() { clearTimeout(probeTimer); probeTimer = setTimeout(probe, 500); setDot('busy', 'checking...'); }
+function setDot(cls, title) { const d = $('#dot'); d.className = 'dot ' + cls; d.title = title; }
+async function probe(verbose) {
+  if (!S.baseUrl) { setDot('', 'no address'); return; }
+  setDot('busy', 'checking...');
+  try {
+    const r = await api('/api/probe', { method: 'POST', body: JSON.stringify({ baseUrl: S.baseUrl }) });
+    if (r.ok) { setDot('ok', `Reachable - HTTP ${r.status} in ${r.ms} ms`); if (verbose) toast(`Server answered: HTTP ${r.status} (${r.ms} ms)`); remember(S.baseUrl); }
+    else { setDot('bad', 'Not reachable: ' + r.error); if (verbose) toast('Nothing answered at this address: ' + r.error + '. Is the API running? Check the port (try Detect).', true); }
+  } catch (e) { setDot('bad', e.message); }
+}
+function setBase(u, save = true) {
+  S.baseUrl = u; $('#baseUrl').value = u;
+  if (save) try { localStorage.setItem('atr.baseUrl', u); } catch {}
+  scheduleProbe(); renderDetail();
+}
+async function detect() {
+  const pop = $('#detectPop'); pop.hidden = false; pop.innerHTML = '<div class="hint" style="padding:6px">Scanning common local ports...</div>';
+  try {
+    const r = await api('/api/detect');
+    pop.innerHTML = (r.found.length
+      ? '<div class="hint" style="padding:4px 8px">Something answers on these addresses - click to use:</div>' + r.found.map(f => `<div class="opt" data-url="${esc(f.url)}"><span class="mono">${esc(f.url)}</span><span class="hint">HTTP ${f.status}</span></div>`).join('')
+      : '<div style="padding:6px">No server found on the usual ports. Start your API and check the port it prints on startup (or the Properties/launchSettings.json), then type it above.</div>')
+      + '<div style="text-align:right"><button class="small" data-close="1">Close</button></div>';
+  } catch (e) { pop.innerHTML = `<div style="padding:6px">Scan failed: ${esc(e.message)}</div>`; }
+}
+
+/* ============================== history ============================== */
+async function loadRuns() {
+  try { S.runs = (await api('/api/runs')).runs; } catch { S.runs = []; }
+  renderHist();
+  if (!S.results[1] && !S.running && S.runs.length && S.mode === 'tests' && !S.resultsLabel) { await showLatestInPlan(); }
+}
+async function fetchRun(file) {
+  const d = await api('/api/runs/' + encodeURIComponent(file));
+  d.steps = (d.steps || d.Steps || []).map(normResult);
+  return d;
+}
+async function showLatestInPlan() {
+  try {
+    const d = await fetchRun(S.runs[0].file);
+    d.steps.forEach(r => { S.results[r.index] = r; });
+    S.runInfo = { runId: d.runId, baseUrl: d.baseUrl };
+    S.resultsLabel = `Last saved run - ${new Date(d.startedAt).toLocaleString()}`;
+    renderSidebar(); renderDetail();
+  } catch { /* ignore */ }
+}
+function renderHist() {
+  $('#histBox').innerHTML = S.runs.length ? S.runs.map(r => `<div class="runrow ${r.file === S.histFile ? 'sel' : ''}" data-run="${esc(r.file)}">
+    <div style="display:flex;justify-content:space-between"><b>${esc(new Date(r.startedAt).toLocaleString())}</b>
+    <span><span class="pill p">${r.passed}</span> <span class="pill ${r.failed ? 'f' : 'n'}">${r.failed}</span>${r.notRun ? ` <span class="pill n">${r.notRun} skipped</span>` : ''}</span></div>
+    <div class="hint">${esc(r.baseUrl || '')} &middot; id ${esc(r.runId || '')}</div></div>`).join('')
+    : '<div class="empty" style="padding:20px">No saved runs yet.</div>';
+}
+function syncTabs() {
+  $('#tabTests').classList.toggle('on', S.mode === 'tests'); $('#tabHist').classList.toggle('on', S.mode === 'history');
+  $('#histBox').hidden = S.mode !== 'history';
+}
+
+/* ============================== events ============================== */
+$('#baseUrl').addEventListener('input', e => { S.baseUrl = e.target.value; scheduleProbe(); });
+$('#baseUrl').addEventListener('change', e => setBase(normalizeUrl(e.target.value)));
+$('#btnTest').onclick = () => probe(true);
+$('#btnDetect').onclick = detect;
+$('#detectPop').addEventListener('click', e => {
+  const o = e.target.closest('[data-url]'); if (o) { setBase(o.dataset.url); $('#detectPop').hidden = true; }
+  if (e.target.dataset.close) $('#detectPop').hidden = true;
+});
+$('#btnDefault').onclick = async () => {
+  if (!/^https?:\/\//.test(S.baseUrl)) { toast('Enter a valid address first.', true); return; }
+  S.plan.baseUrl = S.baseUrl; if (await savePlan()) toast(`Default target is now ${S.baseUrl}`);
+};
+$('#maskSecrets').addEventListener('change', e => { try { localStorage.setItem('atr.mask', e.target.checked ? '1' : '0'); } catch {} });
+$('#btnRun').onclick = () => runTests();
+$('#btnStop').onclick = () => S.abort && S.abort.abort();
+$('#btnSave').onclick = savePlan;
+$('#btnDiscard').onclick = async () => { if (confirm('Discard all unsaved edits?')) { setDirty(false); await loadPlan(); renderSidebar(); renderDetail(); } };
+$('#btnGuide').onclick = async () => {
+  try { copyText((await api('/api/guide')).text, 'Agent guide copied - paste it into your AI agent'); }
+  catch (e) { toast(e.message, true); }
+};
+$('#q').addEventListener('input', e => { S.q = e.target.value; renderSidebar(); });
+$('#statusFilter').addEventListener('change', e => { S.filter = e.target.value; renderSidebar(); });
+$('#tabTests').onclick = () => { S.mode = 'tests'; S.sel = 1; syncTabs(); renderSidebar(); renderDetail(); };
+$('#tabHist').onclick = async () => { S.mode = 'history'; S.sel = 1; syncTabs(); await loadRuns(); renderSidebar(); renderDetail(); };
+$('#histBox').addEventListener('click', async e => {
+  const r = e.target.closest('[data-run]'); if (!r) return;
+  S.histFile = r.dataset.run;
+  try { S.histData = await fetchRun(S.histFile); const f = S.histData.steps.find(x => !x.passed); S.sel = f ? f.index : 1; }
+  catch (err) { toast(err.message, true); }
+  renderHist(); renderSidebar(); renderDetail();
+});
+$('#list').addEventListener('click', e => {
+  const g = e.target.closest('[data-grp]');
+  if (g) { S.collapsed[g.dataset.grp] = !S.collapsed[g.dataset.grp]; renderSidebar(); return; }
+  const r = e.target.closest('[data-idx]');
+  if (r) { S.sel = +r.dataset.idx; S.follow = false; renderSidebar(); renderDetail(); }
+});
+$('#btnAdd').onclick = () => {
+  const cur = S.plan.steps[S.sel - 1];
+  const st = { name: 'New test', group: cur && cur.group || undefined, method: 'GET', path: '/api/', expectStatus: 200 };
+  S.plan.steps.splice(S.sel, 0, st); S.sel += 1; S.dtab = 'edit'; setDirty(); renderSidebar(); renderDetail();
+  const n = $('[data-f="name"]'); if (n) { n.focus(); n.select(); }
+};
+$('#detail').addEventListener('input', editorInput);
+$('#detail').addEventListener('click', async e => {
+  const tab = e.target.closest('[data-tab]'); if (tab) { S.dtab = tab.dataset.tab; renderDetail(); return; }
+  const chip = e.target.closest('[data-ins]'); if (chip) { copyText(chip.dataset.ins, `Copied ${chip.dataset.ins}`); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const i = S.sel - 1, steps = S.plan.steps, row = selectedRow();
+  switch (b.dataset.act) {
+    case 'toggle': S.pretty = !S.pretty; renderPane(row); break;
+    case 'copybody': copyText($('#bodyPre').textContent); break;
+    case 'runto': runTests(S.sel); break;
+    case 'curl': {
+      const r = row.result; let c = `curl -X ${r.method} '${r.url}'`;
+      if (row.step && row.step.bearer) c += ` \\\n  -H 'Authorization: Bearer <${row.step.bearer}>'`;
+      if (r.requestBody) c += ` \\\n  -H 'Content-Type: application/json' \\\n  -d '${r.requestBody.replace(/'/g, "'\\''")}'`;
+      copyText(c, 'cURL copied'); break;
+    }
+    case 'fmt': { const ta = $('#bodyEdit'); try { ta.value = JSON.stringify(JSON.parse(ta.value), null, 2) + '\n'; S.bodies[steps[i].bodyFile] = ta.value; setDirty(); }
+                  catch { toast('Not valid JSON (variables like {{runId}} must be inside quotes to format).', true); } break; }
+    case 'addcap': steps[i].capture = { ...(steps[i].capture || {}), ['var' + (Object.keys(steps[i].capture || {}).length + 1)]: '' }; setDirty(); renderCaps(i); break;
+    case 'delcap': { const ents = Object.entries(steps[i].capture || {}); ents.splice(+b.dataset.n, 1); steps[i].capture = ents.length ? Object.fromEntries(ents) : undefined; setDirty(); renderCaps(i); break; }
+    case 'save': await savePlan(); break;
+    case 'up': if (i > 0) { [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]]; S.sel--; setDirty(); renderSidebar(); renderDetail(); } break;
+    case 'down': if (i < steps.length - 1) { [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]]; S.sel++; setDirty(); renderSidebar(); renderDetail(); } break;
+    case 'dup': steps.splice(i + 1, 0, JSON.parse(JSON.stringify({ ...steps[i], name: steps[i].name + ' (copy)' }))); S.sel++; setDirty(); renderSidebar(); renderDetail(); break;
+    case 'del': if (confirm(`Delete "${steps[i].name}"?`)) { steps.splice(i, 1); S.sel = Math.max(1, Math.min(S.sel, steps.length)); setDirty(); renderSidebar(); renderDetail(); } break;
+  }
+});
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (S.dirty) savePlan(); } });
+document.addEventListener('click', e => { if (!e.target.closest('.target')) $('#detectPop').hidden = true; });
+
+/* ============================== boot ============================== */
+async function loadPlan() {
+  const p = await api('/api/plan');
+  S.plan = { baseUrl: p.baseUrl, maskSecrets: p.maskSecrets, steps: p.steps }; S.bodies = p.bodies || {}; S.planPath = p.planPath;
+  $('#planPath').textContent = p.planPath; $('#planPath').title = p.planPath;
+}
+(async function boot() {
+  try {
+    await loadPlan();
+    let saved = null; try { saved = localStorage.getItem('atr.baseUrl'); } catch {}
+    S.baseUrl = saved || S.plan.baseUrl; $('#baseUrl').value = S.baseUrl;
+    remember(S.plan.baseUrl); if (saved) remember(saved);
+    let mk = null; try { mk = localStorage.getItem('atr.mask'); } catch {}
+    $('#maskSecrets').checked = mk === null ? S.plan.maskSecrets !== false : mk === '1';
+    S.sel = 1; syncTabs(); setRunButtons(); renderSidebar(); renderDetail();
+    probe(); await loadRuns();
+  } catch (e) {
+    $('#detail').innerHTML = `<div class="empty"><b>Could not load the test plan.</b><br>${esc(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

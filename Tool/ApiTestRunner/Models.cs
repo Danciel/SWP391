@@ -5,12 +5,22 @@ namespace ApiTestRunner;
 public sealed class TestPlan
 {
     public string BaseUrl { get; set; } = "https://localhost:7080";
+
+    /// <summary>true = hide passwords / shorten JWTs in logs and UI. false = show real values (local development).</summary>
+    public bool MaskSecrets { get; set; } = true;
     public List<TestStep> Steps { get; set; } = new();
 }
 
 public sealed class TestStep
 {
     public string Name { get; set; } = "";
+
+    /// <summary>Optional. Groups steps in the UI sidebar (e.g. "Register", "Login"). Not used by the runner itself.</summary>
+    public string? Group { get; set; }
+
+    /// <summary>Optional. Free-text note shown in the UI. Not used by the runner itself.</summary>
+    public string? Description { get; set; }
+
     public string Method { get; set; } = "GET";
 
     /// <summary>Path + query. Supports {{variables}}. Remember to URL-encode '+' as %2B.</summary>
@@ -42,7 +52,13 @@ public sealed record StepResult(
     long ElapsedMs,
     List<string> Problems,
     string? RequestBody,
-    string? ResponseBody);
+    string? ResponseBody,
+    List<CheckResult>? Checks = null,
+    Dictionary<string, string>? ResponseHeaders = null,
+    Dictionary<string, string>? Captured = null);
+
+/// <summary>One assertion outcome. Kind: setup | status | contains | notContains | capture.</summary>
+public sealed record CheckResult(string Kind, string Text, bool Ok);
 
 public sealed class TestSetupException(string message) : Exception(message);
 

@@ -17,6 +17,11 @@ public sealed class TestRunner
     private readonly string _logDir;
     private readonly Dictionary<string, string> _vars = new();
 
+    public string RunId => _vars["runId"];
+
+    /// <summary>Path of the run-*.json written by the last RunAsync call.</summary>
+    public string? LastJsonPath { get; private set; }
+
     public TestRunner(string baseUrl, string planDir, string logDir)
     {
         _baseUrl = baseUrl.TrimEnd('/');
@@ -38,12 +43,15 @@ public sealed class TestRunner
         _vars["timestamp"] = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
     }
 
-    public async Task<List<StepResult>> RunAsync(TestPlan plan, string planPath, bool stopOnFail)
+    public async Task<List<StepResult>> RunAsync(
+        TestPlan plan, string planPath, bool stopOnFail,
+        Func<StepResult, Task>? onStep = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(_logDir);
         var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
         var logPath = Path.Combine(_logDir, $"run-{stamp}.log");
         var jsonPath = Path.Combine(_logDir, $"run-{stamp}.json");
+        LastJsonPath = jsonPath;
         var started = DateTime.Now;
 
         await using var log = new StreamWriter(logPath, false, new UTF8Encoding(false)) { AutoFlush = true };
@@ -58,25 +66,35 @@ public sealed class TestRunner
         Console.WriteLine();
 
         var results = new List<StepResult>();
-        for (var i = 0; i < plan.Steps.Count; i++)
+        try
         {
-            var result = await ExecuteAsync(i + 1, plan.Steps[i]);
-            results.Add(result);
-            WriteStepLog(log, result);
-            PrintConsole(result);
+            for (var i = 0; i < plan.Steps.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var result = await ExecuteAsync(i + 1, plan.Steps[i], ct);
+                results.Add(result);
+                WriteStepLog(log, result);
+                PrintConsole(result);
+                if (onStep is not null) await onStep(result);
 
-            if (result.Fatal)
-            {
-                log.WriteLine("ABORTED: server unreachable.");
-                Console.WriteLine("Aborting: server unreachable. Is the API running and is baseUrl correct?");
-                break;
+                if (result.Fatal)
+                {
+                    log.WriteLine("ABORTED: server unreachable.");
+                    Console.WriteLine("Aborting: server unreachable. Is the API running and is baseUrl correct?");
+                    break;
+                }
+                if (!result.Passed && stopOnFail)
+                {
+                    log.WriteLine("STOPPED: --stop-on-fail.");
+                    Console.WriteLine("Stopping (--stop-on-fail).");
+                    break;
+                }
             }
-            if (!result.Passed && stopOnFail)
-            {
-                log.WriteLine("STOPPED: --stop-on-fail.");
-                Console.WriteLine("Stopping (--stop-on-fail).");
-                break;
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            log.WriteLine("CANCELLED: run was stopped from the UI.");
+            Console.WriteLine("Run cancelled.");
         }
 
         var passed = results.Count(r => r.Passed);
@@ -109,7 +127,7 @@ public sealed class TestRunner
         return results;
     }
 
-    private async Task<StepResult> ExecuteAsync(int index, TestStep step)
+    private async Task<StepResult> ExecuteAsync(int index, TestStep step, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         string? url = null;
@@ -118,7 +136,8 @@ public sealed class TestRunner
         StepResult Failed(string problem, bool fatal = false) => new(
             index, step.Name, step.Method.ToUpperInvariant(), url, null, step.ExpectStatus,
             false, fatal, sw.ElapsedMilliseconds, new List<string> { problem },
-            requestBody is null ? null : Masker.Mask(requestBody), null);
+            requestBody is null ? null : Masker.Mask(requestBody), null,
+            new List<CheckResult> { new("setup", problem, false) });
 
         try
         {
@@ -130,7 +149,7 @@ public sealed class TestRunner
                 var file = Path.Combine(_planDir, step.BodyFile);
                 if (!File.Exists(file)) return Failed($"Body file not found: {file}");
 
-                requestBody = Substitute(await File.ReadAllTextAsync(file));
+                requestBody = Substitute(await File.ReadAllTextAsync(file, ct));
                 req.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
             }
 
@@ -141,44 +160,68 @@ public sealed class TestRunner
                 req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            using var resp = await _http.SendAsync(req);
-            var body = await resp.Content.ReadAsStringAsync();
+            using var resp = await _http.SendAsync(req, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
             sw.Stop();
 
             var status = (int)resp.StatusCode;
             var problems = new List<string>();
+            var checks = new List<CheckResult>();
 
-            if (status != step.ExpectStatus)
-                problems.Add($"expected status {step.ExpectStatus} but got {status}");
+            var statusOk = status == step.ExpectStatus;
+            checks.Add(new("status",
+                statusOk ? $"Status is {step.ExpectStatus}" : $"Status should be {step.ExpectStatus} but was {status}",
+                statusOk));
+            if (!statusOk) problems.Add($"expected status {step.ExpectStatus} but got {status}");
 
             foreach (var raw in step.ExpectBodyContains ?? new List<string>())
             {
                 var needle = Substitute(raw);
-                if (!body.Contains(needle, StringComparison.Ordinal))
-                    problems.Add($"response body does not contain: {needle}");
+                var ok = body.Contains(needle, StringComparison.Ordinal);
+                checks.Add(new("contains", needle, ok));
+                if (!ok) problems.Add($"response body does not contain: {needle}");
             }
 
             foreach (var raw in step.ExpectBodyNotContains ?? new List<string>())
             {
                 var needle = Substitute(raw);
-                if (body.Contains(needle, StringComparison.Ordinal))
-                    problems.Add($"response body must NOT contain: {needle}");
+                var ok = !body.Contains(needle, StringComparison.Ordinal);
+                checks.Add(new("notContains", needle, ok));
+                if (!ok) problems.Add($"response body must NOT contain: {needle}");
             }
 
-            if (status == step.ExpectStatus && step.Capture is not null)
+            Dictionary<string, string>? captured = null;
+            if (statusOk && step.Capture is not null)
             {
+                captured = new Dictionary<string, string>();
                 foreach (var (name, jsonPath) in step.Capture)
                 {
-                    if (TryGetPath(body, jsonPath, out var value)) _vars[name] = value;
-                    else problems.Add($"capture '{name}': path '{jsonPath}' not found in response");
+                    if (TryGetPath(body, jsonPath, out var value))
+                    {
+                        _vars[name] = value;
+                        captured[name] = ShowVar(name, value);
+                        checks.Add(new("capture", $"{name} <- {jsonPath}", true));
+                    }
+                    else
+                    {
+                        problems.Add($"capture '{name}': path '{jsonPath}' not found in response");
+                        checks.Add(new("capture", $"{name} <- {jsonPath} (path not found)", false));
+                    }
                 }
+            }
+
+            var headers = new Dictionary<string, string>();
+            foreach (var h in resp.Headers.Concat(resp.Content.Headers))
+            {
+                if (h.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase)) continue;
+                headers[h.Key] = string.Join(", ", h.Value);
             }
 
             return new StepResult(
                 index, step.Name, step.Method.ToUpperInvariant(), url, status, step.ExpectStatus,
                 problems.Count == 0, false, sw.ElapsedMilliseconds, problems,
                 requestBody is null ? null : Masker.Mask(requestBody),
-                Masker.Mask(body));
+                Masker.Mask(body), checks, headers, captured);
         }
         catch (TestSetupException ex)
         {
@@ -188,11 +231,21 @@ public sealed class TestRunner
         {
             return Failed($"request error: {ex.Message}", fatal: true);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             return Failed("request timed out after 30 s");
         }
+        catch (Exception ex) when (ex is UriFormatException or InvalidOperationException)
+        {
+            return Failed($"invalid request: {ex.Message}", fatal: true);
+        }
     }
+
+    /// <summary>Tokens are shortened before being recorded in logs / shown in the UI.</summary>
+    private static string ShowVar(string name, string value) =>
+        Masker.Enabled && name.Contains("token", StringComparison.OrdinalIgnoreCase) && value.Length > 16
+            ? value[..12] + "..."
+            : value;
 
     private string Substitute(string input)
     {

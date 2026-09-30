@@ -38,6 +38,11 @@ catch (JsonException ex)
     return 2;
 }
 
+Masker.Enabled = opts.MaskSecrets ?? plan.MaskSecrets;
+
+if (opts.Ui)
+    return await UiServer.RunAsync(opts);
+
 var planFull = Path.GetFullPath(opts.PlanPath);
 var runner = new TestRunner(opts.BaseUrl ?? plan.BaseUrl, Path.GetDirectoryName(planFull)!, opts.LogDir);
 var results = await runner.RunAsync(plan, planFull, opts.StopOnFail);

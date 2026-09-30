@@ -1,0 +1,6 @@
+{
+  "username": "pwmax{{runId}}",
+  "email": "pwmax{{runId}}@test.local",
+  "password": "A1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "role": "BENEFICIARY"
+}
