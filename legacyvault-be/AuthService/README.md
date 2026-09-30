@@ -1,4 +1,4 @@
-# AuthService (.NET 8)
+# SWP301BETASK (.NET 8)
 
 ## Run (PostgreSQL in Docker)
 ```powershell

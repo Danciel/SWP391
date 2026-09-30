@@ -1,4 +1,4 @@
-namespace AuthService.Services;
+namespace SWP301BETASK.Features.Admin.Services;
 
 public record IdentityCheckRequest(string FullName, string DocumentNumber, DateOnly DateOfBirth);
 public record IdentityCheckResult(bool Verified, string? ExternalIdentityId, string? Reason);

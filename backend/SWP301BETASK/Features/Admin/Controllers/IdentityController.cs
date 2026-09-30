@@ -1,12 +1,12 @@
-using AuthService.Data;
-using AuthService.Domain;
-using AuthService.Dtos;
-using AuthService.Services;
+using SWP301BETASK.Data;
+using SWP301BETASK.Models;
+using SWP301BETASK.Features.Admin.DTOs;
+using SWP301BETASK.Features.Admin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace AuthService.Controllers;
+namespace SWP301BETASK.Features.Admin.Controllers;
 
 [ApiController]
 [Route("api/identity")]

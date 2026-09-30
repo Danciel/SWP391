@@ -1,7 +1,7 @@
-using AuthService.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuthService.Data;
+namespace SWP301BETASK.Data;
+using SWP301BETASK.Models;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
