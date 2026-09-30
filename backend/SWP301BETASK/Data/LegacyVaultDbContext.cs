@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace SWP301BETASK.Data;
 using SWP301BETASK.Models;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class LegacyVaultDbContext(DbContextOptions<LegacyVaultDbContext> options) : DbContext(options)
 {
     public DbSet<Account> Accounts => Set<Account>();
 

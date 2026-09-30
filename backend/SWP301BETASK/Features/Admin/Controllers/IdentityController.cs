@@ -13,7 +13,7 @@ namespace SWP301BETASK.Features.Admin.Controllers;
 [Authorize]
 [EnableRateLimiting("auth")]
 public class IdentityController(
-    AppDbContext db,
+    LegacyVaultDbContext db,
     ICurrentUser currentUser,
     IOtpService otp,
     IIdentityProviderClient provider) : ControllerBase

@@ -6,11 +6,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 using SWP301BETASK.Data;
 using SWP301BETASK.Models;
 using SWP301BETASK.Features.Admin.Services;
+using SWP301BETASK.Features.Admin.Controllers;
 using SWP301BETASK.Features.Admin.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,38 +57,13 @@ if (!builder.Environment.IsDevelopment() &&
 // ConnectionStrings:Postgres = <Supabase connection string>
 //
 
-var dbProvider = (
-    builder.Configuration["Database:Provider"] ?? "Postgres"
-).Trim();
-
 var connectionString =
-    builder.Configuration.GetConnectionString(dbProvider)
+    builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException(
-        $"Missing ConnectionStrings:{dbProvider}.");
+        "Missing ConnectionStrings:Postgres.");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    switch (dbProvider.ToLowerInvariant())
-    {
-        case "postgres":
-            options.UseNpgsql(connectionString);
-            break;
-
-        case "sqlserver":
-            options.UseSqlServer(connectionString);
-            break;
-
-        case "sqlite":
-            options.UseSqlite(connectionString);
-            break;
-
-        default:
-            throw new InvalidOperationException(
-                $"Unknown Database:Provider '{dbProvider}'. " +
-                "Use Postgres, SqlServer or Sqlite.");
-    }
-});
-
+builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 // ============================================================
 // Application Services
@@ -206,21 +182,11 @@ builder.Services.AddSwaggerGen(options =>
                 "Paste the access token from /api/auth/login"
         });
 
-    options.AddSecurityRequirement(
+    options.AddSecurityRequirement(document =>
         new OpenApiSecurityRequirement
         {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type =
-                            ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
+            [new OpenApiSecuritySchemeReference("Bearer", document)]
+                = new List<string>()
         });
 });
 
@@ -259,7 +225,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider
-        .GetRequiredService<AppDbContext>();
+        .GetRequiredService<LegacyVaultDbContext>();
 
     db.Database.EnsureCreated();
 
@@ -334,7 +300,7 @@ if (seedArg >= 0)
     var added =
         await DevDataSeeder.SeedAsync(
             seedScope.ServiceProvider
-                .GetRequiredService<AppDbContext>(),
+                .GetRequiredService<LegacyVaultDbContext>(),
 
             seedScope.ServiceProvider
                 .GetRequiredService<IPasswordService>(),
@@ -342,8 +308,7 @@ if (seedArg >= 0)
             seedCount);
 
     Console.WriteLine(
-        $"Done. {added} new user(s) inserted " +
-        $"into '{dbProvider}' database.");
+        $"Done. {added} new user(s) inserted into the database.");
 
     return;
 }

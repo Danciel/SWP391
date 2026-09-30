@@ -14,7 +14,7 @@ namespace SWP301BETASK.Features.Admin.Controllers;
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
 public class AuthController(
-    AppDbContext db,
+    LegacyVaultDbContext db,
     IPasswordService passwords,
     IJwtService jwt,
     IOtpService otp,
