@@ -12,7 +12,7 @@ using SWP301BETASK.Data;
 namespace SWP301BETASK.Migrations
 {
     [DbContext(typeof(LegacyVaultDbContext))]
-    [Migration("20260928153747_InitialCreate")]
+    [Migration("20260930070223_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -67,7 +67,13 @@ namespace SWP301BETASK.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.ToTable("Accounts");
                 });

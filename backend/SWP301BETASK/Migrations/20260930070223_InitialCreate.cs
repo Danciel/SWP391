@@ -25,12 +25,19 @@ namespace SWP301BETASK.Migrations
                     PhoneVerified = table.Column<bool>(type: "boolean", nullable: false),
                     IdentityStatus = table.Column<string>(type: "text", nullable: false),
                     ExternalIdentityId = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Accounts", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Accounts_Email",
+                table: "Accounts",
+                column: "Email",
+                unique: true);
         }
 
         /// <inheritdoc />
