@@ -1,0 +1,148 @@
+{
+  // baseUrl can be overridden with --base-url
+  "baseUrl": "https://localhost:7080",
+  "steps": [
+
+    // ---------- Register ----------
+    { "name": "Register alice", "method": "POST", "path": "/api/auth/register",
+      "bodyFile": "bodies/register-alice.txt", "expectStatus": 201,
+      "expectBodyContains": ["\"username\":\"alice{{runId}}\"", "\"role\":\"OWNER\""],
+      "expectBodyNotContains": ["passwordHash", "secretOtp"] },
+
+    { "name": "Register alice again (duplicate)", "method": "POST", "path": "/api/auth/register",
+      "bodyFile": "bodies/register-alice.txt", "expectStatus": 409 },
+
+    { "name": "Register with role ADMIN is forbidden", "method": "POST", "path": "/api/auth/register",
+      "bodyFile": "bodies/register-admin-role.txt", "expectStatus": 403 },
+
+    { "name": "Register with weak password", "method": "POST", "path": "/api/auth/register",
+      "bodyFile": "bodies/register-weak-password.txt", "expectStatus": 400 },
+
+    { "name": "Register bob", "method": "POST", "path": "/api/auth/register",
+      "bodyFile": "bodies/register-bob.txt", "expectStatus": 201 },
+
+    // ---------- Login ----------
+    { "name": "Login with wrong password", "method": "POST", "path": "/api/auth/login",
+      "bodyFile": "bodies/login-wrong-password.txt", "expectStatus": 401 },
+
+    { "name": "Login alice by username", "method": "POST", "path": "/api/auth/login",
+      "bodyFile": "bodies/login-alice.txt", "expectStatus": 200,
+      "expectBodyContains": ["\"tokenType\":\"Bearer\""],
+      "capture": { "aliceToken": "accessToken", "aliceId": "account.id" } },
+
+    { "name": "Login alice by email", "method": "POST", "path": "/api/auth/login",
+      "bodyFile": "bodies/login-alice-email.txt", "expectStatus": 200 },
+
+    { "name": "Login bob", "method": "POST", "path": "/api/auth/login",
+      "bodyFile": "bodies/login-bob.txt", "expectStatus": 200,
+      "capture": { "bobToken": "accessToken", "bobId": "account.id" } },
+
+    { "name": "Login seeded admin", "method": "POST", "path": "/api/auth/login",
+      "bodyFile": "bodies/login-admin.txt", "expectStatus": 200,
+      "capture": { "adminToken": "accessToken", "adminId": "account.id" } },
+
+    // ---------- Profile ----------
+    { "name": "GET me (alice)", "method": "GET", "path": "/api/accounts/me",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"emailVerified\":false", "\"phoneVerified\":false", "\"identityStatus\":\"NONE\""] },
+
+    { "name": "GET me without token", "method": "GET", "path": "/api/accounts/me", "expectStatus": 401 },
+
+    // ---------- Email OTP ----------
+    { "name": "Send email OTP", "method": "POST", "path": "/api/auth/send-email-otp",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "capture": { "emailOtp": "devCode" } },
+
+    { "name": "Verify email OTP with wrong code", "method": "POST", "path": "/api/auth/verify-email-otp",
+      "bodyFile": "bodies/otp-wrong-code.txt", "bearer": "aliceToken", "expectStatus": 400 },
+
+    { "name": "Verify email OTP", "method": "POST", "path": "/api/auth/verify-email-otp",
+      "bodyFile": "bodies/verify-email-otp.txt", "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"emailVerified\":true"] },
+
+    { "name": "Send email OTP again (already verified)", "method": "POST", "path": "/api/auth/send-email-otp",
+      "bearer": "aliceToken", "expectStatus": 409 },
+
+    // ---------- Update profile ----------
+    { "name": "PUT me (change full name)", "method": "PUT", "path": "/api/accounts/me",
+      "bodyFile": "bodies/update-profile.txt", "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["Alice N. Updated"] },
+
+    // ---------- Phone OTP + identity ----------
+    { "name": "Identity verify before phone is verified", "method": "POST", "path": "/api/identity/verify",
+      "bodyFile": "bodies/identity-ok.txt", "bearer": "aliceToken", "expectStatus": 400 },
+
+    { "name": "Send phone OTP", "method": "POST", "path": "/api/identity/send-phone-otp",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "capture": { "phoneOtp": "devCode" } },
+
+    { "name": "Verify phone", "method": "POST", "path": "/api/identity/verify-phone",
+      "bodyFile": "bodies/verify-phone-otp.txt", "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"phoneVerified\":true"] },
+
+    { "name": "Identity verify (mock provider rejects FAIL*)", "method": "POST", "path": "/api/identity/verify",
+      "bodyFile": "bodies/identity-rejected.txt", "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"status\":\"REJECTED\""] },
+
+    { "name": "Identity verify (accepted)", "method": "POST", "path": "/api/identity/verify",
+      "bodyFile": "bodies/identity-ok.txt", "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"status\":\"VERIFIED\"", "\"externalIdentityId\":\"EXT-"],
+      "capture": { "aliceExternalId": "externalIdentityId" } },
+
+    { "name": "Identity verify again (already verified)", "method": "POST", "path": "/api/identity/verify",
+      "bodyFile": "bodies/identity-ok.txt", "bearer": "aliceToken", "expectStatus": 409 },
+
+    { "name": "GET me shows VERIFIED", "method": "GET", "path": "/api/accounts/me",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"identityStatus\":\"VERIFIED\"", "\"externalIdentityId\":\"{{aliceExternalId}}\""] },
+
+    // ---------- Search ----------
+    { "name": "Search by email (non-admin gets summary only)", "method": "GET",
+      "path": "/api/accounts/search?email=bob{{runId}}@test.local",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"username\":\"bob{{runId}}\""],
+      "expectBodyNotContains": ["\"email\"", "\"phone\""] },
+
+    { "name": "Search by phone", "method": "GET",
+      "path": "/api/accounts/search?phone=%2B84902{{runId}}",
+      "bearer": "aliceToken", "expectStatus": 200,
+      "expectBodyContains": ["\"username\":\"bob{{runId}}\""] },
+
+    { "name": "Search with no parameter", "method": "GET", "path": "/api/accounts/search",
+      "bearer": "aliceToken", "expectStatus": 400 },
+
+    { "name": "Search with both parameters", "method": "GET",
+      "path": "/api/accounts/search?email=a@b.com&phone=0900000000",
+      "bearer": "aliceToken", "expectStatus": 400 },
+
+    { "name": "Search unknown email", "method": "GET",
+      "path": "/api/accounts/search?email=nobody{{runId}}@test.local",
+      "bearer": "aliceToken", "expectStatus": 404 },
+
+    { "name": "Search without token", "method": "GET",
+      "path": "/api/accounts/search?email=bob{{runId}}@test.local", "expectStatus": 401 },
+
+    { "name": "Search by email as admin (full record)", "method": "GET",
+      "path": "/api/accounts/search?email=bob{{runId}}@test.local",
+      "bearer": "adminToken", "expectStatus": 200,
+      "expectBodyContains": ["\"email\":\"bob{{runId}}@test.local\"", "\"phone\":\"+84902{{runId}}\""] },
+
+    // ---------- Role authorization ----------
+    { "name": "Non-admin cannot change roles", "method": "PUT",
+      "path": "/api/accounts/{{aliceId}}/role",
+      "bodyFile": "bodies/change-role-legal-verifier.txt", "bearer": "bobToken", "expectStatus": 403 },
+
+    { "name": "Admin changes bob's role", "method": "PUT",
+      "path": "/api/accounts/{{bobId}}/role",
+      "bodyFile": "bodies/change-role-legal-verifier.txt", "bearer": "adminToken", "expectStatus": 200,
+      "expectBodyContains": ["\"role\":\"LEGAL_VERIFIER\""] },
+
+    { "name": "Admin cannot change own role", "method": "PUT",
+      "path": "/api/accounts/{{adminId}}/role",
+      "bodyFile": "bodies/change-role-self.txt", "bearer": "adminToken", "expectStatus": 400 },
+
+    { "name": "Admin changes role of unknown id", "method": "PUT",
+      "path": "/api/accounts/00000000-0000-0000-0000-000000000001/role",
+      "bodyFile": "bodies/change-role-legal-verifier.txt", "bearer": "adminToken", "expectStatus": 404 }
+  ]
+}
