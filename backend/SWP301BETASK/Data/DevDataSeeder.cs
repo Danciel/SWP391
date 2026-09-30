@@ -28,7 +28,7 @@ public static class DevDataSeeder
     };
 
     public static async Task<int> SeedAsync(
-        AppDbContext db, IPasswordService passwords, int count, CancellationToken ct = default)
+        LegacyVaultDbContext db, IPasswordService passwords, int count, CancellationToken ct = default)
     {
         var taken = (await db.Accounts
                 .Where(a => a.Username.StartsWith("testuser") || a.Username == "testadmin")

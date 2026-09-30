@@ -40,7 +40,7 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 public static class CurrentUserExtensions
 {
     /// <summary>Loads the tracked, active Account for the signed-in user (null if missing/disabled).</summary>
-    public static Task<Account?> GetAccountAsync(this ICurrentUser user, AppDbContext db, CancellationToken ct = default)
+    public static Task<Account?> GetAccountAsync(this ICurrentUser user, LegacyVaultDbContext db, CancellationToken ct = default)
     {
         var id = user.RequiredId;
         return db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.IsActive, ct);

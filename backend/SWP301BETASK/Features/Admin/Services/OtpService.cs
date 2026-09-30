@@ -23,7 +23,7 @@ public interface IOtpService
 /// Step = 5 minutes; the current and previous step are accepted (≈ 5–10 min validity).
 /// The code is bound to the email/phone it was sent to, so changing the contact invalidates it.
 /// </summary>
-public sealed class OtpService(AppDbContext db, IOtpSender sender, IOptions<OtpOptions> options) : IOtpService
+public sealed class OtpService(LegacyVaultDbContext db, IOtpSender sender, IOptions<OtpOptions> options) : IOtpService
 {
     private const int StepSeconds = 300;
     private const int MaxFailures = 5;

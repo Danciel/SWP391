@@ -13,7 +13,7 @@ namespace SWP301BETASK.Features.Admin.Controllers;
 [Route("api/accounts")]
 [Authorize]
 [EnableRateLimiting("auth")]
-public class AccountsController(AppDbContext db, ICurrentUser currentUser) : ControllerBase
+public class AccountsController(LegacyVaultDbContext db, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("me")]
     public async Task<ActionResult<AccountResponse>> GetMe(CancellationToken ct)
