@@ -1,9 +1,9 @@
-namespace AuthService.Configuration;
+namespace SWP301BETASK.Features.Admin.Configuration;
 
 public class JwtOptions
 {
-    public string Issuer { get; set; } = "AuthService";
-    public string Audience { get; set; } = "AuthService.Clients";
+    public string Issuer { get; set; } = "SWP301BETASK";
+    public string Audience { get; set; } = "SWP301BETASK.Clients";
     public string Secret { get; set; } = "";
     public int ExpiryMinutes { get; set; } = 60;
 }

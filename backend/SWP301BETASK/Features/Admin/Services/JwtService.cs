@@ -1,12 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using AuthService.Configuration;
-using AuthService.Domain;
+using SWP301BETASK.Features.Admin.Configuration;
+using SWP301BETASK.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AuthService.Services;
+namespace SWP301BETASK.Features.Admin.Services;
 
 public interface IJwtService
 {

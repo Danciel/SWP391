@@ -1,4 +1,4 @@
-namespace AuthService.Services;
+namespace SWP301BETASK.Features.Admin.Services;
 
 public interface IPasswordService
 {

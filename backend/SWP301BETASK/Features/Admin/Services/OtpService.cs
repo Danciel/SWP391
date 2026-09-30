@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
-using AuthService.Configuration;
-using AuthService.Data;
-using AuthService.Domain;
+using SWP301BETASK.Features.Admin.Configuration;
+using SWP301BETASK.Data;
+using SWP301BETASK.Models;
 using Microsoft.Extensions.Options;
 
-namespace AuthService.Services;
+namespace SWP301BETASK.Features.Admin.Services;
 
 public enum OtpPurpose { Email, Phone }
 

@@ -1,9 +1,9 @@
 using System.Security.Claims;
-using AuthService.Data;
-using AuthService.Domain;
+using SWP301BETASK.Data;
+using SWP301BETASK.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuthService.Services;
+namespace SWP301BETASK.Features.Admin.Services;
 
 public interface ICurrentUser
 {

@@ -1,31 +1,46 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace SWP301BETASK.Data;
 using SWP301BETASK.Models;
 
-namespace SWP301BETASK.Data
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public class LegacyVaultDbContext : DbContext
+    public DbSet<Account> Accounts => Set<Account>();
+
+    protected override void OnModelCreating(ModelBuilder b)
     {
-        public LegacyVaultDbContext(
-            DbContextOptions<LegacyVaultDbContext> options)
-            : base(options)
+        b.Entity<Account>(e =>
         {
-        }
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Username).HasMaxLength(50).IsRequired();
+            e.Property(a => a.Email).HasMaxLength(254).IsRequired();
+            e.Property(a => a.Phone).HasMaxLength(20);
+            e.Property(a => a.PasswordHash).IsRequired();
+            e.Property(a => a.SecretOtp).IsRequired();
+            e.Property(a => a.Role).HasConversion<string>().HasMaxLength(32);
+            e.Property(a => a.IdentityStatus).HasConversion<string>().HasMaxLength(16);
 
-        public DbSet<Account> Accounts { get; set; }
+            e.HasIndex(a => a.Username).IsUnique();
+            e.HasIndex(a => a.Email).IsUnique();
+            e.HasIndex(a => a.Phone).IsUnique();
+        });
+    }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var entry in ChangeTracker.Entries<Account>())
         {
-            base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<Account>(entity =>
+            if (entry.State == EntityState.Added)
             {
-                // Primary Key
-                entity.HasKey(a => a.Id);
-
-                // Email không được trùng
-                entity.HasIndex(a => a.Email)
-                      .IsUnique();
-            });
+                entry.Entity.DateCreated = now;
+                entry.Entity.DateUpdated = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.DateUpdated = now;
+            }
         }
+        return base.SaveChangesAsync(ct);
     }
 }

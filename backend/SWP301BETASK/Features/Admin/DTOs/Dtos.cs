@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using AuthService.Domain;
+using SWP301BETASK.Models;
 
-namespace AuthService.Dtos;
+namespace SWP301BETASK.Features.Admin.DTOs;
 
 public record RegisterRequest(
     [param: Required, StringLength(50, MinimumLength = 3), RegularExpression(@"^[A-Za-z0-9_.-]+$")] string Username,

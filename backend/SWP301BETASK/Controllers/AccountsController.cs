@@ -30,7 +30,7 @@ namespace SWP301BETASK.Controllers
         public async Task<IActionResult> Create(Account account)
         {
             account.Id = Guid.NewGuid();
-            account.CreatedAt = DateTime.UtcNow;
+            account.DateCreated= DateTime.UtcNow;
 
             _context.Accounts.Add(account);
 

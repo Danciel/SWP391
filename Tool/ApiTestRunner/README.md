@@ -25,7 +25,7 @@ The UI listens on localhost only. Another port: `dotnet run -- --ui --port 5056`
 dotnet run
 dotnet run -- --base-url https://localhost:5080 --stop-on-fail
 ```
-Note: pay attention to the port, watch where AuthService is listening on.
+Note: pay attention to the port, watch where SWP301BETASK is listening on.
 
 Output: `logs/run-<timestamp>.log` (readable) and `logs/run-<timestamp>.json` (machine-readable).
 Exit code `0` = all passed, `1` = something failed, `2` = bad arguments/plan.

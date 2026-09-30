@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using AuthService.Configuration;
-using AuthService.Data;
-using AuthService.Domain;
-using AuthService.Services;
+using SWP301BETASK.Features.Admin.Configuration;
+using SWP301BETASK.Data;
+using SWP301BETASK.Models;
+using SWP301BETASK.Features.Admin.;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;

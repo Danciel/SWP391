@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
-using AuthService.Domain;
-using AuthService.Services;
+using SWP301BETASK.Models;
+using SWP301BETASK.Features.Admin.Services;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuthService.Data;
+namespace SWP301BETASK.Data;
 
 /// <summary>
 /// Generates test users straight into whichever database is configured (Postgres / SQL Server / SQLite).
