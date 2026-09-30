@@ -21,3 +21,5 @@ appsettings.Local.json
 Thumbs.db
 .vscode/
 .idea/
+/legacyvault-fe/node_modules
+/Tool/ApiTestRunner/logs
