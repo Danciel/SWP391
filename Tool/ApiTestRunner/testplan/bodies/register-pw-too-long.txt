@@ -1,0 +1,6 @@
+{
+  "username": "pwlong{{runId}}",
+  "email": "pwlong{{runId}}@test.local",
+  "password": "A1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "role": "BENEFICIARY"
+}
