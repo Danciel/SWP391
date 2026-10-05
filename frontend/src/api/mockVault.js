@@ -210,6 +210,43 @@ export async function updateAsset(userId, assetId, { name, type, description }) 
   return assets[idx];
 }
 
+export async function uploadAssetFile(userId, assetId, file) {
+  await delay(700);
+
+  if (!file) {
+    throw new ApiError("Please select a file", 400);
+  }
+
+  const key = scopedKey(ASSETS_KEY, userId);
+  const assets = readJSON(key, []);
+
+  const idx = assets.findIndex((a) => a.id === assetId);
+
+  if (idx === -1) {
+    throw new ApiError("Asset not found", 404);
+  }
+
+  // Mock upload: store file metadata only.
+  const fileInfo = {
+    id: randomId("file"),
+    name: file.name,
+    size: file.size,
+    type: file.type || "application/octet-stream",
+    uploadedAt: new Date().toISOString(),
+    secured: true,
+  };
+
+  assets[idx] = {
+    ...assets[idx],
+    file: fileInfo,
+    updatedAt: new Date().toISOString(),
+  };
+
+  writeJSON(key, assets);
+
+  return assets[idx];
+}
+
 // ---------------------------------------------------------------------------
 // Wills
 // ---------------------------------------------------------------------------
@@ -720,24 +757,24 @@ export async function getOwnerDashboardData(userId) {
     primaryWill?.status === "PENDING_VERIFICATION"
       ? "PENDING_VERIFICATION"
       : primaryWill?.status === "ACTIVE"
-      ? "ACTIVE"
-      : "LOCKED";
+        ? "ACTIVE"
+        : "LOCKED";
 
   const deadManSwitch = primaryWill?.dms?.enabled
     ? {
-        enabled: true,
-        willId: primaryWill.id,
-        checkInCycleDays: primaryWill.dms.checkInDays,
-        lastCheckIn: primaryWill.dms.lastCheckIn || null,
-        nextCheckInDue: primaryWill.dms.lastCheckIn
-          ? new Date(
-              new Date(primaryWill.dms.lastCheckIn).getTime() + daysToMs(primaryWill.dms.checkInDays)
-            ).toISOString()
-          : null,
-        missedCount: primaryWill.dms.missedCount || 0,
-        maxMissed: primaryWill.dms.maxMissed,
-        caseOpen: primaryWill.status === "PENDING_VERIFICATION",
-      }
+      enabled: true,
+      willId: primaryWill.id,
+      checkInCycleDays: primaryWill.dms.checkInDays,
+      lastCheckIn: primaryWill.dms.lastCheckIn || null,
+      nextCheckInDue: primaryWill.dms.lastCheckIn
+        ? new Date(
+          new Date(primaryWill.dms.lastCheckIn).getTime() + daysToMs(primaryWill.dms.checkInDays)
+        ).toISOString()
+        : null,
+      missedCount: primaryWill.dms.missedCount || 0,
+      maxMissed: primaryWill.dms.maxMissed,
+      caseOpen: primaryWill.status === "PENDING_VERIFICATION",
+    }
     : { enabled: false };
 
   const beneficiaryNameByAsset = new Map();
@@ -755,12 +792,12 @@ export async function getOwnerDashboardData(userId) {
 
   const executors = primaryWill?.executor
     ? [
-        {
-          id: primaryWill.executor.id || "executor",
-          name: primaryWill.executor.name,
-          status: primaryWill.status === "ACTIVE" ? "Confirmed" : "Pending",
-        },
-      ]
+      {
+        id: primaryWill.executor.id || "executor",
+        name: primaryWill.executor.name,
+        status: primaryWill.status === "ACTIVE" ? "Confirmed" : "Pending",
+      },
+    ]
     : [];
 
   const beneficiaryCounts = new Map();
