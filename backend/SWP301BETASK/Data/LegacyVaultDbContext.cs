@@ -1,74 +1,52 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace SWP301BETASK.Data;
 using SWP301BETASK.Models;
 
-namespace SWP301BETASK.Data
+public class LegacyVaultDbContext(DbContextOptions<LegacyVaultDbContext> options) : DbContext(options)
 {
-    public class LegacyVaultDbContext : DbContext
-    {
-        public LegacyVaultDbContext(
-            DbContextOptions<LegacyVaultDbContext> options)
-            : base(options)
+    // =====================================================
+    // DBSETS
+    // =====================================================  
+    
+    // Account / Identity
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<IdentityVerification> IdentityVerifications => Set<IdentityVerification>();
+
+    // Asset
+    public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<AssetSecret> AssetSecrets => Set<AssetSecret>();
+    public DbSet<AssetVerification> AssetVerifications => Set<AssetVerification>();
+
+    // Will
+    public DbSet<Will> Wills => Set<Will>();
+    public DbSet<WillAsset> WillAssets => Set<WillAsset>();
+    public DbSet<BeneficiaryDesignation> BeneficiaryDesignations => Set<BeneficiaryDesignation>();
+    public DbSet<AssetAssignment> AssetAssignments => Set<AssetAssignment>();
+    public DbSet<ExecutorAssignment> ExecutorAssignments => Set<ExecutorAssignment>();
+
+    // DMS
+    public DbSet<DmsConfiguration> DmsConfigurations => Set<DmsConfiguration>();
+    public DbSet<DmsCheckIn> DmsCheckIns => Set<DmsCheckIn>();
+    protected override void OnModelCreating(ModelBuilder b)
         {
-        }
+            base.OnModelCreating(b);
 
-        // =====================================================
-        // DBSETS
-        // =====================================================
-
-        // ACCOUNT
-        public DbSet<Account> Accounts { get; set; }
-
-        // IDENTITY
-        public DbSet<IdentityVerification> IdentityVerifications { get; set; }
-
-        // ASSET
-        public DbSet<Asset> Assets { get; set; }
-
-        public DbSet<AssetSecret> AssetSecrets { get; set; }
-
-        public DbSet<AssetVerification> AssetVerifications { get; set; }
-
-        // WILL
-        public DbSet<Will> Wills { get; set; }
-
-        public DbSet<WillAsset> WillAssets { get; set; }
-
-        public DbSet<BeneficiaryDesignation> BeneficiaryDesignations { get; set; }
-
-        public DbSet<AssetAssignment> AssetAssignments { get; set; }
-
-        public DbSet<ExecutorAssignment> ExecutorAssignments { get; set; }
-
-        // DMS
-        public DbSet<DmsConfiguration> DmsConfigurations { get; set; }
-
-        public DbSet<DmsCheckIn> DmsCheckIns { get; set; }
-
-
-        // =====================================================
-        // MODEL CONFIGURATION
-        // =====================================================
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-
-
-            // =================================================
-            // ACCOUNT
-            // =================================================
-
-            modelBuilder.Entity<Account>(entity =>
+            b.Entity<Account>(e =>
             {
-                // Primary Key
-                entity.HasKey(a => a.Id);
+                e.HasKey(a => a.Id);
+                e.Property(a => a.Username).HasMaxLength(50).IsRequired();
+                e.Property(a => a.Email).HasMaxLength(254).IsRequired();
+                e.Property(a => a.Phone).HasMaxLength(20);
+                e.Property(a => a.PasswordHash).IsRequired();
+                e.Property(a => a.SecretOtp).IsRequired();
+                e.Property(a => a.Role).HasConversion<string>().HasMaxLength(32);
+                e.Property(a => a.IdentityStatus).HasConversion<string>().HasMaxLength(16);
 
-                // Email không được trùng
-                entity.HasIndex(a => a.Email)
-                      .IsUnique();
+                e.HasIndex(a => a.Username).IsUnique();
+                e.HasIndex(a => a.Email).IsUnique();   // supersedes Kiet's version
+                e.HasIndex(a => a.Phone).IsUnique();
             });
-
-
             // =================================================
             // IDENTITY VERIFICATION
             // =================================================
@@ -311,6 +289,23 @@ namespace SWP301BETASK.Data
 
                 entity.HasIndex(c => c.DmsConfigurationId);
             });
+      
+    //Audit timestamps
+    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var entry in ChangeTracker.Entries<Account>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.DateCreated = now;
+                entry.Entity.DateUpdated = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.DateUpdated = now;
+            }
         }
+        return base.SaveChangesAsync(ct);
     }
 }

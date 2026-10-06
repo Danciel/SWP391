@@ -1,29 +1,52 @@
-﻿namespace SWP301BETASK.Models
+namespace SWP301BETASK.Models;
+
+public enum UserRole
 {
-    public class Account
-    {
-        public Guid Id { get; set; }
+    OWNER,
+    EXECUTOR,
+    BACKUP_EXECUTOR,
+    BENEFICIARY,
+    FAMILY_CONTACT,
+    LEGAL_VERIFIER,
+    ADMIN
+}
 
-        public string FullName { get; set; } = string.Empty;
+public enum IdentityStatus
+{
+    NONE,
+    PENDING,
+    VERIFIED,
+    REJECTED
+}
 
-        public string Email { get; set; } = string.Empty;
+public class Account
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Username { get; set; } = "";
+    public string PasswordHash { get; set; } = "";
 
-        public string Phone { get; set; } = string.Empty;
+    /// <summary>Per-user random secret (base64) used to derive email/phone OTP codes.</summary>
+    public string SecretOtp { get; set; } = "";
 
-        public string PasswordHash { get; set; } = string.Empty;
+    public string Email { get; set; } = "";
+    public string? Phone { get; set; }
+    public string? FullName { get; set; }
+    public UserRole Role { get; set; }
 
-        public string Role { get; set; } = "USER";
+    public bool EmailVerified { get; set; }
+    public bool PhoneVerified { get; set; }
 
-        public bool EmailVerified { get; set; } = false;
+    public IdentityStatus IdentityStatus { get; set; } = IdentityStatus.NONE;
 
-        public bool PhoneVerified { get; set; } = false;
+    /// <summary>Id returned by the third-party identity provider after a successful check.</summary>
+    public string? ExternalIdentityId { get; set; }
 
-        public string IdentityStatus { get; set; } = "UNVERIFIED";
+    public bool IsActive { get; set; } = true;
 
-        public string? ExternalIdentityId { get; set; }
+    // OTP brute-force protection
+    public int OtpFailedAttempts { get; set; }
+    public DateTime? OtpLockoutEnd { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    }
+    public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+    public DateTime DateUpdated { get; set; } = DateTime.UtcNow;
 }

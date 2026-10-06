@@ -1,0 +1,8 @@
+{
+  "username": "bob{{runId}}",
+  "email": "bob{{runId}}@test.local",
+  "phone": "+84902{{runId}}",
+  "password": "Passw0rd1",
+  "role": "EXECUTOR",
+  "fullName": "Bob Tran"
+}
