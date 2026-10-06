@@ -14,6 +14,12 @@ using SWP301BETASK.Features.Admin.Services;
 using SWP301BETASK.Features.Admin.Controllers;
 using SWP301BETASK.Features.Admin.Configuration;
 
+// Asset Encryption
+using SWP301BETASK.Features.AssetManagement.Contracts;
+using SWP301BETASK.Features.AssetManagement.Services;
+using SWP301BETASK.Features.AssetManagement.Verification;
+using SWP301BETASK.Features.AssetManagement.Repositories;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================================
@@ -63,6 +69,7 @@ var connectionString =
         "Missing ConnectionStrings:Postgres.");
 
 builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
+builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // ============================================================
@@ -70,20 +77,21 @@ builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
 // ============================================================
 
 builder.Services.AddHttpContextAccessor();
-
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-
 builder.Services.AddSingleton<IPasswordService, BCryptPasswordService>();
-
 builder.Services.AddSingleton<IJwtService, JwtService>();
-
 builder.Services.AddSingleton<IOtpSender, ConsoleOtpSender>();
-
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddSingleton<IIdentityProviderClient, MockIdentityProviderClient>();
 
-builder.Services.AddSingleton<IIdentityProviderClient,
-    MockIdentityProviderClient>();
+// ============================================================
+// Asset Management Services (from DEV-Kiet)
+// ============================================================
 
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IAssetVerificationService, MockAssetVerificationService>();
+builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddScoped<IAssetService, AssetService>();
 
 // ============================================================
 // Authentication - JWT
