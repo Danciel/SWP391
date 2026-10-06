@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { ROLES } from "./constants/roles";
+import Forbidden from "./pages/Forbidden/Forbidden";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import VerifyOtp from "./pages/VerifyOtp/VerifyOtp";
@@ -20,10 +22,11 @@ import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifier
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 
 const ROLE_HOME = {
-  OWNER: "assets",
-  EXECUTOR: "executor",
-  LEGAL_VERIFIER: "verifier",
-  ADMIN: "admin",
+  [ROLES.OWNER]: "assets",
+  [ROLES.EXECUTOR]: "executor",
+  [ROLES.BENEFICIARY]: "view-will",
+  [ROLES.LEGAL_VERIFIER]: "verifier",
+  [ROLES.ADMIN]: "admin",
 };
 
 function DashboardIndex() {
@@ -42,6 +45,7 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/403" element={<Forbidden />} />
           <Route
             path="/dashboard"
             element={
@@ -51,17 +55,103 @@ export default function App() {
             }
           >
             <Route index element={<DashboardIndex />} />
-            <Route path="assets" element={<Assets />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="verify-identity" element={<VerifyIdentity />} />
-            <Route path="create-will" element={<CreateWill />} />
-            <Route path="my-wills" element={<MyWills />} />
-            <Route path="my-wills/:id" element={<WillDetails />} />
-            <Route path="view-will" element={<ViewWill />} />
-            <Route path="view-will/:id" element={<InheritedWillDetails />} />
-            <Route path="executor" element={<ExecutorDashboard />} />
-            <Route path="verifier" element={<LegalVerifierDashboard />} />
-            <Route path="admin" element={<AdminDashboard />} />
+            <Route
+              path="assets"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.OWNER]}>
+                  <Assets />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="verify-identity"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.OWNER]}>
+                  <VerifyIdentity />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="create-will"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.OWNER]}>
+                  <CreateWill />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="my-wills"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.OWNER]}>
+                  <MyWills />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="my-wills/:id"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.OWNER]}>
+                  <WillDetails />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="view-will"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY]}>
+                  <ViewWill />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="view-will/:id"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY]}>
+                  <InheritedWillDetails />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="executor"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.EXECUTOR]}>
+                  <ExecutorDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="verifier"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.LEGAL_VERIFIER]}>
+                  <LegalVerifierDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

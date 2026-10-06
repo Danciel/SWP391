@@ -1,10 +1,30 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getAssets, addAsset, updateAsset } from "../../api/mockVault";
+import { getAssets, addAsset, updateAsset, uploadAssetFile } from "../../api/mockVault";
 import { ApiError } from "../../api/client";
 import styles from "./Assets.module.css";
 
 const ASSET_TYPES = ["Document", "Crypto Wallet", "Online Account", "Bank Account", "Other"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const ALLOWED_FILE_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+  "text/plain",
+];
+
+const ALLOWED_FILE_EXTENSIONS = [
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".txt",
+];
 
 export default function Assets() {
   const { user } = useAuth();
@@ -14,6 +34,8 @@ export default function Assets() {
   const [form, setForm] = useState({ name: "", type: "Document", description: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [detailMode, setDetailMode] = useState("view");
@@ -34,6 +56,7 @@ export default function Assets() {
 
   function openModal() {
     setForm({ name: "", type: "Document", description: "" });
+    setSelectedFile(null);
     setError("");
     setShowModal(true);
   }
@@ -41,20 +64,70 @@ export default function Assets() {
   async function handleAdd(e) {
     e.preventDefault();
     setError("");
+
     if (!form.name.trim()) {
       setError("Asset name is required");
       return;
     }
+
     setSaving(true);
+
     try {
-      await addAsset(user?.id, form);
+      const asset = await addAsset(user?.id, form);
+
+      if (selectedFile) {
+        setUploading(true);
+        await uploadAssetFile(user?.id, asset.id, selectedFile);
+        setUploading(false);
+      }
+
       setShowModal(false);
+      setSelectedFile(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not add asset");
+      setError(
+        err instanceof ApiError ? err.message : "Could not add asset"
+      );
     } finally {
       setSaving(false);
+      setUploading(false);
     }
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0] || null;
+
+    setError("");
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setSelectedFile(null);
+      setError("File size must not exceed 10 MB");
+      e.target.value = "";
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = ALLOWED_FILE_EXTENSIONS.some((ext) =>
+      fileName.endsWith(ext)
+    );
+
+    const hasValidType = ALLOWED_FILE_TYPES.includes(file.type);
+
+    if (!hasValidExtension || !hasValidType) {
+      setSelectedFile(null);
+      setError(
+        "Invalid file type. Allowed: PDF, DOC, DOCX, JPG, JPEG, PNG, TXT"
+      );
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
   }
 
   function openDetail(asset) {
@@ -157,9 +230,18 @@ export default function Assets() {
             />
 
             <label className={styles.label}>Upload File / Asset Information</label>
-            <button type="button" className={styles.fileBtn}>
-              Choose File
-            </button>
+
+            <input
+              type="file"
+              className={styles.fileBtn}
+              onChange={handleFileChange}
+            />
+
+            {selectedFile && (
+              <p className={styles.assetDesc}>
+                Selected: {selectedFile.name}
+              </p>
+            )}
 
             {error && <p className={styles.error}>{error}</p>}
 
@@ -191,6 +273,34 @@ export default function Assets() {
 
               <label className={styles.label}>Status</label>
               <p className={styles.assetDesc} style={{ marginBottom: 14 }}>{selectedAsset.status}</p>
+
+              <label className={styles.label}>Attached File</label>
+
+              {selectedAsset.file ? (
+                <div className={styles.assetDesc} style={{ marginBottom: 14 }}>
+                  <p>
+                    <strong>Name:</strong> {selectedAsset.file.name}
+                  </p>
+
+                  <p>
+                    <strong>Type:</strong> {selectedAsset.file.type}
+                  </p>
+
+                  <p>
+                    <strong>Size:</strong>{" "}
+                    {(selectedAsset.file.size / 1024).toFixed(1)} KB
+                  </p>
+
+                  <p>
+                    <strong>Secured:</strong>{" "}
+                    {selectedAsset.file.secured ? "Yes" : "No"}
+                  </p>
+                </div>
+              ) : (
+                <p className={styles.assetDesc} style={{ marginBottom: 14 }}>
+                  No file attached.
+                </p>
+              )}
 
               <div className={styles.modalActions}>
                 <button type="button" className={styles.secondaryBtn} onClick={closeDetail}>

@@ -8,12 +8,24 @@ const NAV_ITEMS_BY_ROLE = {
   OWNER: [
     { to: "/dashboard/assets", label: "Assets" },
     { to: "/dashboard/create-will", label: "Create Will" },
-    { to: "/dashboard/view-will", label: "View Will" },
     { to: "/dashboard/my-wills", label: "My Wills" },
   ],
-  EXECUTOR: [{ to: "/dashboard/executor", label: "Executor Dashboard" }],
-  LEGAL_VERIFIER: [{ to: "/dashboard/verifier", label: "Legal Cases" }],
-  ADMIN: [{ to: "/dashboard/admin", label: "Admin Dashboard" }],
+
+  EXECUTOR: [
+    { to: "/dashboard/executor", label: "Executor Dashboard" },
+  ],
+
+  BENEFICIARY: [
+    { to: "/dashboard/view-will", label: "View Will" },
+  ],
+
+  LEGAL_VERIFIER: [
+    { to: "/dashboard/verifier", label: "Legal Cases" },
+  ],
+
+  ADMIN: [
+    { to: "/dashboard/admin", label: "Admin Dashboard" },
+  ],
 };
 
 export default function AppLayout() {
@@ -21,7 +33,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const navItems = NAV_ITEMS_BY_ROLE[user?.role] || NAV_ITEMS_BY_ROLE.OWNER;
+  const navItems = NAV_ITEMS_BY_ROLE[user?.role] || [];
 
   useEffect(() => {
     function onClickOutside(e) {
