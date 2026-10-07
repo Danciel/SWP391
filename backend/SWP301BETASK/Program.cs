@@ -69,7 +69,6 @@ var connectionString =
         "Missing ConnectionStrings:Postgres.");
 
 builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
-builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // ============================================================

@@ -28,11 +28,11 @@ public class LegacyVaultDbContext(DbContextOptions<LegacyVaultDbContext> options
     // DMS
     public DbSet<DmsConfiguration> DmsConfigurations => Set<DmsConfiguration>();
     public DbSet<DmsCheckIn> DmsCheckIns => Set<DmsCheckIn>();
-    protected override void OnModelCreating(ModelBuilder b)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(b);
+            base.OnModelCreating(modelBuilder);
 
-            b.Entity<Account>(e =>
+            modelBuilder.Entity<Account>(e =>
             {
                 e.HasKey(a => a.Id);
                 e.Property(a => a.Username).HasMaxLength(50).IsRequired();
@@ -289,7 +289,7 @@ public class LegacyVaultDbContext(DbContextOptions<LegacyVaultDbContext> options
 
                 entity.HasIndex(c => c.DmsConfigurationId);
             });
-      
+        }
     //Audit timestamps
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
