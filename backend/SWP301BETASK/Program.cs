@@ -64,9 +64,9 @@ if (!builder.Environment.IsDevelopment() &&
 //
 
 var connectionString =
-    builder.Configuration.GetConnectionString("Postgres")
+    builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
-        "Missing ConnectionStrings:Postgres.");
+        "Missing ConnectionStrings:DefaultConnection.");
 
 builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
     options.UseNpgsql(connectionString));
