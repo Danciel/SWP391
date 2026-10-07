@@ -1,8 +1,28 @@
-export const BASE_URL =
-  import.meta.env.VITE_API_URL || "https://localhost:7202/api";
+const env = import.meta.env;
+
+if (env.PROD && !env.VITE_API_URL) {
+  throw new Error("VITE_API_URL must be set for production builds.");
+}
+
+const rawBase = (import.meta.env.VITE_API_URL || "https://localhost:7202/api")
+    .replace(/\/+$/, "");
+
+if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+  console.warn("VITE_API_URL is not set; falling back to https://localhost:7202/api");
+}
+
+if (!/^https?:\/\//.test(rawBase) && !rawBase.startsWith("/")) {
+  throw new Error(
+      `Invalid VITE_API_URL "${rawBase}". It must start with http://, https://, or /.`
+  );
+}
+
+export const BASE_URL = rawBase;
 
 export const MOCK_MODE =
-  String(import.meta.env.VITE_MOCK_MODE ?? "true").toLowerCase() === "true";
+    String(env.VITE_MOCK_MODE ?? "false").toLowerCase() === "true";
+
+console.log("MODE:", import.meta.env.MODE, "API:", import.meta.env.VITE_API_URL);
 
 const TOKEN_KEY = "lv_token";
 const USER_KEY = "lv_user";
