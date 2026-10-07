@@ -11,15 +11,7 @@ import {
 } from "../api/authApi";
 
 const AuthContext = createContext(null);
-const USER_KEY = "lv_user";
-function getStoredUser() {
-  try {
-    const savedUser = localStorage.getItem(USER_KEY);
-    return savedUser ? JSON.parse(savedUser) : null;
-  } catch {
-    return null;
-  }
-}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUser());
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
@@ -28,7 +20,6 @@ export function AuthProvider({ children }) {
     const data = await loginApi(credentials);
     setUser(data.user);
     setStoredUser(data.user);
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setIsAuthenticated(true);
     return data;
   }, []);
@@ -42,7 +33,6 @@ export function AuthProvider({ children }) {
     logoutApi();
     persistToken(null);
     setStoredUser(null);
-    localStorage.removeItem(USER_KEY);
     setUser(null);
     setIsAuthenticated(false);
   }, []);
