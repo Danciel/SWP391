@@ -1,8 +1,6 @@
-export const BASE_URL =
-  import.meta.env.VITE_API_URL || "https://localhost:7202/api";
+export const BASE_URL = "http://localhost:8080/api";
 
-export const MOCK_MODE =
-  String(import.meta.env.VITE_MOCK_MODE ?? "true").toLowerCase() === "true";
+export const MOCK_MODE = true;
 
 const TOKEN_KEY = "lv_token";
 const USER_KEY = "lv_user";
@@ -44,7 +42,7 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
-  } catch {
+  } catch (networkErr) {
     throw new ApiError(
       `Could not reach the server at ${BASE_URL}. Make sure the backend is running and CORS is configured.`,
       0,
@@ -56,7 +54,6 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
   try {
     data = await res.json();
   } catch {
-    // Some successful endpoints may intentionally return no JSON body.
   }
 
   if (!res.ok) {

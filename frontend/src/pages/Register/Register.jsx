@@ -94,7 +94,7 @@ export default function Register() {
           onChange={handleChange}
           onBlur={handleBlur}
           error={errors.fullName}
-          placeholder="John Doe"
+          placeholder="ex: Nguyễn Văn A"
           autoComplete="name"
         />
 

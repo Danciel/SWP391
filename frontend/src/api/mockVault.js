@@ -174,7 +174,7 @@ export async function getAssets(userId) {
   return readJSON(scopedKey(ASSETS_KEY, userId), []);
 }
 
-export async function addAsset(userId, { name, type, description }) {
+export async function addAsset(userId, { name, type, description, accountType, username, password }) {
   await delay(500);
   if (!name) throw new ApiError("Asset name is required", 400);
   const key = scopedKey(ASSETS_KEY, userId);
@@ -183,7 +183,12 @@ export async function addAsset(userId, { name, type, description }) {
     id: randomId("asset"),
     name,
     type: type || "Document",
+    // Only Online Accounts carry a platform (Facebook, Instagram, ...).
+    accountType: type === "Online Account" ? accountType || "Other" : "",
     description: description || "",
+    // Optional login credentials for the asset (if it has any).
+    username: username || "",
+    password: password || "",
     status: "Secured",
     createdAt: new Date().toISOString(),
   };
@@ -192,18 +197,22 @@ export async function addAsset(userId, { name, type, description }) {
   return asset;
 }
 
-export async function updateAsset(userId, assetId, { name, type, description }) {
+export async function updateAsset(userId, assetId, { name, type, description, accountType, username, password }) {
   await delay(500);
   if (!name) throw new ApiError("Asset name is required", 400);
   const key = scopedKey(ASSETS_KEY, userId);
   const assets = readJSON(key, []);
   const idx = assets.findIndex((a) => a.id === assetId);
   if (idx === -1) throw new ApiError("Asset not found", 404);
+  const nextType = type || assets[idx].type;
   assets[idx] = {
     ...assets[idx],
     name,
-    type: type || assets[idx].type,
+    type: nextType,
+    accountType: nextType === "Online Account" ? accountType || assets[idx].accountType || "Other" : "",
     description: description ?? assets[idx].description,
+    username: username ?? assets[idx].username ?? "",
+    password: password ?? assets[idx].password ?? "",
     updatedAt: new Date().toISOString(),
   };
   writeJSON(key, assets);
