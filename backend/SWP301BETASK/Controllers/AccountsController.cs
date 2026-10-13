@@ -31,6 +31,7 @@ namespace SWP301BETASK.Controllers
         {
             account.Id = Guid.NewGuid();
             account.CreatedAt = DateTime.UtcNow;
+            account.UpdatedAt = DateTime.UtcNow;
 
             _context.Accounts.Add(account);
 

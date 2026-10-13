@@ -1,0 +1,91 @@
+@host = https://localhost:7000
+# 1) create an owner (identityStatus VERIFIED) and a beneficiary account; copy their ids
+POST {{host}}/api/accounts
+Content-Type: application/json
+
+{ "fullName": "Owner Test", "email": "owner@test.com", "phone": "0900000001", "passwordHash": "x", "identityStatus": "VERIFIED" }
+
+###
+@owner = PASTE-OWNER-GUID
+@asset1 = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+
+# 2) create will
+POST {{host}}/api/wills
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "name": "My legacy", "description": "Family plan" }
+
+###
+@will = PASTE-WILL-GUID
+
+PUT {{host}}/api/wills/{{will}}/assets
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "assetIds": ["{{asset1}}"] }
+
+###
+POST {{host}}/api/wills/{{will}}/beneficiaries
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "fullName": "Anna", "email": "anna@test.com", "phone": "0900000002", "relationship": "Daughter" }
+
+###
+@ben = PASTE-BENEFICIARY-GUID
+
+POST {{host}}/api/wills/{{will}}/assignments
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "assetId": "{{asset1}}", "beneficiaryId": "{{ben}}" }
+
+###
+GET {{host}}/api/wills
+X-Debug-User-Id: {{owner}}
+
+### ===================== PART 2 =====================
+GET {{host}}/api/executors
+X-Debug-User-Id: {{owner}}
+
+###
+@exec = 11111111-1111-1111-1111-111111111111
+
+PUT {{host}}/api/wills/{{will}}/executor
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "executorId": "{{exec}}" }
+
+###
+PUT {{host}}/api/wills/{{will}}/dms
+X-Debug-User-Id: {{owner}}
+Content-Type: application/json
+
+{ "checkInDays": 15, "reminderDays": 3, "maxMissed": 1 }
+
+###
+GET {{host}}/api/wills/{{will}}/review
+X-Debug-User-Id: {{owner}}
+
+###
+POST {{host}}/api/wills/{{will}}/submit
+X-Debug-User-Id: {{owner}}
+
+### executor accepts (Development only) -> will ACTIVE, DMS ACTIVE
+POST {{host}}/api/dev/wills/{{will}}/executor-response
+Content-Type: application/json
+
+{ "accepted": true }
+
+###
+POST {{host}}/api/wills/{{will}}/dms/check-in
+X-Debug-User-Id: {{owner}}
+
+### simulate 40 days without check-in (interval 15, maxMissed 1) -> PENDING_VERIFICATION
+POST {{host}}/api/dev/wills/run-dms-check?daysAhead=40
+
+###
+POST {{host}}/api/owner/wills/{{will}}/cancel-handover
+X-Debug-User-Id: {{owner}}

@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SWP301BETASK.Data;
+using SWP301BETASK.Features.WillManagement;
+using SWP301BETASK.Shared.Exceptions;
+using SWP301BETASK.Shared.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddStandardApiErrors();   // [WillManagement] shared { message, errors } validation shape
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
@@ -12,6 +15,8 @@ builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
         ?? throw new InvalidOperationException("DefaultConnection was not found.")
     )
 );
+
+builder.Services.AddWillManagement();                        // [WillManagement]
 
 // Allow the Vite frontend to call this API during local development.
 var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:5173";
@@ -27,6 +32,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionMiddleware>();                    // [WillManagement] shared error handling
 
 if (app.Environment.IsDevelopment())
 {
