@@ -1,0 +1,116 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.logo {
+  width: 160px;
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 24px;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submitError {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: -6px 0 16px;
+}
+
+.termsRow {
+  margin: -6px 0 18px;
+  text-align: left;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 12px;
+  margin: 4px 0 0 23px;
+}
+
+.footerText {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.footerText a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.demoHint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
