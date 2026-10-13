@@ -20,6 +20,7 @@ import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifier
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 
 const ROLE_HOME = {
+  USER: "assets",
   OWNER: "assets",
   EXECUTOR: "executor",
   LEGAL_VERIFIER: "verifier",

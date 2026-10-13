@@ -259,3 +259,8 @@
   font-size: 14px;
   cursor: pointer;
 }
+
+.PENDING_EXECUTOR {
+  background: #fef9c3;
+  color: #a16207;
+}

@@ -1,6 +1,11 @@
-export const BASE_URL = "http://localhost:8080/api";
+export const BASE_URL =
+  import.meta.env.VITE_API_URL || "https://localhost:7015/api";
 
-export const MOCK_MODE = true;
+export const MOCK_MODE =
+  String(import.meta.env.VITE_MOCK_MODE ?? "false").toLowerCase() === "true";
+
+export const ADVANCED_MOCK_MODE =
+  String(import.meta.env.VITE_ADVANCED_MOCK_MODE ?? "true").toLowerCase() === "true";
 
 const TOKEN_KEY = "lv_token";
 const USER_KEY = "lv_user";
@@ -29,7 +34,9 @@ export function setStoredUser(user) {
 }
 
 export async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -40,20 +47,23 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch (networkErr) {
+  } catch {
     throw new ApiError(
-      `Could not reach the server at ${BASE_URL}. Make sure the backend is running and CORS is configured.`,
+      `Could not reach the backend at ${BASE_URL}. Start LegacyVault backend and check CORS/HTTPS certificate.`,
       0,
       null
     );
   }
 
   let data = null;
-  try {
-    data = await res.json();
-  } catch {
+  if (res.status !== 204) {
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
   }
 
   if (!res.ok) {

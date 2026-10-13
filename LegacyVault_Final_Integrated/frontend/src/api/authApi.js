@@ -4,12 +4,11 @@ import * as mock from "./mockBackend";
 export async function registerOwner({ fullName, email, phoneNumber, password }) {
   if (MOCK_MODE) return mock.registerOwner({ fullName, email, phoneNumber, password });
 
-  const data = await request("/auth/register", {
+  return request("/auth/register", {
     method: "POST",
     auth: false,
-    body: { fullName, email, phoneNumber, password, role: "OWNER" },
+    body: { fullName, email, phoneNumber, password },
   });
-  return data;
 }
 
 export async function login({ email, password, rememberMe }) {
@@ -52,22 +51,14 @@ export async function resendOtp({ email, purpose = "register" }) {
   });
 }
 
+// Password reset backend is not implemented in the current backend scope.
+// Keep these mock-only so the existing UI still works in demo mode.
 export async function requestPasswordReset({ email }) {
   if (MOCK_MODE) return mock.requestPasswordReset({ email });
-
-  return request("/auth/forgot-password", {
-    method: "POST",
-    auth: false,
-    body: { email },
-  });
+  throw new Error("Password reset is not implemented in the current backend yet.");
 }
 
 export async function resetPassword({ email, resetToken, newPassword }) {
   if (MOCK_MODE) return mock.resetPassword({ email, resetToken, newPassword });
-
-  return request("/auth/reset-password", {
-    method: "POST",
-    auth: false,
-    body: { email, resetToken, newPassword },
-  });
+  throw new Error("Password reset is not implemented in the current backend yet.");
 }

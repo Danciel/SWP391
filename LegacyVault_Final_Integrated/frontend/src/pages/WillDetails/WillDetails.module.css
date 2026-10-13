@@ -292,3 +292,8 @@
 .editForm {
   flex: 1;
 }
+
+.PENDING_EXECUTOR {
+  background: #fef9c3;
+  color: #a16207;
+}
