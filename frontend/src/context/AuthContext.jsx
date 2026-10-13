@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { getToken, setToken as persistToken, getStoredUser, setStoredUser } from "../api/client";
+import {
+  getToken,
+  setToken as persistToken,
+  
+  setStoredUser
+} from "../api/client";
 import {
   login as loginApi,
   registerOwner as registerApi,

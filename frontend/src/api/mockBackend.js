@@ -5,7 +5,7 @@ import { getWillSync, getAssetsSync, upsertInheritedRecord, resolveImmediateHand
 const USERS_KEY = "lv_mock_users";
 const OTP_KEY = "lv_mock_otps";
 const RESET_TOKENS_KEY = "lv_mock_reset_tokens";
-const FIXED_OTP = "123456"; 
+const FIXED_OTP = "123456";
 const OTP_TTL_MS = 10 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 const NETWORK_DELAY_MS = 500;
@@ -241,6 +241,7 @@ export async function resetPassword({ email, resetToken, newPassword }) {
 
 
 const EXEC_REQUESTS_KEY = "lv_mock_exec_requests";
+const BENEFICIARY_INVITATIONS_KEY = "lv_mock_beneficiary_invitations";
 const EXEC_ACTIVE_WILLS_KEY = "lv_mock_exec_active_wills";
 const EXEC_DMS_TRIGGERS_KEY = "lv_mock_exec_dms_triggers";
 const EXEC_CASES_KEY = "lv_mock_exec_cases";
@@ -476,6 +477,137 @@ export function createExecutorHireRequest({
   writeJSON(EXEC_REQUESTS_KEY, requests);
   pushAuditLog("Owner", `Sent executor hiring request for will "${willTitle}"`);
   return request;
+}
+
+export function createBeneficiaryInvitation({
+  ownerId,
+  ownerName,
+  ownerEmail,
+  willId,
+  willTitle,
+  assetId,
+  assetName,
+  beneficiaryId,
+  beneficiaryName,
+  beneficiaryEmail,
+}) {
+  if (!ownerId || !willId || !assetId || !beneficiaryEmail) {
+    throw new ApiError("Missing required invitation information", 400);
+  }
+
+  const invitations = readJSON(BENEFICIARY_INVITATIONS_KEY, []);
+  const normalizedEmail = beneficiaryEmail.trim().toLowerCase();
+
+  const duplicate = invitations.find(
+    (invitation) =>
+      invitation.ownerId === ownerId &&
+      invitation.willId === willId &&
+      invitation.assetId === assetId &&
+      invitation.beneficiaryEmail === normalizedEmail &&
+      invitation.status === "PENDING"
+  );
+
+  if (duplicate) {
+    throw new ApiError(
+      "A pending invitation already exists for this asset",
+      409
+    );
+  }
+
+  const invitation = {
+    id: randomId("binv"),
+    ownerId,
+    ownerName: ownerName || "",
+    ownerEmail: ownerEmail || "",
+    willId,
+    willTitle: willTitle || "",
+    assetId,
+    assetName: assetName || "",
+    beneficiaryId: beneficiaryId || null,
+    beneficiaryName: beneficiaryName || "",
+    beneficiaryEmail: normalizedEmail,
+    status: "PENDING",
+    createdAt: new Date().toISOString(),
+  };
+
+  invitations.push(invitation);
+  writeJSON(BENEFICIARY_INVITATIONS_KEY, invitations);
+
+  pushAuditLog(
+    ownerName || "Owner",
+    `Sent beneficiary invitation for asset "${invitation.assetName}"`
+  );
+
+  return invitation;
+}
+
+export function seedBeneficiaryInvitationForDemo(email) {
+  if (!email) return [];
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const invitations = readJSON(BENEFICIARY_INVITATIONS_KEY, []);
+
+  const exists = invitations.some(
+    (invitation) =>
+      invitation.beneficiaryEmail === normalizedEmail &&
+      invitation.willId === "demo_will_family" &&
+      invitation.assetId === "demo_asset_property"
+  );
+
+  if (exists) return invitations;
+
+  invitations.push({
+    id: randomId("binv"),
+    ownerId: "demo_owner_001",
+    ownerName: "Michael Nguyen",
+    ownerEmail: "michael.owner@example.com",
+    willId: "demo_will_family",
+    willTitle: "Family Legacy 2026",
+    assetId: "demo_asset_property",
+    assetName: "Property Document",
+    beneficiaryId: null,
+    beneficiaryName: "Demo Beneficiary",
+    beneficiaryEmail: normalizedEmail,
+    status: "PENDING",
+    createdAt: new Date().toISOString(),
+  });
+
+  writeJSON(BENEFICIARY_INVITATIONS_KEY, invitations);
+  return invitations;
+}
+
+export async function updateBeneficiaryInvitationStatus(invitationId, status) {
+  if (!["ACCEPTED", "DECLINED"].includes(status)) {
+    throw new Error("Invalid invitation status");
+  }
+
+  const invitations = readJSON(BENEFICIARY_INVITATIONS_KEY, []);
+
+  const updatedInvitations = invitations.map((invitation) =>
+    invitation.id === invitationId
+      ? { ...invitation, status }
+      : invitation
+  );
+
+  writeJSON(BENEFICIARY_INVITATIONS_KEY, updatedInvitations);
+
+  return updatedInvitations.find(
+    (invitation) => invitation.id === invitationId
+  );
+}
+
+export function getBeneficiaryInvitationsByEmail(email) {
+  if (!email) {
+    return [];
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const invitations = readJSON(BENEFICIARY_INVITATIONS_KEY, []);
+
+  return invitations.filter(
+    (invitation) =>
+      invitation.beneficiaryEmail === normalizedEmail
+  );
 }
 
 export async function respondToExecutorRequest({ requestId, accept }) {

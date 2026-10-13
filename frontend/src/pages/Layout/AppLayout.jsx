@@ -9,6 +9,7 @@ const NAV_ITEMS_BY_ROLE = {
     { to: "/dashboard/assets", label: "Assets" },
     { to: "/dashboard/create-will", label: "Create Will" },
     { to: "/dashboard/my-wills", label: "My Wills" },
+    { to: "/dashboard/view-will", label: "View Will" },
   ],
 
   EXECUTOR: [
@@ -16,6 +17,9 @@ const NAV_ITEMS_BY_ROLE = {
   ],
 
   BENEFICIARY: [
+    { to: "/dashboard/assets", label: "Assets" },
+    { to: "/dashboard/create-will", label: "Create Will" },
+    { to: "/dashboard/my-wills", label: "My Wills" },
     { to: "/dashboard/view-will", label: "View Will" },
   ],
 

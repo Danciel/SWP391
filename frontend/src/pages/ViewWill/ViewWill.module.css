@@ -84,3 +84,158 @@
 .viewBtn:hover {
   background: #e0e7ff;
 }
+
+.invitationStatus {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pendingStatus {
+  color: #a16207;
+  background: #fef3c7;
+}
+
+.acceptedStatus {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.declinedStatus {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+/* Invitation actions */
+.invitationActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.acceptBtn,
+.declineBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.acceptBtn {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.acceptBtn:hover {
+  background: #4338ca;
+}
+
+.declineBtn {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.declineBtn:hover {
+  background: #fef2f2;
+}
+
+
+/* Inherited Wills */
+.inheritedSection {
+  margin-top: 0;
+  width: 100%;
+}
+
+.inheritedList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.inheritedCard {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+}
+
+.inheritedCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.inheritedLabel {
+  display: block;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.inheritedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.inheritedInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 14px;
+}
+
+.inheritedInfoRow span {
+  color: #6b7280;
+}
+
+.inheritedInfoRow strong {
+  color: #111827;
+  font-weight: 600;
+  text-align: right;
+}
+
+.inheritedFooter {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+  .inheritedCard {
+    padding: 18px 16px;
+  }
+
+  .inheritedCardHeader {
+    gap: 10px;
+  }
+
+  .inheritedInfoRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .inheritedInfoRow strong {
+    text-align: left;
+  }
+}

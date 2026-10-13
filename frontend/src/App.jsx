@@ -111,7 +111,7 @@ export default function App() {
             <Route
               path="view-will"
               element={
-                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY]}>
+                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY, ROLES.OWNER]}>
                   <ViewWill />
                 </ProtectedRoute>
               }
@@ -120,7 +120,7 @@ export default function App() {
             <Route
               path="view-will/:id"
               element={
-                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY]}>
+                <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY, ROLES.OWNER]}>
                   <InheritedWillDetails />
                 </ProtectedRoute>
               }

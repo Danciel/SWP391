@@ -13,6 +13,7 @@ import {
   EXECUTORS,
 } from "../../api/mockVault";
 import { ApiError } from "../../api/client";
+import { createBeneficiaryInvitation } from "../../api/mockBackend";
 import styles from "./CreateWill.module.css";
 
 const STEPS = ["Information", "Assets", "Beneficiaries", "Executor", "DMS", "Review"];
@@ -322,8 +323,41 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
   }
 
   async function handleAssign(assetId, beneficiary) {
-    const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary);
+    const previousBeneficiary = willAssets.find(
+      (entry) => entry.assetId === assetId
+    )?.beneficiary;
+
+    const updated = await updateWillBeneficiary(
+      userId,
+      willId,
+      assetId,
+      beneficiary
+    );
+
     onUpdated(updated);
+
+    if (
+      beneficiary?.email &&
+      beneficiary.email !== previousBeneficiary?.email
+    ) {
+      try {
+        createBeneficiaryInvitation({
+          ownerId: userId,
+          ownerName: profile?.fullName || "",
+          ownerEmail: profile?.email || "",
+          willId,
+          willTitle: will.name,
+          assetId,
+          assetName: assetName(assetId),
+          beneficiaryId: beneficiary.accountId || null,
+          beneficiaryName: beneficiary.fullName,
+          beneficiaryEmail: beneficiary.email,
+        });
+      } catch (error) {
+        console.error("Failed to create beneficiary invitation:", error);
+      }
+    }
+
     setActiveAssetId(null);
   }
 
