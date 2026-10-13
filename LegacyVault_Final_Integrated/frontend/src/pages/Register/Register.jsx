@@ -84,7 +84,7 @@ export default function Register() {
     <div className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
-        <h1 className={styles.title}>Create your LegacyVault account</h1>
+        <h1 className={styles.title}>Create your Vault Owner account</h1>
         <p className={styles.subtitle}>Start protecting your digital legacy</p>
 
         <FormField

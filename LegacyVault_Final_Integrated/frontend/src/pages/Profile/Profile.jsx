@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMe } from "../../api/accountsApi";
-import { ApiError } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
+import { getProfile } from "../../api/mockVault";
 import styles from "./Profile.module.css";
 
 function maskPhone(phone) {
@@ -12,30 +12,27 @@ function maskPhone(phone) {
 }
 
 export default function Profile() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    getMe()
-      .then((p) => {
-        if (!cancelled) setProfile(p);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Could not load profile");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+    getProfile(user?.id, user).then((p) => {
+      if (!cancelled) {
+        setProfile(p);
+        setIsLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
-  if (isLoading) return <p className={styles.muted}>Loading profile...</p>;
-  if (error || !profile) return <p className={styles.unverifiedTag}>{error || "Profile not found"}</p>;
+  if (isLoading || !profile) {
+    return <p className={styles.muted}>Loading profile...</p>;
+  }
 
   const isVerified = profile.identityStatus === "VERIFIED";
 
@@ -60,7 +57,7 @@ export default function Profile() {
         <div className={styles.row}>
           <span className={styles.label}>Phone</span>
           <span className={styles.value}>
-            {maskPhone(profile.phoneNumber)}
+            {maskPhone(profile.phone)}
             {profile.phoneVerified ? (
               <span className={styles.verifiedTag}>✓ Verified</span>
             ) : (
@@ -83,10 +80,11 @@ export default function Profile() {
         {!isVerified && (
           <>
             <p className={styles.helpText}>
-              Identity verification is still a mock/hybrid feature in this phase.
+              Verify your identity to publish wills, assign beneficiaries, hire executors and
+              access inherited assets.
             </p>
             <button className={styles.primaryBtn} onClick={() => navigate("/dashboard/verify-identity")}>
-              Open Identity Demo
+              Verify Identity
             </button>
           </>
         )}

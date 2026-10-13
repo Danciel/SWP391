@@ -1,59 +1,74 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getWills, getWill, deleteWill } from "../../api/willsApi";
-import { ApiError } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
+import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/mockVault";
 import styles from "./MyWills.module.css";
 
 const FILTERS = ["All", "Draft", "Pending", "Active"];
+
 const STATUS_LABEL = {
   DRAFT: "Draft",
-  PENDING_EXECUTOR: "Pending Executor",
+  PENDING_EXECUTOR_ACCEPTANCE: "Pending Executor",
   ACTIVE: "Active",
+  NEEDS_EXECUTOR: "Needs Executor",
+  PENDING_VERIFICATION: "Pending Verification",
 };
 
 function matchesFilter(status, filter) {
   if (filter === "All") return true;
   if (filter === "Draft") return status === "DRAFT";
-  if (filter === "Pending") return status === "PENDING_EXECUTOR";
-  if (filter === "Active") return status === "ACTIVE";
+  if (filter === "Pending") return status === "PENDING_EXECUTOR_ACCEPTANCE" || status === "NEEDS_EXECUTOR";
+  if (filter === "Active") return status === "ACTIVE" || status === "PENDING_VERIFICATION";
   return true;
 }
 
 export default function MyWills() {
+  const { user } = useAuth();
   const [wills, setWills] = useState([]);
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [handoverWill, setHandoverWill] = useState(null);
+  const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverError, setHandoverError] = useState("");
+  const [deleteWill, setDeleteWill] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     load();
-  }, []);
+  }, [user]);
 
-  async function load() {
+  function load() {
     setLoading(true);
-    setError("");
-    try {
-      const summaries = await getWills();
-      const details = await Promise.all((summaries || []).map((w) => getWill(w.id)));
-      setWills(details);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load wills");
-    } finally {
+    getWills(user?.id).then((data) => {
+      setWills(data);
       setLoading(false);
+    });
+  }
+
+  async function handleConfirmImmediateHandover() {
+    setHandoverBusy(true);
+    setHandoverError("");
+    try {
+      await requestImmediateHandover(user?.id, handoverWill.id);
+      setHandoverWill(null);
+      load();
+    } catch (err) {
+      setHandoverError(err.message || "Could not request immediate handover");
+    } finally {
+      setHandoverBusy(false);
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
+  async function handleConfirmDelete() {
     setDeleteBusy(true);
+    setDeleteError("");
     try {
-      await deleteWill(deleteTarget.id);
-      setDeleteTarget(null);
-      await load();
+      await deleteWillDraft(user?.id, deleteWill.id);
+      setDeleteWill(null);
+      load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not delete draft");
+      setDeleteError(err.message || "Could not delete draft");
     } finally {
       setDeleteBusy(false);
     }
@@ -64,12 +79,17 @@ export default function MyWills() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>My Wills</h1>
-      <p className={styles.subtitle}>Wills loaded from the real backend.</p>
-      {error && <p className={styles.errorText}>{error}</p>}
+      <p className={styles.subtitle}>Manage the wills you have created.</p>
 
       <div className={styles.filterRow}>
         {FILTERS.map((f) => (
-          <button key={f} className={filter === f ? styles.filterActive : styles.filter} onClick={() => setFilter(f)}>{f}</button>
+          <button
+            key={f}
+            className={filter === f ? styles.filterActive : styles.filter}
+            onClick={() => setFilter(f)}
+          >
+            {f}
+          </button>
         ))}
       </div>
 
@@ -84,20 +104,49 @@ export default function MyWills() {
             return (
               <div key={will.id} className={styles.willCard}>
                 <div className={styles.willHead}>
-                  <h3 className={styles.willName}>{will.title || "Untitled Will"}</h3>
-                  <span className={`${styles.badge} ${styles[will.status] || ""}`}>{STATUS_LABEL[will.status] || will.status}</span>
+                  <h3 className={styles.willName}>{will.name || "Untitled Will"}</h3>
+                  <span className={`${styles.badge} ${styles[will.status] || ""}`}>
+                    {STATUS_LABEL[will.status] || will.status}
+                  </span>
                 </div>
                 <div className={styles.metaGrid}>
-                  <span>Assets: {will.assets?.length || 0}</span>
-                  <span>Beneficiaries: {will.beneficiaries?.length || 0}</span>
-                  {will.executor && <span>Executor: {will.executor.executorName}</span>}
-                  {will.dms && <span>DMS: {will.dms.status}</span>}
+                  <span>Assets: {(will.assets || []).length}</span>
+                  <span>Beneficiaries: {(will.assets || []).filter((a) => a.beneficiary).length}</span>
+                  {will.executor && <span>Executor: {will.executor.name}</span>}
+                  {will.payment?.status && will.payment.status !== "NONE" && (
+                    <span>Payment: {will.payment.status}</span>
+                  )}
+                  {will.dms?.status && <span>DMS: {will.dms.status}</span>}
                 </div>
                 <div className={styles.cardActions}>
-                  <Link className={styles.viewBtn} to={isDraft ? `/dashboard/create-will?willId=${will.id}` : `/dashboard/my-wills/${will.id}`}>
+                  <Link
+                    className={styles.viewBtn}
+                    to={isDraft ? `/dashboard/create-will?willId=${will.id}` : `/dashboard/my-wills/${will.id}`}
+                  >
                     {isDraft ? "Continue Editing" : "View Details"}
                   </Link>
-                  {isDraft && <button className={styles.deleteBtn} onClick={() => setDeleteTarget(will)}>Delete</button>}
+                  {will.status === "ACTIVE" && (
+                    <button
+                      className={styles.handoverBtn}
+                      onClick={() => {
+                        setHandoverError("");
+                        setHandoverWill(will);
+                      }}
+                    >
+                      Immediate Handover
+                    </button>
+                  )}
+                  {isDraft && (
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={() => {
+                        setDeleteError("");
+                        setDeleteWill(will);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -105,14 +154,60 @@ export default function MyWills() {
         </div>
       )}
 
-      {deleteTarget && (
-        <div className={styles.overlay} onClick={() => !deleteBusy && setDeleteTarget(null)}>
+      {handoverWill && (
+        <div className={styles.overlay} onClick={() => !handoverBusy && setHandoverWill(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Are you sure?</h2>
+            <p className={styles.modalMeta}>
+              This will send "{handoverWill.name}" to {handoverWill.executor?.name || "your executor"} to
+              hand its assets over now, while you're still alive. Your executor will confirm the
+              beneficiary details before anything is delivered.
+            </p>
+            {handoverError && <p className={styles.errorText}>{handoverError}</p>}
+            <div className={styles.modalActions}>
+              <button
+                className={styles.secondaryBtn}
+                disabled={handoverBusy}
+                onClick={() => setHandoverWill(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.primaryBtn}
+                disabled={handoverBusy}
+                onClick={handleConfirmImmediateHandover}
+              >
+                {handoverBusy ? "Sending..." : "Yes, Send to Executor"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteWill && (
+        <div className={styles.overlay} onClick={() => !deleteBusy && setDeleteWill(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Delete this draft?</h2>
-            <p className={styles.modalMeta}>This will permanently delete "{deleteTarget.title}".</p>
+            <p className={styles.modalMeta}>
+              This will permanently delete "{deleteWill.name || "Untitled Will"}". This action cannot be
+              undone.
+            </p>
+            {deleteError && <p className={styles.errorText}>{deleteError}</p>}
             <div className={styles.modalActions}>
-              <button className={styles.secondaryBtn} disabled={deleteBusy} onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button className={styles.dangerBtn} disabled={deleteBusy} onClick={handleDelete}>{deleteBusy ? "Deleting..." : "Yes, Delete"}</button>
+              <button
+                className={styles.secondaryBtn}
+                disabled={deleteBusy}
+                onClick={() => setDeleteWill(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.dangerBtn}
+                disabled={deleteBusy}
+                onClick={handleConfirmDelete}
+              >
+                {deleteBusy ? "Deleting..." : "Yes, Delete"}
+              </button>
             </div>
           </div>
         </div>

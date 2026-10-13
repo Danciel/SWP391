@@ -4,18 +4,13 @@ import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/logo.png";
 import styles from "./AppLayout.module.css";
 
-const USER_NAV = [
-  { to: "/dashboard/assets", label: "Assets" },
-  { to: "/dashboard/create-will", label: "Create Will" },
-  { to: "/dashboard/view-will", label: "View Will" },
-  { to: "/dashboard/my-wills", label: "My Wills" },
-];
-
 const NAV_ITEMS_BY_ROLE = {
-  USER: USER_NAV,
-  OWNER: USER_NAV,
-  /* legacy frontend compatibility */
-  LEGACY_OWNER: USER_NAV,
+  OWNER: [
+    { to: "/dashboard/assets", label: "Assets" },
+    { to: "/dashboard/create-will", label: "Create Will" },
+    { to: "/dashboard/view-will", label: "View Will" },
+    { to: "/dashboard/my-wills", label: "My Wills" },
+  ],
   EXECUTOR: [{ to: "/dashboard/executor", label: "Executor Dashboard" }],
   LEGAL_VERIFIER: [{ to: "/dashboard/verifier", label: "Legal Cases" }],
   ADMIN: [{ to: "/dashboard/admin", label: "Admin Dashboard" }],
@@ -26,7 +21,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const navItems = NAV_ITEMS_BY_ROLE[user?.role] || USER_NAV;
+  const navItems = NAV_ITEMS_BY_ROLE[user?.role] || NAV_ITEMS_BY_ROLE.OWNER;
 
   useEffect(() => {
     function onClickOutside(e) {
