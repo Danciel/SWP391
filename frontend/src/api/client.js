@@ -80,7 +80,9 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
   }
 
   if (!res.ok) {
-    const message = data?.message || `Error ${res.status}`;
+    // ASP.NET ProblemDetails uses `detail`/`title`; first validation error as a fallback.
+    const firstValidation = data?.errors ? Object.values(data.errors).flat()[0] : null;
+    const message = data?.detail || firstValidation || data?.title || data?.message || `Error ${res.status}`;
     throw new ApiError(message, res.status, data);
   }
 

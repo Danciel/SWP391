@@ -22,6 +22,20 @@ export default function VerifyOtp() {
   const [isResending, setIsResending] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const inputRefs = useRef([]);
+  const sentRef = useRef(false);
+
+  useEffect(() => {
+    if (!email || sentRef.current) return;
+    sentRef.current = true;
+    resendOtp({ email, purpose })
+        .then((res) => {
+          if (import.meta.env.DEV && res?.devCode) setDevCode(res.devCode);
+        })
+        .catch((err) => {
+          // 409 = already verified, 429 = throttled; show the server message
+          setError(err instanceof ApiError ? err.message : "Could not send the code");
+        });
+  }, [email, purpose, resendOtp]);
 
   useEffect(() => {
     if (!email) {
@@ -131,6 +145,7 @@ export default function VerifyOtp() {
               onKeyDown={(e) => handleKeyDown(index, e)}
             />
           ))}
+          {devCode && <p className={styles.subtitle}>Dev code: <strong>{devCode}</strong></p>}
         </div>
 
         {error && <p className={styles.submitError}>{error}</p>}

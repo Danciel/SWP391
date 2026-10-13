@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import FormField from "../../components/FormField/FormField";
 import { useAuth } from "../../context/AuthContext";
-import { validateEmail, validatePassword, runValidators } from "../../utils/validation";
+import { runValidators } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
 import styles from "./Login.module.css";
 
-const initialForm = { email: "", password: "" };
+const initialForm = { identifier: "", password: "" };
+
+const validateIdentifier = (v) => (v.trim() ? "" : "Please enter your username, email or phone");
+const validatePasswordRequired = (v) => (v ? "" : "Please enter your password");
 
 const QUICK_LOGIN_ACCOUNTS = [
   { label: "Owner", email: "owner@test.com", password: "password123" },
@@ -22,8 +25,7 @@ export default function Login() {
   const location = useLocation();
   const registeredEmail = location.state?.registeredEmail || "";
 
-  const [form, setForm] = useState({ ...initialForm, email: registeredEmail });
-  const [rememberMe, setRememberMe] = useState(false);
+  const [form, setForm] = useState({ ...initialForm, identifier: registeredEmail });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,8 +37,8 @@ export default function Login() {
 
   function validateField(name, value) {
     const validators = {
-      email: () => validateEmail(value),
-      password: () => (value ? "" : "Please enter your password"),
+      identifier: () => validateIdentifier(value),
+      password: () => validatePasswordRequired(value),
     };
     const message = validators[name] ? validators[name]() : "";
     setErrors((prev) => ({ ...prev, [name]: message }));
@@ -52,15 +54,15 @@ export default function Login() {
     setSubmitError("");
 
     const { isValid, errors: fieldErrors } = runValidators({
-      email: () => validateEmail(form.email),
-      password: () => (form.password ? "" : "Please enter your password"),
+      identifier: () => validateIdentifier(form.identifier),
+      password: () => validatePasswordRequired(form.password),
     });
     setErrors(fieldErrors);
     if (!isValid) return;
 
     setIsSubmitting(true);
     try {
-      await login({ ...form, rememberMe });
+      await login({ identifier: form.identifier.trim(), email: form.identifier.trim(), password: form.password });
       navigate("/dashboard");
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Login failed, please try again");
@@ -73,7 +75,7 @@ export default function Login() {
     setSubmitError("");
     setIsSubmitting(true);
     try {
-      await login({ email: account.email, password: account.password, rememberMe });
+      await login({ identifier: account.email, email: account.email, password: account.password });
       navigate("/dashboard");
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Login failed, please try again");
@@ -96,15 +98,14 @@ export default function Login() {
         )}
 
         <FormField
-          label="Email"
-          type="email"
-          name="email"
-          value={form.email}
+          label="Username, email or phone"
+          name="identifier"
+          value={form.identifier}
           onChange={handleChange}
           onBlur={handleBlur}
-          error={errors.email}
-          placeholder="you@example.com"
-          autoComplete="email"
+          error={errors.identifier}
+          placeholder="username, you@example.com or +84 123 456 789"
+          autoComplete="username"
         />
 
         <FormField
@@ -121,14 +122,14 @@ export default function Login() {
         />
 
         <div className={styles.optionsRow}>
-          <label className={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-            />
-            Remember me
-          </label>
+          {/*<label className={styles.checkboxLabel}>*/}
+          {/*  <input*/}
+          {/*    type="checkbox"*/}
+          {/*    checked={rememberMe}*/}
+          {/*    onChange={(e) => setRememberMe(e.target.checked)}*/}
+          {/*  />*/}
+          {/*  Remember me*/}
+          {/*</label>*/}
           <Link to="/forgot-password" className={styles.inlineLink}>
             Forgot password?
           </Link>

@@ -15,7 +15,17 @@ import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
 import styles from "./Register.module.css";
 
+const USERNAME_RE = /^[A-Za-z0-9_.-]+$/;
+const validateUsername = (v) => {
+  const t = v.trim();
+  if (!t) return "Please enter a username";
+  if (t.length < 3 || t.length > 50) return "Username must be 3-50 characters";
+  if (!USERNAME_RE.test(t)) return "Only letters, numbers, dots, dashes and underscores";
+  return "";
+};
+
 const initialForm = {
+  username: "",
   fullName: "",
   email: "",
   phoneNumber: "",
@@ -24,7 +34,7 @@ const initialForm = {
 };
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, login } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState(initialForm);
@@ -34,6 +44,7 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fieldValidators = {
+    username: () => validateUsername(form.username),
     fullName: () => validateFullName(form.fullName),
     email: () => validateEmail(form.email),
     phoneNumber: () => validatePhone(form.phoneNumber),
@@ -69,7 +80,9 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      await register(form);
+      await register({ ...form, username: form.username.trim() });
+      // OTP endpoints require a signed-in user, so log in before going to the OTP screen.
+      await login({ identifier: form.username.trim(), email: form.username.trim(), password: form.password });
       navigate("/verify-otp", {
         state: { email: form.email, purpose: "register" },
       });
@@ -86,6 +99,17 @@ export default function Register() {
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Create your Vault Owner account</h1>
         <p className={styles.subtitle}>Start protecting your digital legacy</p>
+
+        <FormField
+          label="Username"
+          name="username"
+          value={form.username}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          error={errors.username}
+          placeholder="john.doe"
+          autoComplete="username"
+        />
 
         <FormField
           label="Full Name"
