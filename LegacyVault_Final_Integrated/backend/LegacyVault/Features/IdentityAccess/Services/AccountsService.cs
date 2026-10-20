@@ -1,7 +1,6 @@
 using LegacyVault.Features.IdentityAccess.Contracts;
 using LegacyVault.Features.IdentityAccess.DTOs;
 using LegacyVault.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace LegacyVault.Features.IdentityAccess.Services
 {
@@ -10,17 +9,14 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private const int MaxPageSize = 100;
 
         private static readonly HashSet<string> AllowedRoles =
-            new(StringComparer.OrdinalIgnoreCase) { "USER", "ADMIN" };
+            new(StringComparer.OrdinalIgnoreCase)
+            { "USER", "ADMIN", "OWNER", "BENEFICIARY", "LEGAL_VERIFIER" };
 
         private readonly IAccountRepository _accountRepository;
-        private readonly IPasswordHasher<Account> _passwordHasher;
 
-        public AccountsService(
-            IAccountRepository accountRepository,
-            IPasswordHasher<Account> passwordHasher)
+        public AccountsService(IAccountRepository accountRepository)
         {
             _accountRepository = accountRepository;
-            _passwordHasher = passwordHasher;
         }
 
         // =========================
@@ -87,7 +83,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
             if (!AllowedRoles.Contains(role))
             {
                 return ServiceResult<AccountResponse>.Fail(
-                    ServiceStatus.Invalid, "Role must be USER or ADMIN.");
+                    ServiceStatus.Invalid, "Invalid role.");
             }
 
             var email = NormalizeEmail(request.Email);
@@ -121,7 +117,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 UpdatedAt = now
             };
 
-            account.PasswordHash = _passwordHasher.HashPassword(account, request.Password);
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 12);
 
             await _accountRepository.AddAsync(account, cancellationToken);
 
@@ -151,7 +147,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 if (!AllowedRoles.Contains(role))
                 {
                     return ServiceResult<AccountResponse>.Fail(
-                        ServiceStatus.Invalid, "Role must be USER or ADMIN.");
+                        ServiceStatus.Invalid, "Invalid role.");
                 }
 
                 // Prevent an admin from locking themselves out.
@@ -214,7 +210,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
             if (request.Password != null)
             {
-                account.PasswordHash = _passwordHasher.HashPassword(account, request.Password);
+                account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 12);
             }
 
             if (request.EmailVerified.HasValue && request.Email == null)
