@@ -13,6 +13,7 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountService _accountService;
+        private const string AdminRole = "ADMIN";
 
         public AccountsController(
             IAccountRepository accountRepository,
