@@ -1,1 +1,4 @@
 /legacyvault-fe/node_modules
+.vs/
+**/.vs/
+*.vsidx

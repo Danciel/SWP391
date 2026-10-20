@@ -142,8 +142,15 @@ namespace LegacyVault.Features.WillManagement.Services
                 Asset = asset
             };
 
-            await _willRepository.AddWillAssetAsync(
-                willAsset);
+            var holderWillId =
+                await _willRepository
+                    .TryAddWillAssetExclusiveAsync(willAsset);
+
+            if (holderWillId != null)
+            {
+                throw new WillConflictException(
+                    "Asset is already used by another active will.");
+            }
 
             will.UpdatedAt = DateTimeOffset.UtcNow;
             await _willRepository.SaveChangesAsync();
@@ -225,6 +232,12 @@ namespace LegacyVault.Features.WillManagement.Services
                     throw new InvalidOperationException(
                         "Email is required for a manual beneficiary in the current V1 schema.");
                 }
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Relationship))
+            {
+                throw new InvalidOperationException(
+                    "Relationship is required.");
             }
 
             if (will.Beneficiaries.Any(x =>
@@ -503,10 +516,8 @@ namespace LegacyVault.Features.WillManagement.Services
                     "DMS is not enabled for this will.");
             }
 
-            if (!string.Equals(
-                dms.Status,
-                "ACTIVE",
-                StringComparison.OrdinalIgnoreCase))
+            if (dms.Status != "ACTIVE" &&
+                dms.Status != "THRESHOLD_REACHED")
             {
                 throw new InvalidOperationException(
                     "DMS is not active.");
@@ -533,11 +544,156 @@ namespace LegacyVault.Features.WillManagement.Services
             dms.NextCheckInAt =
                 now.AddDays(dms.CheckInIntervalDays);
             dms.MissedCheckIns = 0;
+            dms.Status = "ACTIVE";
             dms.UpdatedAt = now;
 
             await _willRepository.SaveChangesAsync();
 
             return ToDmsResponse(dms);
+        }
+
+        public async Task<WillDetailResponse> CancelAsync(
+            Guid willId)
+        {
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            // ACTIVE / handover states are handled by other flows.
+            if (will.Status != "DRAFT" &&
+                will.Status != "PENDING_EXECUTOR")
+            {
+                throw new WillConflictException(
+                    "Only a DRAFT or PENDING_EXECUTOR will can be cancelled.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            will.Status = "CANCELLED";
+            will.UpdatedAt = now;
+
+            if (will.ExecutorAssignment != null &&
+                will.ExecutorAssignment.Status == "PENDING")
+            {
+                will.ExecutorAssignment.Status = "CANCELLED";
+                will.ExecutorAssignment.RespondedAt = now;
+            }
+
+            if (will.DmsConfiguration != null)
+            {
+                will.DmsConfiguration.Status = "CANCELLED";
+                will.DmsConfiguration.UpdatedAt = now;
+            }
+
+            // CANCELLED is not in NonLockingStatuses' complement,
+            // so every asset of this will is released automatically.
+            await _willRepository.SaveChangesAsync();
+
+            return ToDetail(will);
+        }
+
+        public async Task<BeneficiaryResponse>
+            LinkBeneficiaryAsync(
+                Guid willId,
+                Guid beneficiaryId,
+                LinkBeneficiaryRequest request)
+        {
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            if (will.Status == "CANCELLED")
+            {
+                throw new InvalidOperationException(
+                    "Will is cancelled.");
+            }
+
+            var beneficiary = will.Beneficiaries
+                .FirstOrDefault(x => x.Id == beneficiaryId)
+                ?? throw new KeyNotFoundException(
+                    "Beneficiary not found.");
+
+            if (beneficiary.BeneficiaryAccountId != null)
+            {
+                throw new InvalidOperationException(
+                    "Beneficiary is already linked to an account.");
+            }
+
+            var account =
+                await _willRepository.GetAccountAsync(
+                    request.AccountId)
+                ?? throw new KeyNotFoundException(
+                    "Account not found.");
+
+            // Never claim by guesswork: the account must prove the
+            // same email (verified) as the designation.
+            if (!account.EmailVerified ||
+                !account.Email.Equals(
+                    beneficiary.Email,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Account email is not verified or does not match the beneficiary.");
+            }
+
+            beneficiary.BeneficiaryAccountId = account.Id;
+            beneficiary.UpdatedAt = DateTimeOffset.UtcNow;
+            await _willRepository.SaveChangesAsync();
+
+            return ToBeneficiaryResponse(beneficiary);
+        }
+
+        // W03: detaching deletes the WillAsset row, which is exactly
+        // what releases the exclusive lock. Its assignments cascade.
+        public async Task RemoveAssetAsync(
+            Guid willId,
+            Guid willAssetId)
+        {
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            EnsureDraft(will);
+
+            var willAsset = will.WillAssets
+                .FirstOrDefault(x => x.Id == willAssetId)
+                ?? throw new KeyNotFoundException(
+                    "Asset is not part of this will.");
+
+            will.WillAssets.Remove(willAsset);
+            await _willRepository.RemoveWillAssetAsync(willAsset);
+            will.UpdatedAt = DateTimeOffset.UtcNow;
+            await _willRepository.SaveChangesAsync();
+        }
+
+        public async Task RemoveAssignmentAsync(
+            Guid willId,
+            Guid assignmentId)
+        {
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            EnsureDraft(will);
+
+            var assignment = will.WillAssets
+                .SelectMany(x => x.Assignments)
+                .FirstOrDefault(x => x.Id == assignmentId)
+                ?? throw new KeyNotFoundException(
+                    "Assignment not found.");
+
+            await _willRepository.RemoveAssignmentAsync(assignment);
+            will.UpdatedAt = DateTimeOffset.UtcNow;
+            await _willRepository.SaveChangesAsync();
+        }
+
+        public async Task<List<Guid>> GetLockedAssetIdsAsync()
+        {
+            return await _willRepository.GetLockedAssetIdsAsync(
+                _currentUserService.GetRequiredAccountId());
         }
 
         public async Task<WillDetailResponse> SubmitAsync(
@@ -739,7 +895,11 @@ namespace LegacyVault.Features.WillManagement.Services
                             WillAssetId =
                                 x.WillAssetId,
                             BeneficiaryDesignationId =
-                                x.BeneficiaryDesignationId
+                                x.BeneficiaryDesignationId,
+                            BeneficiaryName =
+                                x.BeneficiaryDesignation?.FullName,
+                            Relationship =
+                                x.BeneficiaryDesignation?.Relationship
                         })
                     .ToList(),
 

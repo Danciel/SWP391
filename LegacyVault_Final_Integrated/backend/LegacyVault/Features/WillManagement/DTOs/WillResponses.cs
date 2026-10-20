@@ -50,6 +50,10 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public Guid WillAssetId { get; set; }
 
         public Guid BeneficiaryDesignationId { get; set; }
+
+        public string? BeneficiaryName { get; set; }
+
+        public string? Relationship { get; set; }
     }
 
     public class ExecutorAssignmentResponse

@@ -42,5 +42,18 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task<DmsConfigurationResponse> CheckInAsync(Guid willId);
 
         Task<WillDetailResponse> SubmitAsync(Guid willId);
+
+        Task<WillDetailResponse> CancelAsync(Guid willId);
+
+        Task<BeneficiaryResponse> LinkBeneficiaryAsync(
+            Guid willId,
+            Guid beneficiaryId,
+            LinkBeneficiaryRequest request);
+
+        Task<List<Guid>> GetLockedAssetIdsAsync();
+
+        Task RemoveAssetAsync(Guid willId, Guid willAssetId);
+
+        Task RemoveAssignmentAsync(Guid willId, Guid assignmentId);
     }
 }
