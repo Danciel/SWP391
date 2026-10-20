@@ -12,11 +12,14 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
     public class AccountsController : ControllerBase
     {
         private readonly IAccountRepository _accountRepository;
+        private readonly IAccountService _accountService;
 
         public AccountsController(
-            IAccountRepository accountRepository)
+            IAccountRepository accountRepository,
+            IAccountService accountService)
         {
             _accountRepository = accountRepository;
+            _accountService = accountService;
         }
 
         // =========================
@@ -123,6 +126,126 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
                 };
 
             return Ok(response);
+        }
+
+        // =========================
+        // ADMIN: LIST ACCOUNTS
+        // GET api/accounts?page=1&pageSize=20&search=...&role=USER
+        // =========================
+        [HttpGet]
+        [Authorize(Roles = AdminRole)]
+        public async Task<IActionResult> List(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? role = null,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _accountService.ListAsync(
+                page, pageSize, search, role, cancellationToken);
+
+            return ToActionResult(result);
+        }
+
+        // =========================
+        // ADMIN: GET ACCOUNT BY ID
+        // =========================
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = AdminRole)]
+        public async Task<IActionResult> GetById(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            var result = await _accountService.GetByIdAsync(id, cancellationToken);
+
+            return ToActionResult(result);
+        }
+
+        // =========================
+        // ADMIN: CREATE ACCOUNT
+        // =========================
+        [HttpPost]
+        [Authorize(Roles = AdminRole)]
+        public async Task<IActionResult> Create(
+            [FromBody] AdminCreateAccountRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _accountService.CreateAsync(request, cancellationToken);
+
+            if (result.Status == ServiceStatus.Created)
+            {
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { id = result.Data!.Id },
+                    result.Data);
+            }
+
+            return ToActionResult(result);
+        }
+
+        // =========================
+        // ADMIN: UPDATE ACCOUNT
+        // =========================
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = AdminRole)]
+        public async Task<IActionResult> Update(
+            Guid id,
+            [FromBody] AdminUpdateAccountRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentAccountId(out var currentAdminId))
+            {
+                return Unauthorized(new { message = "Invalid token." });
+            }
+
+            var result = await _accountService.UpdateAsync(
+                id, request, currentAdminId, cancellationToken);
+
+            return ToActionResult(result);
+        }
+
+        // =========================
+        // ADMIN: DELETE ACCOUNT
+        // =========================
+        [HttpDelete("{id:guid}")]
+        [Authorize(Roles = AdminRole)]
+        public async Task<IActionResult> Delete(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentAccountId(out var currentAdminId))
+            {
+                return Unauthorized(new { message = "Invalid token." });
+            }
+
+            var result = await _accountService.DeleteAsync(
+                id, currentAdminId, cancellationToken);
+
+            return result.Status == ServiceStatus.Ok
+                ? NoContent()
+                : ToActionResult(result);
+        }
+
+        // =========================
+        // HELPERS
+        // =========================
+        private bool TryGetCurrentAccountId(out Guid accountId) =>
+            Guid.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier),
+                out accountId);
+
+        private IActionResult ToActionResult<T>(ServiceResult<T> result)
+        {
+            return result.Status switch
+            {
+                ServiceStatus.Ok => Ok(result.Data),
+                ServiceStatus.Created => StatusCode(StatusCodes.Status201Created, result.Data),
+                ServiceStatus.NotFound => NotFound(new { message = result.Error }),
+                ServiceStatus.Conflict => Conflict(new { message = result.Error }),
+                ServiceStatus.Forbidden => StatusCode(
+                    StatusCodes.Status403Forbidden, new { message = result.Error }),
+                _ => BadRequest(new { message = result.Error })
+            };
         }
 
         // =========================
