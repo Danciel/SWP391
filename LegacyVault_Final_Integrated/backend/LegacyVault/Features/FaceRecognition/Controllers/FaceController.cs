@@ -10,7 +10,7 @@ namespace LegacyVault.Features.FaceRecognition.Controllers;
 
 [ApiController]
 [Route("api/idp-users/{idpUserId:guid}/face")]
-[Authorize(Roles = "ADMIN")]
+[Authorize]
 public class IdpFaceController : ControllerBase
 {
     private const long MaxImageSize = 5 * 1024 * 1024; // 5 MB

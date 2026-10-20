@@ -408,7 +408,7 @@ namespace LegacyVault.Data
             // =========================
             modelBuilder.Entity<IdpUser>(entity =>
             {
-                entity.ToTable("IdpUsers");
+                entity.ToTable("IdpUsers","public");
 
                 entity.HasKey(x => x.Id);
 
@@ -439,7 +439,7 @@ namespace LegacyVault.Data
             // =========================
             modelBuilder.Entity<Face>(entity =>
             {
-                entity.ToTable("Faces");
+                entity.ToTable("Faces", "public");
 
                 entity.HasKey(x => x.Id);
 

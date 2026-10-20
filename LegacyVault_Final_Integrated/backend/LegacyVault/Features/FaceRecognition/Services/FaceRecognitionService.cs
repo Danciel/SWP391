@@ -1,4 +1,4 @@
-
+using System.Linq;
 using FaceAiSharp;
 using FaceAiSharp.Extensions;
 using SixLabors.ImageSharp;
@@ -9,8 +9,8 @@ namespace LegacyVault.Features.FaceRecognition.Services;
 public class FaceRecognitionService : IFaceRecognitionService
 {
     // Load the models once, rather than once per HTTP request.
-    private readonly dynamic _detector;
-    private readonly dynamic _recognizer;
+    private readonly IFaceDetectorWithLandmarks  _detector;
+    private readonly IFaceEmbeddingsGenerator  _recognizer;
 
     private readonly object _sync = new();
 
@@ -40,7 +40,7 @@ public class FaceRecognitionService : IFaceRecognitionService
                         : "Multiple faces were detected.");
             }
 
-            var face = faces[0];
+            var face = faces.First();
 
             if (face.Landmarks is null)
             {

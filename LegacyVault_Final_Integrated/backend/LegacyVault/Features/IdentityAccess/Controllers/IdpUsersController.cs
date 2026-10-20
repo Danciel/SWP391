@@ -7,7 +7,7 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
 {
     [ApiController]
     [Route("api/idp-users")]
-    [Authorize(Roles = AdminRole)]
+    [Authorize/*(Roles = AdminRole)*/]
     public class IdpUsersController : ControllerBase
     {
         private const string AdminRole = "ADMIN";
