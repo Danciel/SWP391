@@ -1,22 +1,5 @@
-import { request, MOCK_MODE } from "./client";
-import { getOwnerDashboardData, checkInDms, cancelDeathHandover, requestImmediateHandover } from "./mockVault";
-
-export async function getOwnerDashboard(userId) {
-  if (MOCK_MODE) return getOwnerDashboardData(userId);
-  return request("/owner/dashboard", { method: "GET" });
-}
-
-export async function confirmStillActive({ userId, willId }) {
-  if (MOCK_MODE) return checkInDms(userId, willId);
-  return request(`/owner/wills/${willId}/check-in`, { method: "POST" });
-}
-
-export async function cancelHandover({ userId, willId }) {
-  if (MOCK_MODE) return cancelDeathHandover(userId, willId);
-  return request(`/owner/wills/${willId}/cancel-handover`, { method: "POST" });
-}
-
-export async function requestHandover({ userId, willId }) {
-  if (MOCK_MODE) return requestImmediateHandover(userId, willId);
-  return request(`/owner/wills/${willId}/request-handover`, { method: "POST" });
-}
+import {getOwnerDashboardData,checkInDms,cancelDeathHandover,requestImmediateHandover} from "./vaultApi";
+export const getOwnerDashboard=getOwnerDashboardData;
+export const confirmStillActive=({userId,willId})=>checkInDms(userId,willId);
+export const cancelHandover=({userId,willId})=>cancelDeathHandover(userId,willId);
+export const requestHandover=({userId,willId})=>requestImmediateHandover(userId,willId);

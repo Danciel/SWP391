@@ -128,49 +128,4 @@
   color: #9ca3af;
 }
 
-.quickLoginDivider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin-top: 20px;
-  color: #9ca3af;
-  font-size: 12px;
-}
 
-.quickLoginDivider::before,
-.quickLoginDivider::after {
-  content: "";
-  flex: 1;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.quickLoginDivider span {
-  padding: 0 10px;
-}
-
-.quickLoginRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.quickLoginBtn {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px dashed #c7d2fe;
-  background: #eef2ff;
-  color: #4338ca;
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.quickLoginBtn:hover {
-  background: #e0e7ff;
-}
-
-.quickLoginBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getProfile } from "../../api/mockVault";
+import { getProfile } from "../../api/vaultApi";
 import styles from "./Profile.module.css";
 
 function maskPhone(phone) {
@@ -16,23 +16,27 @@ export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    getProfile(user?.id, user).then((p) => {
-      if (!cancelled) {
-        setProfile(p);
-        setIsLoading(false);
-      }
-    });
+    setIsLoading(true);
+    setError("");
+    getProfile(user?.id, user)
+      .then((p) => { if (!cancelled) setProfile(p); })
+      .catch((err) => { if (!cancelled) setError(err.message || "Could not load profile"); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => {
       cancelled = true;
     };
   }, [user]);
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return <p className={styles.muted}>Loading profile...</p>;
   }
+
+  if (error) return <p role="alert" className={styles.muted}>{error}</p>;
+  if (!profile) return <p className={styles.muted}>No profile information available.</p>;
 
   const isVerified = profile.identityStatus === "VERIFIED";
 

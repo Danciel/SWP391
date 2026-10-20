@@ -232,7 +232,7 @@ export default function ExecutorDashboard() {
               </div>
             ) : (
               <div>
-                <p className={styles.feeAmount}>{fee ? fee.fee.toLocaleString("vi-VN") : "—"} VND</p>
+                <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
                 <p className={styles.metaText}>
                   {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
                 </p>
@@ -296,6 +296,22 @@ export default function ExecutorDashboard() {
                         <div className={styles.detailRow}>
                           <span>Proposed Fee</span>
                           <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                          <strong>Assets ({req.assets?.length ?? 0})</strong>
+                          {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
+                            <ul style={{ paddingLeft: 18 }}>
+                              {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
+                                <strong>{a.assetName}</strong>
+                                <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
+                                <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
+                              </li>)}
+                            </ul>}
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                          <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
+                          {(req.beneficiaries || []).map(b =>
+                            <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
                         </div>
                         {req.message && <p className={styles.metaText}>"{req.message}"</p>}
                       </div>

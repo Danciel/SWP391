@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { sendPhoneOtp, verifyPhoneOtp, verifyIdentityNumber, verifyFace, getProfile } from "../../api/mockVault";
+import { sendPhoneOtp, verifyPhoneOtp, verifyIdentityNumber, verifyFace, getProfile } from "../../api/vaultApi";
 import { ApiError } from "../../api/client";
 import { validateIdentifyNumber } from "../../utils/validation";
 import styles from "./VerifyIdentity.module.css";

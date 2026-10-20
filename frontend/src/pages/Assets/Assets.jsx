@@ -1,24 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getAssets, addAsset, updateAsset } from "../../api/mockVault";
+import { getAssets, addAsset, updateAsset, getAssetSecret, deleteAsset, getWills } from "../../api/vaultApi";
+import { verifyAsset } from "../../api/assetVerifyApi";
 import { ApiError } from "../../api/client";
+import {
+  ACCOUNT_PROVIDERS,
+  ENABLED_ASSET_TYPES,
+  isVerifiable,
+  providerLabel,
+  verificationInfo,
+} from "../../utils/assetCatalog";
+import { buildAssetLocks } from "../../utils/willHelpers";
 import styles from "./Assets.module.css";
 
-const ASSET_TYPES = ["Document", "Crypto Wallet", "Online Account", "Bank Account", "Other"];
-const ACCOUNT_TYPES = [
-  "Facebook",
-  "Instagram",
-  "TikTok",
-  "X (Twitter)",
-  "YouTube",
-  "LinkedIn",
-  "Zalo",
-  "Telegram",
-  "Google",
-  "Other",
-];
+// Re-exported so CreateWill keeps working with the same import.
+export const ASSET_TYPES = ENABLED_ASSET_TYPES;
+export const ACCOUNT_TYPES = ACCOUNT_PROVIDERS;
 
-const EMPTY_FORM = {
+export const EMPTY_FORM = {
   name: "",
   type: "Document",
   accountType: ACCOUNT_TYPES[0],
@@ -27,7 +26,7 @@ const EMPTY_FORM = {
   password: "",
 };
 
-function AssetFields({ form, setForm }) {
+export function AssetFields({ form, setForm }) {
   const [showPassword, setShowPassword] = useState(false);
   return (
     <>
@@ -45,12 +44,18 @@ function AssetFields({ form, setForm }) {
         value={form.type}
         onChange={(e) => setForm({ ...form, type: e.target.value })}
       >
-        {ASSET_TYPES.map((t) => (
+        {(ASSET_TYPES.includes(form.type) ? ASSET_TYPES : [form.type, ...ASSET_TYPES]).map((t) => (
           <option key={t} value={t}>
             {t}
           </option>
         ))}
       </select>
+
+      {!isVerifiable(form.type) && (
+        <p className={styles.assetDesc} style={{ margin: "-6px 0 14px" }}>
+          This type is stored as content only and cannot be verified with a provider.
+        </p>
+      )}
 
       {form.type === "Online Account" && (
         <>
@@ -77,23 +82,23 @@ function AssetFields({ form, setForm }) {
         placeholder="Optional notes about this asset"
       />
 
-      <label className={styles.label}>Username / Account (if any)</label>
+      {!["Document","Other"].includes(form.type) && <><label className={styles.label}>Username / Account</label>
       <input
         className={styles.input}
         value={form.username}
         onChange={(e) => setForm({ ...form, username: e.target.value })}
-        placeholder="Optional"
+        placeholder="Required for account verification"
         autoComplete="off"
       />
 
-      <label className={styles.label}>Password (if any)</label>
+      <label className={styles.label}>Password</label>
       <div className={styles.passwordRow}>
         <input
           className={styles.input}
           type={showPassword ? "text" : "password"}
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-          placeholder="Optional"
+          placeholder="Required for account verification"
           autoComplete="new-password"
         />
         <button
@@ -103,7 +108,7 @@ function AssetFields({ form, setForm }) {
         >
           {showPassword ? "Hide" : "Show"}
         </button>
-      </div>
+      </div></>}
     </>
   );
 }
@@ -123,6 +128,14 @@ export default function Assets() {
   const [showDetailPassword, setShowDetailPassword] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailSaving, setDetailSaving] = useState(false);
+  const secretRequest = useRef(0);
+  const [secret, setSecret] = useState(null);
+  const [secretLoading, setSecretLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [locks, setLocks] = useState(new Map());
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
 
   useEffect(() => {
     load();
@@ -130,9 +143,17 @@ export default function Assets() {
 
   async function load() {
     setIsLoading(true);
-    const data = await getAssets(user?.id);
-    setAssets(data);
-    setIsLoading(false);
+    setError("");
+    try {
+      setAssets(await getAssets(user?.id));
+      // LV-18: which assets already sit in a will (shown as a lock). Failure must not block the list.
+      getWills().then((w) => setLocks(buildAssetLocks(w))).catch(() => setLocks(new Map()));
+    } catch (err) {
+      setAssets([]);
+      setError(err.message || "Could not load assets");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function openModal() {
@@ -150,34 +171,83 @@ export default function Assets() {
     }
     setSaving(true);
     try {
+      if (!["Document","Other"].includes(form.type) && (!form.username.trim() || !form.password)) throw new Error("Username and password are required.");
       await addAsset(user?.id, form);
       setShowModal(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not add asset");
+      setError(err.message || "Could not add asset");
     } finally {
       setSaving(false);
     }
   }
 
-  function openDetail(asset) {
+  async function openDetail(asset) {
+    const requestId = ++secretRequest.current;
     setSelectedAsset(asset);
+    setSecret(null);
+    setSecretLoading(true);
+    setConfirmDelete(false);
     setDetailMode("view");
     setShowDetailPassword(false);
     setDetailForm({
       name: asset.name,
       type: asset.type,
-      accountType: asset.accountType || ACCOUNT_TYPES[0],
+      accountType: asset.type === "Online Account" ? providerLabel(asset.accountType) || ACCOUNT_TYPES[0] : ACCOUNT_TYPES[0],
       description: asset.description || "",
-      username: asset.username || "",
-      password: asset.password || "",
+      username: "",
+      password: "",
     });
+    setVerifyResult(null);
     setDetailError("");
+    try {
+      const revealed = await getAssetSecret(asset.id);
+      if (requestId !== secretRequest.current) return;
+      setSecret(revealed);
+      // Prefill both fields: saving with an empty password would overwrite the stored one.
+      setDetailForm(prev => ({...prev, username: revealed.username || "", password: revealed.password || ""}));
+    } catch (err) {
+      if (requestId === secretRequest.current) setDetailError(err.message || "Could not load asset information");
+    } finally { if (requestId === secretRequest.current) setSecretLoading(false); }
   }
 
   function closeDetail() {
+    ++secretRequest.current;
     setSelectedAsset(null);
+    setSecret(null);
+    setDetailForm(EMPTY_FORM);
+    setShowDetailPassword(false);
+    setConfirmDelete(false);
+    setDetailError("");
     setDetailMode("view");
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDetailError("");
+    try {
+      await deleteAsset(selectedAsset.id);
+      closeDetail();
+      await load();
+    } catch (err) {
+      setDetailError(err.message || "Cannot delete this asset. It may be linked to a Will.");
+    } finally { setDeleting(false); }
+  }
+
+  async function handleVerify() {
+    setVerifying(true);
+    setVerifyResult(null);
+    setDetailError("");
+    try {
+      const result = await verifyAsset(selectedAsset.id);
+      setSelectedAsset((a) => ({ ...a, verificationStatus: result.status }));
+      setVerifyResult({ ok: result.status === "VERIFIED", text: result.message || result.status });
+      await load();
+    } catch (err) {
+      setDetailError(err.message || "Could not verify this asset");
+    } finally {
+      setVerifying(false);
+    }
   }
 
   async function handleUpdate(e) {
@@ -191,6 +261,9 @@ export default function Assets() {
     try {
       const updated = await updateAsset(user?.id, selectedAsset.id, detailForm);
       setSelectedAsset(updated);
+      setSecret(null);
+      setShowDetailPassword(false);
+      try { setSecret(await getAssetSecret(updated.id)); } catch { /* Display metadata if secret unavailable */ }
       setDetailMode("view");
       await load();
     } catch (err) {
@@ -209,6 +282,7 @@ export default function Assets() {
         + Add Asset
       </button>
 
+      {error && !showModal && <p role="alert" className={styles.muted}>{error}</p>}
       {isLoading ? (
         <p className={styles.muted}>Loading assets...</p>
       ) : assets.length === 0 ? (
@@ -226,11 +300,15 @@ export default function Assets() {
                 <h3 className={styles.assetName}>{asset.name}</h3>
                 <p className={styles.assetType}>
                   Type: {asset.type}
-                  {asset.type === "Online Account" && asset.accountType ? ` · ${asset.accountType}` : ""}
+                  {asset.type === "Online Account" && asset.accountType ? ` · ${providerLabel(asset.accountType)}` : ""}
                 </p>
                 {asset.description && <p className={styles.assetDesc}>{asset.description}</p>}
+                <p className={styles.assetDesc} title={verificationInfo(asset).hint}>
+                  {verificationInfo(asset).label}
+                  {locks.has(asset.id) ? ` · 🔒 Used in will "${locks.get(asset.id).willName}"` : ""}
+                </p>
               </div>
-              <span className={styles.securedTag}>Secured 🔒</span>
+
             </div>
           ))}
         </div>
@@ -244,8 +322,8 @@ export default function Assets() {
             <AssetFields form={form} setForm={setForm} />
 
             <label className={styles.label}>Upload File / Asset Information</label>
-            <button type="button" className={styles.fileBtn}>
-              Choose File
+            <button type="button" className={styles.fileBtn} disabled title="File uploads are not supported by the backend">
+              File upload not available yet
             </button>
 
             {error && <p className={styles.error}>{error}</p>}
@@ -275,7 +353,7 @@ export default function Assets() {
                 <>
                   <label className={styles.label}>Account Type</label>
                   <p className={styles.assetType} style={{ marginBottom: 14 }}>
-                    {selectedAsset.accountType || "—"}
+                    {providerLabel(selectedAsset.accountType) || "—"}
                   </p>
                 </>
               )}
@@ -285,36 +363,61 @@ export default function Assets() {
                 {selectedAsset.description || "—"}
               </p>
 
-              <label className={styles.label}>Username / Account</label>
-              <p className={styles.assetDesc} style={{ marginBottom: 14 }}>
-                {selectedAsset.username || "—"}
-              </p>
-
-              <label className={styles.label}>Password</label>
-              <div className={styles.passwordRow} style={{ marginBottom: 14 }}>
-                <p className={styles.assetDesc} style={{ margin: 0, flex: 1 }}>
-                  {selectedAsset.password
-                    ? showDetailPassword
-                      ? selectedAsset.password
-                      : "•".repeat(Math.min(selectedAsset.password.length, 12))
-                    : "—"}
-                </p>
-                {selectedAsset.password && (
-                  <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    onClick={() => setShowDetailPassword((v) => !v)}
-                  >
-                    {showDetailPassword ? "Hide" : "Show"}
-                  </button>
-                )}
-              </div>
+              {!["Document", "Other"].includes(selectedAsset.type) ? (
+                <>
+                  <label className={styles.label}>Username / Account</label>
+                  <p className={styles.assetDesc} style={{ marginBottom: 14 }}>
+                    {secretLoading ? "Loading..." : (secret?.username || "—")}
+                  </p>
+                  <label className={styles.label}>Password</label>
+                  <div className={styles.passwordRow} style={{ marginBottom: 14 }}>
+                    <p className={styles.assetDesc} style={{ margin: 0, flex: 1 }}>
+                      {secretLoading ? "Loading..." : secret?.password ? (showDetailPassword ? secret.password : "••••••••") : "—"}
+                    </p>
+                    {secret?.password && <button type="button" className={styles.toggleBtn}
+                      onClick={() => setShowDetailPassword(v => !v)}>{showDetailPassword ? "Hide" : "Show"}</button>}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label className={styles.label}>Stored content</label>
+                  <p className={styles.assetDesc} style={{ marginBottom: 14 }}>{secretLoading ? "Loading..." : (secret?.content || "—")}</p>
+                </>
+              )}
 
               <label className={styles.label}>Status</label>
               <p className={styles.assetDesc} style={{ marginBottom: 14 }}>{selectedAsset.status}</p>
 
+              <label className={styles.label}>Verification</label>
+              <p className={styles.assetDesc} style={{ marginBottom: 6 }}>{verificationInfo(selectedAsset).label}</p>
+              <p className={styles.assetDesc} style={{ margin: "0 0 14px" }}>{verificationInfo(selectedAsset).hint}</p>
+              {isVerifiable(selectedAsset.type) && (
+                <>
+                  <button type="button" className={styles.toggleBtn} disabled={verifying || secretLoading} onClick={handleVerify} style={{ marginBottom: 14 }}>
+                    {verifying ? "Verifying..." : "Verify with provider"}
+                  </button>
+                  <p className={styles.assetDesc} style={{ margin: "0 0 14px" }}>
+                    Demo check: credentials are compared with the mock provider accounts, not with the real service.
+                  </p>
+                </>
+              )}
+              {verifyResult && (
+                <p role="status" className={verifyResult.ok ? styles.assetType : styles.error} style={{ marginBottom: 14 }}>
+                  {verifyResult.text}
+                </p>
+              )}
+              {locks.has(selectedAsset.id) && (
+                <p className={styles.assetDesc} style={{ marginBottom: 14 }}>
+                  🔒 Used in will "{locks.get(selectedAsset.id).willName}".
+                </p>
+              )}
+
+              {detailError && <p role="alert" className={styles.error}>{detailError}</p>}
+              {confirmDelete && <p role="alert" className={styles.error}>Delete this asset permanently? Only assets not used in any Will can be deleted.</p>}
               <div className={styles.modalActions}>
-                <button type="button" className={styles.secondaryBtn} onClick={closeDetail}>
+                {!confirmDelete ? <button type="button" className={styles.toggleBtn} onClick={() => setConfirmDelete(true)}>Delete Asset</button> :
+                  <button type="button" className={styles.toggleBtn} disabled={deleting} onClick={handleDelete}>{deleting ? "Deleting..." : "Confirm Delete"}</button>}
+                <button type="button" className={styles.secondaryBtn} onClick={confirmDelete ? () => setConfirmDelete(false) : closeDetail}>
                   Close
                 </button>
                 <button type="button" className={styles.primaryBtn} onClick={() => setDetailMode("edit")}>

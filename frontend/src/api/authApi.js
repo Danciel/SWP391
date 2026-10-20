@@ -1,73 +1,9 @@
-import { request, setToken, MOCK_MODE } from "./client";
-import * as mock from "./mockBackend";
-
-export async function registerOwner({ fullName, email, phoneNumber, password }) {
-  if (MOCK_MODE) return mock.registerOwner({ fullName, email, phoneNumber, password });
-
-  const data = await request("/auth/register", {
-    method: "POST",
-    auth: false,
-    body: { fullName, email, phoneNumber, password, role: "OWNER" },
-  });
-  return data;
-}
-
-export async function login({ email, password, rememberMe }) {
-  if (MOCK_MODE) {
-    const data = await mock.login({ email, password });
-    setToken(data.token);
-    return data;
-  }
-
-  const data = await request("/auth/login", {
-    method: "POST",
-    auth: false,
-    body: { email, password, rememberMe: !!rememberMe },
-  });
-  setToken(data.token);
-  return data;
-}
-
-export function logout() {
-  setToken(null);
-}
-
-export async function verifyOtp({ email, otp, purpose = "register" }) {
-  if (MOCK_MODE) return mock.verifyOtp({ email, otp, purpose });
-
-  return request("/auth/verify-otp", {
-    method: "POST",
-    auth: false,
-    body: { email, otp, purpose },
-  });
-}
-
-export async function resendOtp({ email, purpose = "register" }) {
-  if (MOCK_MODE) return mock.resendOtp({ email, purpose });
-
-  return request("/auth/resend-otp", {
-    method: "POST",
-    auth: false,
-    body: { email, purpose },
-  });
-}
-
-export async function requestPasswordReset({ email }) {
-  if (MOCK_MODE) return mock.requestPasswordReset({ email });
-
-  return request("/auth/forgot-password", {
-    method: "POST",
-    auth: false,
-    body: { email },
-  });
-}
-
-export async function resetPassword({ email, resetToken, newPassword }) {
-  if (MOCK_MODE) return mock.resetPassword({ email, resetToken, newPassword });
-
-  return request("/auth/reset-password", {
-    method: "POST",
-    auth: false,
-    body: { email, resetToken, newPassword },
-  });
-}
+import { request, setToken } from "./client";
+export const registerOwner = ({ fullName, email, phoneNumber, password }) => request("/auth/register", { method:"POST", auth:false, body:{fullName,email,phoneNumber,password} });
+export async function login({email,password,rememberMe}) { const data=await request("/auth/login",{method:"POST",auth:false,body:{email,password,rememberMe:!!rememberMe}});setToken(data.token);return data; }
+export const logout=()=>setToken(null);
+export const verifyOtp=({email,otp,purpose="register"})=>request("/auth/verify-otp",{method:"POST",auth:false,body:{email,otp,purpose}});
+export const resendOtp=({email,purpose="register"})=>request("/auth/resend-otp",{method:"POST",auth:false,body:{email,purpose}});
+import { unsupported } from "./unsupported";
+export const requestPasswordReset=unsupported("Password reset");
+export const resetPassword=unsupported("Password reset");

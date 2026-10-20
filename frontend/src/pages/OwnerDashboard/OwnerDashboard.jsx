@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getOwnerDashboard, cancelHandover } from "../../api/ownerApi";
+import { getOwnerDashboard, cancelHandover, confirmStillActive } from "../../api/ownerApi";
+import { dmsMessage, dmsState } from "../../utils/willHelpers";
 import logo from "../../assets/logo.png";
 import styles from "./OwnerDashboard.module.css";
 
@@ -46,6 +47,20 @@ export default function OwnerDashboard() {
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
+  }
+
+  async function handleCheckIn() {
+    if (!data?.deadManSwitch?.willId) return;
+    setBusy(true);
+    try {
+      await confirmStillActive({ userId: user?.id, willId: data.deadManSwitch.willId });
+      showToast("Check-in recorded");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not check in");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleCancelHandover() {
@@ -114,6 +129,28 @@ export default function OwnerDashboard() {
               <p className={styles.mutedText}>Dead Man's Switch not set up yet</p>
             )}
 
+            {data.deadManSwitch.enabled && (() => {
+              const d = data.deadManSwitch;
+              const note = dmsMessage(
+                dmsState({
+                  enabled: true,
+                  status: d.nextCheckInDue ? "ACTIVE" : "WAITING",
+                  nextCheckInAt: d.nextCheckInDue,
+                  reminderDays: 0,
+                  missedCount: d.missedCount,
+                  maxMissed: d.maxMissed,
+                })
+              );
+              return note ? (
+                <div className={styles.warningBox} role="alert">
+                  <p>{note.text}</p>
+                  <button className={styles.primaryBtn} disabled={busy} onClick={handleCheckIn}>
+                    Check in now
+                  </button>
+                </div>
+              ) : null;
+            })()}
+
             {data.deadManSwitch.enabled && data.deadManSwitch.caseOpen && (
               <div className={styles.warningBox}>
                 <p>
@@ -137,7 +174,7 @@ export default function OwnerDashboard() {
               <ul className={styles.list}>
                 {data.assets.map((asset) => (
                   <li key={asset.id}>
-                    <strong>{asset.name}</strong> — {asset.type} → {asset.beneficiary}
+                    <strong>{asset.name}</strong> — {asset.type} → {asset.beneficiary || "Unassigned"}
                   </li>
                 ))}
               </ul>

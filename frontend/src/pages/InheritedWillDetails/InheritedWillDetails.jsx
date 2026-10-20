@@ -7,7 +7,7 @@ import {
   verifyFace,
   issueClaimKey,
   confirmClaim,
-} from "../../api/mockVault";
+} from "../../api/vaultApi";
 import { ApiError } from "../../api/client";
 import styles from "./InheritedWillDetails.module.css";
 
@@ -19,6 +19,7 @@ export default function InheritedWillDetails() {
   const [stage, setStage] = useState("view");
   const [claimKey, setClaimKey] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -26,10 +27,18 @@ export default function InheritedWillDetails() {
   }, [id]);
 
   async function load() {
-    const [w, p] = await Promise.all([getInheritedWill(user?.id, id), getProfile(user?.id, user)]);
-    setWill(w);
-    setProfile(p);
-    setStage("view");
+    setLoading(true);
+    setError("");
+    try {
+      const [w, p] = await Promise.all([getInheritedWill(user?.id, id), getProfile(user?.id, user)]);
+      setWill(w);
+      setProfile(p);
+      setStage("view");
+    } catch (err) {
+      setError(err.message || "Inherited will details not available");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleClaimClick() {
@@ -74,7 +83,9 @@ export default function InheritedWillDetails() {
     }
   }
 
-  if (!will || !profile) return <p className={styles.muted}>Loading...</p>;
+  if (loading) return <p className={styles.muted}>Loading...</p>;
+  if (error && (!will || !profile)) return <p role="alert" className={styles.muted}>{error}</p>;
+  if (!will || !profile) return <p className={styles.muted}>No inheritance information available.</p>;
 
   const claimed = will.claimStatus === "CLAIMED";
 

@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getInheritedWills } from "../../api/mockVault";
+import { getInheritedWills } from "../../api/vaultApi";
 import styles from "./ViewWill.module.css";
 
 export default function ViewWill() {
   const { user } = useAuth();
   const [wills, setWills] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    getInheritedWills(user?.id).then((data) => {
-      setWills(data);
-      setLoading(false);
-    });
+    setLoading(true);
+    getInheritedWills(user?.id)
+      .then(setWills)
+      .catch((err) => setError(err.message || "Could not load inherited wills"))
+      .finally(() => setLoading(false));
   }, [user]);
 
   return (
@@ -21,6 +23,7 @@ export default function ViewWill() {
       <h1 className={styles.title}>Inherited Wills</h1>
       <p className={styles.subtitle}>View inheritance cases assigned to you.</p>
 
+      {error && <p role="alert" className={styles.muted}>{error}</p>}
       {loading ? (
         <p className={styles.muted}>Loading...</p>
       ) : wills.length === 0 ? (

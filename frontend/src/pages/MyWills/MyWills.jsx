@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/mockVault";
+import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/vaultApi";
+import { dmsMessage, dmsState } from "../../utils/willHelpers";
 import styles from "./MyWills.module.css";
 
 const FILTERS = ["All", "Draft", "Pending", "Active"];
@@ -10,14 +11,16 @@ const STATUS_LABEL = {
   DRAFT: "Draft",
   PENDING_EXECUTOR_ACCEPTANCE: "Pending Executor",
   ACTIVE: "Active",
+  PENDING_EXECUTOR: "Pending Executor",
   NEEDS_EXECUTOR: "Needs Executor",
   PENDING_VERIFICATION: "Pending Verification",
+  DECLINED: "Declined",
 };
 
 function matchesFilter(status, filter) {
   if (filter === "All") return true;
-  if (filter === "Draft") return status === "DRAFT";
-  if (filter === "Pending") return status === "PENDING_EXECUTOR_ACCEPTANCE" || status === "NEEDS_EXECUTOR";
+  if (filter === "Draft") return status === "DRAFT" || status === "DECLINED";
+  if (filter === "Pending") return status === "PENDING_EXECUTOR" || status === "PENDING_EXECUTOR_ACCEPTANCE" || status === "NEEDS_EXECUTOR";
   if (filter === "Active") return status === "ACTIVE" || status === "PENDING_VERIFICATION";
   return true;
 }
@@ -27,6 +30,7 @@ export default function MyWills() {
   const [wills, setWills] = useState([]);
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [handoverWill, setHandoverWill] = useState(null);
   const [handoverBusy, setHandoverBusy] = useState(false);
   const [handoverError, setHandoverError] = useState("");
@@ -38,12 +42,17 @@ export default function MyWills() {
     load();
   }, [user]);
 
-  function load() {
+  async function load() {
     setLoading(true);
-    getWills(user?.id).then((data) => {
-      setWills(data);
+    setLoadError("");
+    try {
+      setWills(await getWills(user?.id));
+    } catch (err) {
+      setWills([]);
+      setLoadError(err.message || "Could not load wills");
+    } finally {
       setLoading(false);
-    });
+    }
   }
 
   async function handleConfirmImmediateHandover() {
@@ -64,7 +73,7 @@ export default function MyWills() {
     setDeleteBusy(true);
     setDeleteError("");
     try {
-      await deleteWillDraft(user?.id, deleteWill.id);
+      await deleteWillDraft(user?.id, deleteWill.id, deleteWill.isDeclined);
       setDeleteWill(null);
       load();
     } catch (err) {
@@ -93,6 +102,7 @@ export default function MyWills() {
         ))}
       </div>
 
+      {loadError && <p role="alert" className={styles.muted}>{loadError}</p>}
       {loading ? (
         <p className={styles.muted}>Loading...</p>
       ) : filtered.length === 0 ? (
@@ -101,23 +111,34 @@ export default function MyWills() {
         <div className={styles.list}>
           {filtered.map((will) => {
             const isDraft = will.status === "DRAFT";
+            const isDeclined = will.executor?.status === "DECLINED" || will.status === "DECLINED";
             return (
               <div key={will.id} className={styles.willCard}>
                 <div className={styles.willHead}>
                   <h3 className={styles.willName}>{will.name || "Untitled Will"}</h3>
                   <span className={`${styles.badge} ${styles[will.status] || ""}`}>
-                    {STATUS_LABEL[will.status] || will.status}
+                    {isDeclined ? "Declined" : STATUS_LABEL[will.status] || will.status}
                   </span>
                 </div>
                 <div className={styles.metaGrid}>
-                  <span>Assets: {(will.assets || []).length}</span>
-                  <span>Beneficiaries: {(will.assets || []).filter((a) => a.beneficiary).length}</span>
+                  <span>Assets: {will.assets ? will.assets.length : "—"}</span>
+                  <span>Beneficiaries: {will.beneficiaries ? will.beneficiaries.length : "—"}</span>
                   {will.executor && <span>Executor: {will.executor.name}</span>}
                   {will.payment?.status && will.payment.status !== "NONE" && (
                     <span>Payment: {will.payment.status}</span>
                   )}
                   {will.dms?.status && <span>DMS: {will.dms.status}</span>}
                 </div>
+                {(() => {
+                  // LV-24 / LV-26: tell the owner when a check-in is due or missed (from the DMS data the API returns).
+                  const note = will.dms ? dmsMessage(dmsState(will.dms)) : null;
+                  return note ? (
+                    <p role="alert" className={styles.errorText} style={note.tone === "warn" ? { color: "#92400e" } : undefined}>
+                      {note.text}{" "}
+                      <Link to={`/dashboard/my-wills/${will.id}`}>Open to check in</Link>
+                    </p>
+                  ) : null;
+                })()}
                 <div className={styles.cardActions}>
                   <Link
                     className={styles.viewBtn}
@@ -136,12 +157,12 @@ export default function MyWills() {
                       Immediate Handover
                     </button>
                   )}
-                  {isDraft && (
+                  {(isDraft || isDeclined) && (
                     <button
                       className={styles.deleteBtn}
                       onClick={() => {
                         setDeleteError("");
-                        setDeleteWill(will);
+                        setDeleteWill({...will, isDeclined});
                       }}
                     >
                       Delete
@@ -187,7 +208,7 @@ export default function MyWills() {
       {deleteWill && (
         <div className={styles.overlay} onClick={() => !deleteBusy && setDeleteWill(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Delete this draft?</h2>
+            <h2 className={styles.modalTitle}>Delete this Will?</h2>
             <p className={styles.modalMeta}>
               This will permanently delete "{deleteWill.name || "Untitled Will"}". This action cannot be
               undone.

@@ -1,6 +1,4 @@
-export const BASE_URL = "http://localhost:8080/api";
-
-export const MOCK_MODE = true;
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const TOKEN_KEY = "lv_token";
 const USER_KEY = "lv_user";
