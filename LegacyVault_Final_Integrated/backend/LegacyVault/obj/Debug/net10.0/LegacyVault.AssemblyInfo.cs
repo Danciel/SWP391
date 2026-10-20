@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LegacyVault")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+480814ce63fd770d30f8e5bc0517634d7a7a2106")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+99992f341b6c3c026cbef754ef329328c49852cd")]
 [assembly: System.Reflection.AssemblyProductAttribute("LegacyVault")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LegacyVault")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
