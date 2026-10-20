@@ -14,9 +14,23 @@ namespace LegacyVault.Features.IdentityAccess.Contracts
 
         Task AddAsync(Account account);
 
+        // ---- Uniqueness checks ----
+        // excludeId lets an update ignore the row being edited;
+        // CancellationToken lets callers abort long queries.
+
         Task SaveChangesAsync();
         Task<Account?> SearchByEmailAsync(string email);
         Task<Account?> SearchByPhoneAsync(string phoneNumber);
+
+        Task<bool> EmailExistsAsync(
+            string email,
+            Guid? excludeId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> PhoneExistsAsync(
+            string phone,
+            Guid? excludeId = null,
+            CancellationToken cancellationToken = default);
 
         // ---- New: admin CRUD ----
         Task<(IReadOnlyList<Account> Items, int Total)> ListAsync(
