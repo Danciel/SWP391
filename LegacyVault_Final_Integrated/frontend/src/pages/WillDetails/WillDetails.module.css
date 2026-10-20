@@ -292,3 +292,83 @@
 .editForm {
   flex: 1;
 }
+
+/* LV-17: single-page layout */
+.section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px;
+}
+
+.bannerWarn {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 16px;
+}
+
+.bannerDanger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #991b1b;
+  margin-bottom: 16px;
+}
+
+.successText {
+  color: #15803d;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.assetBlock {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.assetBlock:last-of-type {
+  border-bottom: none;
+}
+
+.assetHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.assetBody {
+  padding: 0 0 14px 14px;
+  border-left: 3px solid #e0e7ff;
+  margin: 0 0 14px 4px;
+}
+
+.assetBody p {
+  margin: 0 0 4px;
+}
+
+.chev {
+  color: #6b7280;
+  font-size: 13px;
+  white-space: nowrap;
+}

@@ -213,3 +213,24 @@
 .toggleBtn:hover {
   background: #f3f4f6;
 }
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #374151;
+}
+
+.fileMeta {
+  color: #6b7280;
+}

@@ -9,13 +9,6 @@ import styles from "./Login.module.css";
 
 const initialForm = { email: "", password: "" };
 
-const QUICK_LOGIN_ACCOUNTS = [
-  { label: "Owner", email: "owner@test.com", password: "password123" },
-  { label: "Executor", email: "executor@test.com", password: "password123" },
-  { label: "Legal Verifier", email: "verifier@test.com", password: "password123" },
-  { label: "Admin", email: "admin@test.com", password: "password123" },
-];
-
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -61,19 +54,6 @@ export default function Login() {
     setIsSubmitting(true);
     try {
       await login({ ...form, rememberMe });
-      navigate("/dashboard");
-    } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Login failed, please try again");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleQuickLogin(account) {
-    setSubmitError("");
-    setIsSubmitting(true);
-    try {
-      await login({ email: account.email, password: account.password, rememberMe });
       navigate("/dashboard");
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Login failed, please try again");
@@ -143,23 +123,6 @@ export default function Login() {
         <p className={styles.footerText}>
           Don't have an account? <Link to="/register">Create account</Link>
         </p>
-
-        <div className={styles.quickLoginDivider}>
-          <span>Quick login (demo)</span>
-        </div>
-        <div className={styles.quickLoginRow}>
-          {QUICK_LOGIN_ACCOUNTS.map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              className={styles.quickLoginBtn}
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin(account)}
-            >
-              {account.label}
-            </button>
-          ))}
-        </div>
       </form>
     </div>
   );

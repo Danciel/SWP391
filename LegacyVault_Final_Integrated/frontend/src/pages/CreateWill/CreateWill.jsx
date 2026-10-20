@@ -11,13 +11,17 @@ import {
   submitWill,
   searchBeneficiaryAccount,
   getExecutors,
+  getWills,
 } from "../../api/vaultApi";
+import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms } from "../../utils/willHelpers";
+import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import styles from "./CreateWill.module.css";
-import {AssetFields,EMPTY_FORM} from "../Assets/Assets";
+import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
+import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
+import {useBackdropClose} from "../../utils/useBackdropClose";
 
 const STEPS = ["Information", "Assets", "Beneficiaries", "Executor", "DMS", "Review"];
-const RELATIONSHIPS = ["Daughter", "Son", "Spouse", "Parent", "Sibling", "Friend", "Other"];
 
 export default function CreateWill() {
   const { user } = useAuth();
@@ -33,6 +37,7 @@ export default function CreateWill() {
   const [loadError, setLoadError] = useState("");
   const [result, setResult] = useState(null);
   const [executors, setExecutors] = useState([]);
+  const [locks, setLocks] = useState(new Map());
 
   useEffect(() => {
     bootstrap();
@@ -45,6 +50,8 @@ export default function CreateWill() {
     const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
     setAssets(assetsData);
     getExecutors().then(setExecutors).catch(console.error);
+    // LV-18: assets already used by another will are locked here.
+    getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
     setProfile(profileData);
 
     let currentWill;
@@ -117,6 +124,7 @@ export default function CreateWill() {
           <AssetsStep
             will={will}
             assets={assets}
+            locks={locks}
             userId={user?.id}
             onAssetsChanged={setAssets}
             onSave={persist}
@@ -205,14 +213,42 @@ function InfoStep({ will, onSave, onNext, userFullName }) {
   );
 }
 
-function AssetsStep({ will, assets, userId, onAssetsChanged, onSave, onNext, onBack }) {
+function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNext, onBack }) {
   const [selected, setSelected] = useState(new Set((will.assets || []).map((a) => a.assetId)));
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showDiscard, setShowDiscard] = useState(false);
+
+  function requestCloseModal() {
+    if (saving) return;
+    if (isAssetFormDirty(form)) setShowDiscard(true);
+    else setShowModal(false);
+  }
+
+  function confirmDiscard() {
+    setShowDiscard(false);
+    setShowModal(false);
+    setForm({...EMPTY_FORM});
+    setError("");
+  }
+
+  const addBackdrop = useBackdropClose(requestCloseModal);
+
+  useEffect(() => {
+    if (!showModal) return undefined;
+    function onKey(e) {
+      if (e.key === "Escape" && !showDiscard) requestCloseModal();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  const attachedIds = new Set((will.assets || []).map((a) => a.assetId));
 
   function toggle(assetId) {
+    if (locks.has(assetId) || attachedIds.has(assetId)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(assetId)) next.delete(assetId);
@@ -263,17 +299,31 @@ function AssetsStep({ will, assets, userId, onAssetsChanged, onSave, onNext, onB
       {assets.length === 0 && <p className={styles.hint}>No assets yet — add one below.</p>}
 
       <div className={styles.checkList}>
-        {assets.map((asset) => (
-          <label key={asset.id} className={styles.checkRow}>
-            <input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)} />
-            <span>
-              <strong>{asset.name}</strong>
-              <span className={styles.checkMeta}>
-                {asset.type}
+        {assets.map((asset) => {
+          const lock = locks.get(asset.id);
+          const attached = attachedIds.has(asset.id);
+          return (
+            <label key={asset.id} className={styles.checkRow} style={lock ? { opacity: 0.6 } : undefined}>
+              <input
+                type="checkbox"
+                checked={selected.has(asset.id)}
+                disabled={Boolean(lock) || attached}
+                onChange={() => toggle(asset.id)}
+              />
+              <span>
+                <strong>{asset.name}</strong>
+                <span className={styles.checkMeta}>
+                  {asset.type}
+                  {asset.type === "Online Account" && asset.accountType ? ` · ${providerLabel(asset.accountType)}` : ""}
+                  {" · "}
+                  {verificationInfo(asset).label}
+                  {lock ? ` · 🔒 Used in will "${lock.willName}"` : ""}
+                  {attached ? " · Already in this will" : ""}
+                </span>
               </span>
-            </span>
-          </label>
-        ))}
+            </label>
+          );
+        })}
       </div>
 
       <button type="button" className={styles.linkBtn} onClick={() => setShowModal(true)}>
@@ -290,10 +340,11 @@ function AssetsStep({ will, assets, userId, onAssetsChanged, onSave, onNext, onB
       </div>
 
       {showModal && (
-        <div className={styles.overlay} onClick={() => setShowModal(false)}>
+        <div className={styles.overlay} {...addBackdrop}>
           <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleAddAsset}>
             <h3 className={styles.modalTitle}>Add Asset</h3>
             <AssetFields form={form} setForm={setForm} />
+            <AssetFileField form={form} setForm={setForm} />
             {error && <p className={styles.error}>{error}</p>}
             <div className={styles.actions}>
               <button type="button" className={styles.secondaryBtn} onClick={() => setShowModal(false)}>
@@ -305,6 +356,10 @@ function AssetsStep({ will, assets, userId, onAssetsChanged, onSave, onNext, onB
             </div>
           </form>
         </div>
+      )}
+
+      {showModal && showDiscard && (
+        <ConfirmDiscardDialog onConfirm={confirmDiscard} onCancel={() => setShowDiscard(false)} />
       )}
     </div>
   );
@@ -367,14 +422,12 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
             <div className={styles.beneficiaryInfo}>
               <p className={styles.beneficiaryName}>{entry.beneficiary.fullName}</p>
               <p className={styles.beneficiaryMeta}>
-                {entry.beneficiary.email} · {entry.beneficiary.phone} · {entry.beneficiary.relationship}
-                {entry.beneficiary.identityNumber ? ` · CCCD: ${entry.beneficiary.identityNumber}` : ""}
+                {[entry.beneficiary.email, entry.beneficiary.phone, entry.beneficiary.relationship].filter(Boolean).join(" · ")}
               </p>
-              <p className={styles.beneficiaryStatus}>Status: {entry.beneficiary.accountId ? "Designated (linked)" : "Designated"}</p>
+              <p className={styles.beneficiaryStatus}>
+                Status: {entry.beneficiary.beneficiaryAccountId ? "Designated (has account)" : "Designated (no account yet)"}
+              </p>
               <button className={styles.linkBtn} onClick={() => setActiveAssetId(entry.assetId)}>
-                Change
-              </button>{" "}
-              <button className={styles.linkBtnDanger} onClick={() => setActiveAssetId(entry.assetId)}>
                 Change beneficiary
               </button>
             </div>
@@ -410,7 +463,7 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState(undefined);
   const [relationship, setRelationship] = useState("Daughter");
-  const [newForm, setNewForm] = useState({ fullName: "", email: "", phone: "", identityNumber: "" });
+  const [newForm, setNewForm] = useState({ fullName: "", email: "", phone: "" });
   const [lookupError,setLookupError]=useState("");
   const [searching,setSearching]=useState(false);
   const [assigning,setAssigning]=useState(false);
@@ -466,7 +519,6 @@ function BeneficiaryModal({ onClose, onAssign }) {
                 <p className={styles.beneficiaryName}>{found.fullName}</p>
                 <p className={styles.beneficiaryMeta}>
                   {found.maskedEmail || found.email} · {found.maskedPhoneNumber || found.phone}
-                  {found.identityNumber ? ` · CCCD: ${found.identityNumber}` : ""}
                 </p>
                 <label className={styles.label}>Relationship</label>
                 <select className={styles.input} value={relationship} onChange={(e) => setRelationship(e.target.value)}>
@@ -497,15 +549,11 @@ function BeneficiaryModal({ onClose, onAssign }) {
             />
             <label className={styles.label}>Email</label>
             <input className={styles.input} value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
-            <label className={styles.label}>Phone Number</label>
+            <label className={styles.label}>Phone Number (optional)</label>
             <input className={styles.input} value={newForm.phone} onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })} />
-            <label className={styles.label}>National ID (CCCD)</label>
-            <input
-              className={styles.input}
-              value={newForm.identityNumber}
-              onChange={(e) => setNewForm({ ...newForm, identityNumber: e.target.value })}
-              placeholder="Optional"
-            />
+            <p className={styles.hint}>
+              This person does not need a LegacyVault account yet. Email is required; phone is optional.
+            </p>
             <label className={styles.label}>Relationship</label>
             <select className={styles.input} value={relationship} onChange={(e) => setRelationship(e.target.value)}>
               {RELATIONSHIPS.map((r) => (
@@ -552,19 +600,16 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
     <div>
       <h2 className={styles.stepHeading}>Select Executor</h2>
       {error && <p role="alert" className={styles.error}>{error}</p>}
+      {executors.length === 0 && <p className={styles.hint}>No executors available yet.</p>}
       <div className={styles.executorList}>
         {executors.map((ex) => (
           <div key={ex.id} className={styles.executorCard}>
             <div>
-              <h4 className={styles.beneficiaryName}>
-                {ex.name} <span className={styles.availableTag}>● Available</span>
-              </h4>
-              <p className={styles.beneficiaryMeta}>{ex.specialization}</p>
-              <p className={styles.beneficiaryMeta}>License: {ex.license}</p>
+              <h4 className={styles.beneficiaryName}>{ex.name}</h4>
+              <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
               <p className={styles.beneficiaryMeta}>
-                ⭐ {ex.rating} · {ex.reviews} Reviews · {ex.experienceYears} Years Experience · {ex.completedCases} Completed Cases
+                ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
               </p>
-              <p className={styles.feeText}>Service Fee: {(ex.fee ?? 0).toLocaleString("vi-VN")} VND</p>
             </div>
             <button
               className={selectedId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
@@ -589,18 +634,23 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
 }
 
 function DmsStep({ will, onSave, onNext, onBack }) {
-  const checkInDaysInit = will.dms?.checkInDays ?? 30;
-  const reminderDaysInit = will.dms?.reminderDays ?? 3;
-  const maxMissedInit = will.dms?.maxMissed ?? 2;
-  const [checkInDays, setCheckInDays] = useState(checkInDaysInit);
-  const [reminderDays, setReminderDays] = useState(reminderDaysInit);
-  const [maxMissed, setMaxMissed] = useState(maxMissedInit);
+  const initialDays = will.dms?.checkInDays ?? 30;
+  const isPreset = INTERVAL_PRESETS.includes(initialDays);
+  const [intervalChoice, setIntervalChoice] = useState(isPreset ? String(initialDays) : "custom");
+  const [customDays, setCustomDays] = useState(String(initialDays));
+  const [reminderDays, setReminderDays] = useState(String(will.dms?.reminderDays ?? 3));
+  const [maxMissed, setMaxMissed] = useState(String(will.dms?.maxMissed ?? 2));
   const [error,setError]=useState("");
   const [saving, setSaving] = useState(false);
 
+  const checkInDays = intervalChoice === "custom" ? Number(customDays) : Number(intervalChoice);
+
   async function handleNext() {
+    const dms = { checkInDays, reminderDays: Number(reminderDays), maxMissed: Number(maxMissed) };
+    const problem = validateDms(dms);
+    if (problem) { setError(problem); return; }
     setSaving(true);
-    try { await onSave({ dms: { ...will.dms, enabled: true, checkInDays, reminderDays, maxMissed } }); setError(""); onNext(); }
+    try { await onSave({ dms: { ...will.dms, enabled: true, ...dms } }); setError(""); onNext(); }
     catch(err) { setError(err.message || "Could not save DMS"); }
     finally { setSaving(false); }
   }
@@ -610,44 +660,36 @@ function DmsStep({ will, onSave, onNext, onBack }) {
       <h2 className={styles.stepHeading}>Dead Man's Switch</h2>
       {error && <p role="alert" className={styles.error}>{error}</p>}
 
-      <div className={styles.checkRow}>
-        <span className={styles.dmsLockedBadge}>✓ Always On</span>
-        <span>
-          Dead Man's Switch is enabled by default for every will and cannot be disabled — it's what protects your
-          assets if you become unreachable.
-        </span>
-      </div>
-
       <label className={styles.label}>Check-in Interval</label>
-      <select className={styles.input} value={checkInDays} onChange={(e) => setCheckInDays(Number(e.target.value))}>
-        {[15, 30, 60, 90].map((d) => (
+      <select className={styles.input} value={intervalChoice} onChange={(e) => setIntervalChoice(e.target.value)}>
+        {INTERVAL_PRESETS.map((d) => (
           <option key={d} value={d}>
-            {d} Days
+            {d === 1 ? "Every day" : `Every ${d} days`}
           </option>
         ))}
+        <option value="custom">Custom...</option>
       </select>
+      {intervalChoice === "custom" && (
+        <input
+          className={styles.input}
+          type="number"
+          min={1}
+          max={3650}
+          value={customDays}
+          onChange={(e) => setCustomDays(e.target.value)}
+          placeholder="Number of days (1 - 3650)"
+        />
+      )}
 
-      <label className={styles.label}>Reminder Before Due Date</label>
-      <select className={styles.input} value={reminderDays} onChange={(e) => setReminderDays(Number(e.target.value))}>
-        {[1, 3, 7].map((d) => (
-          <option key={d} value={d}>
-            {d} Days
-          </option>
-        ))}
-      </select>
+      <label className={styles.label}>Reminder Before Due Date (days)</label>
+      <input className={styles.input} type="number" min={0} value={reminderDays} onChange={(e) => setReminderDays(e.target.value)} />
 
       <label className={styles.label}>Maximum Missed Check-ins</label>
-      <select className={styles.input} value={maxMissed} onChange={(e) => setMaxMissed(Number(e.target.value))}>
-        {[1, 2, 3].map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
+      <input className={styles.input} type="number" min={1} max={100} value={maxMissed} onChange={(e) => setMaxMissed(e.target.value)} />
 
       <p className={styles.infoNote}>
-        ℹ Missing the configured check-ins will notify the Executor and trigger the verification process. DMS does not
-        authorize asset handover on its own.
+        ℹ You choose how often you check in. After the maximum number of missed check-ins your Executor is asked to
+        verify the situation. DMS does not authorize asset handover on its own.
       </p>
 
       <div className={styles.actions}>
@@ -690,6 +732,7 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
         {(will.assets || []).map((a) => (
           <p key={a.assetId} className={styles.reviewLine}>
             {assetName(a.assetId)} → {a.beneficiary?.fullName || "—"}
+            {a.beneficiary?.relationship ? ` (${a.beneficiary.relationship})` : ""}
           </p>
         ))}
       </div>
@@ -697,14 +740,14 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
       <div className={styles.reviewBlock}>
         <p className={styles.reviewLabel}>Executor</p>
         <p className={styles.reviewLine}>
-          {will.executor?.name} · Service Fee: {will.executor?.fee?.toLocaleString("vi-VN")} VND
+          {will.executor?.name || "—"}
         </p>
       </div>
 
       <div className={styles.reviewBlock}>
         <p className={styles.reviewLabel}>Dead Man's Switch</p>
         <p className={styles.reviewLine}>
-          {will.dms?.enabled ? "Enabled" : "Disabled"} · Check-in every {will.dms?.checkInDays} days · Max missed{" "}
+          {will.dms?.enabled ? "Enabled" : "Disabled"} · Check-in every {will.dms?.checkInDays} days · Remind {will.dms?.reminderDays} days before · Max missed{" "}
           {will.dms?.maxMissed}
         </p>
       </div>
@@ -733,7 +776,6 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
             <h3 className={styles.modalTitle}>Confirm Will Submission</h3>
             {submitError && <p className={styles.error} role="alert">{submitError}</p>}
             <p className={styles.reviewLine}>Executor: {will.executor?.name}</p>
-            <p className={styles.reviewLine}>Service Fee: {will.executor?.fee?.toLocaleString("vi-VN")} VND</p>
             <p className={styles.hint}>The will will be sent to the assigned Executor for acceptance. Payment integration is not available yet.</p>
             <div className={styles.actions}>
               <button className={styles.secondaryBtn} onClick={() => setShowPayment(false)}>

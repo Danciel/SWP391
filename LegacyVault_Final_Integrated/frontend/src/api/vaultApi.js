@@ -18,7 +18,8 @@ export const deleteAsset=async(id)=>r(`/asset-maintenance/${id}`,"DELETE");
 const assetBody=(a,editing=false)=>{
  const assetType=TYPE_CODES[a.type]||a.type;
  const provider=assetType==="ACCOUNT" ? (a.accountType||"GMAIL").toUpperCase() : assetType;
- const secretData=assetType==="DOCUMENT"||assetType==="OTHER" ? {content:a.content||a.description||a.name} : {username:a.username||"",password:a.password||""};
+ const fileSecret=a.file?.data?{fileName:a.file.name,fileType:a.file.type||"application/octet-stream",fileSize:String(a.file.size||0),fileData:a.file.data}:{};
+ const secretData=assetType==="DOCUMENT"||assetType==="OTHER" ? {content:a.content||a.description||a.name,...fileSecret} : {username:a.username||"",password:a.password||"",...fileSecret};
  return {name:a.name,assetType,description:a.description||"",provider,secretData:editing && !a.username && !a.password ? null : secretData};
 };
 export const addAsset=async(userId,a)=>mapAsset(await r("/assets/validated","POST",assetBody(a)));

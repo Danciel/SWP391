@@ -4,31 +4,40 @@ import { useAuth } from "../../context/AuthContext";
 import {
   getWill,
   getAssets,
-  updateWillOverview,
-  updateWillBeneficiary,
-  changeWillExecutor,
-  updateWillDms,
   checkInDms,
   cancelDeathHandover,
   requestImmediateHandover,
   getExecutors,
 } from "../../api/vaultApi";
+import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
+import { dmsMessage, dmsState, fmtDate } from "../../utils/willHelpers";
 import styles from "./WillDetails.module.css";
 
-const TABS = ["Overview", "Assets", "Beneficiaries", "Executor", "DMS"];
+// LV-17: Overview / Assets / Beneficiaries / Executor / DMS are shown together on one page.
+// Backend allows editing a will only while it is DRAFT (WillService.EnsureDraft), so editing lives in the
+// create-will wizard; this page is the read view plus the actions the backend allows after submit (check-in).
+
+const EXECUTOR_STATUS_LABEL = {
+  PENDING: "Waiting for the executor to accept",
+  ACCEPTED: "Accepted",
+  DECLINED: "Declined",
+};
 
 export default function WillDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const [will, setWill] = useState(null);
   const [assets, setAssets] = useState([]);
-  const [executors,setExecutors] = useState([]);
-  const [tab, setTab] = useState("Overview");
+  const [executors, setExecutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [openAssets, setOpenAssets] = useState(new Set());
   const [confirmingHandover, setConfirmingHandover] = useState(false);
   const [handoverBusy, setHandoverBusy] = useState(false);
   const [handoverError, setHandoverError] = useState("");
+  const [checkInBusy, setCheckInBusy] = useState(false);
+  const [checkInError, setCheckInError] = useState("");
+  const [checkInDone, setCheckInDone] = useState("");
 
   useEffect(() => {
     load();
@@ -41,7 +50,7 @@ export default function WillDetails() {
       const [willData, assetsData] = await Promise.all([getWill(user?.id, id), getAssets(user?.id)]);
       setWill(willData);
       setAssets(assetsData);
-      getExecutors().then(setExecutors).catch(console.error);
+      getExecutors().then(setExecutors).catch(() => setExecutors([]));
     } catch (err) {
       setLoadError(err.message || "Could not load will details");
     } finally {
@@ -53,8 +62,55 @@ export default function WillDetails() {
   if (loadError) return <p role="alert" className={styles.muted}>{loadError}</p>;
   if (!will) return <p className={styles.muted}>Will not available.</p>;
 
-  function assetName(assetId) {
-    return assets.find((a) => a.id === assetId)?.name || "Asset";
+  const isDraft = will.status === "DRAFT";
+  const dms = dmsState(will.dms);
+  const banner = dmsMessage(dms);
+  const executorProfile = will.executor ? executors.find((e) => e.id === will.executor.id) : null;
+  const assetById = (assetId) => assets.find((a) => a.id === assetId);
+
+  // Beneficiaries assigned to one will-asset (backend allows more than one).
+  function beneficiariesFor(entry) {
+    return (will.assignments || [])
+      .filter((a) => a.willAssetId === entry.willAssetId)
+      .map((a) => (will.beneficiaries || []).find((b) => b.id === a.beneficiaryDesignationId))
+      .filter(Boolean);
+  }
+
+  function toggleAsset(key) {
+    setOpenAssets((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  async function handleCheckIn() {
+    setCheckInBusy(true);
+    setCheckInError("");
+    setCheckInDone("");
+    try {
+      const updated = await checkInDms(user?.id, will.id);
+      setWill(updated);
+      setCheckInDone(
+        updated.dms?.nextCheckInAt
+          ? `Check-in recorded. Your next check-in is due on ${fmtDate(updated.dms.nextCheckInAt)}.`
+          : "Check-in recorded."
+      );
+    } catch (err) {
+      setCheckInError(err.message || "Could not check in");
+    } finally {
+      setCheckInBusy(false);
+    }
+  }
+
+  async function handleCancelHandover() {
+    setCheckInError("");
+    try {
+      setWill(await cancelDeathHandover(user?.id, will.id));
+    } catch (err) {
+      setCheckInError(err.message || "Could not cancel handover");
+    }
   }
 
   async function handleConfirmImmediateHandover() {
@@ -81,26 +137,33 @@ export default function WillDetails() {
         ← Back to My Wills
       </Link>
 
-      {will.status === "PENDING_HANDOVER_REVIEW" && (
-        <div className={styles.pendingNote}>
-          Immediate handover request sent to {will.executor?.name || "your executor"}. Waiting for them
-          to confirm the beneficiary(ies) and respond
-          {will.handover?.deadlineAt ? ` by ${new Date(will.handover.deadlineAt).toLocaleString("en-US")}` : ""}.
+      {banner && (
+        <div className={banner.tone === "danger" ? styles.bannerDanger : styles.bannerWarn} role="alert">
+          {banner.text}{" "}
+          <button className={styles.linkBtn} disabled={checkInBusy} onClick={handleCheckIn}>
+            Check in now
+          </button>
         </div>
       )}
 
-      {will.status === "HANDED_OVER" && (
+      {isDraft && (
         <div className={styles.pendingNote}>
-          This will's assets have been handed over to your executor and delivered to the assigned
-          beneficiary(ies).
+          This will is still a draft.{" "}
+          <Link to={`/dashboard/create-will?willId=${will.id}`} className={styles.linkBtn}>
+            Continue editing
+          </Link>
         </div>
       )}
 
-      {will.status === "ACTIVE" && will.handover?.decision === "DECLINED" && (
+      {will.status === "PENDING_EXECUTOR" && will.executor?.status === "PENDING" && (
+        <div className={styles.pendingNote}>
+          Waiting for {will.executor?.name || "the assigned executor"} to accept the executor request.
+        </div>
+      )}
+
+      {will.status === "PENDING_EXECUTOR" && will.executor?.status === "DECLINED" && (
         <div className={styles.declineNote}>
-          Your executor declined the immediate handover request
-          {will.handover?.respondedAt ? ` on ${new Date(will.handover.respondedAt).toLocaleDateString()}` : ""}.
-          You can review the beneficiary details and try again below.
+          {will.executor?.name || "The executor"} declined this will. You can delete it from My Wills and create a new one.
         </div>
       )}
 
@@ -118,16 +181,11 @@ export default function WillDetails() {
             <h2 className={styles.modalTitle}>Are you sure?</h2>
             <p className={styles.itemMeta}>
               This will send "{will.name}" to {will.executor?.name || "your executor"} to hand its assets
-              over now, while you're still alive. Your executor will confirm the beneficiary details before
-              anything is delivered.
+              over now, while you're still alive.
             </p>
             {handoverError && <p className={styles.errorText}>{handoverError}</p>}
             <div className={styles.actions}>
-              <button
-                className={styles.secondaryBtn}
-                disabled={handoverBusy}
-                onClick={() => setConfirmingHandover(false)}
-              >
+              <button className={styles.secondaryBtn} disabled={handoverBusy} onClick={() => setConfirmingHandover(false)}>
                 Cancel
               </button>
               <button className={styles.primaryBtn} disabled={handoverBusy} onClick={handleConfirmImmediateHandover}>
@@ -138,317 +196,176 @@ export default function WillDetails() {
         </div>
       )}
 
-      {will.status === "PENDING_EXECUTOR" || will.status === "PENDING_EXECUTOR_ACCEPTANCE" && (
-        <div className={styles.pendingNote}>
-          Waiting for {will.executor?.name || "the assigned executor"} to accept the executor request.
-          {will.hireRequest?.deadlineAt
-            ? ` They have until ${new Date(will.hireRequest.deadlineAt).toLocaleString("en-US")} to respond.`
-            : ""}
-        </div>
-      )}
+      {/* Overview */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Overview</h2>
+        <Row label="Will Name" value={will.name} />
+        <Row label="Description" value={will.description || "—"} />
+        <Row label="Status" value={will.status.replaceAll("_", " ")} />
+        <Row label="Created Date" value={fmtDate(will.createdAt)} />
+        {will.submittedAt && <Row label="Submitted" value={fmtDate(will.submittedAt)} />}
+        {will.activatedAt && <Row label="Activated" value={fmtDate(will.activatedAt)} />}
+        <Row label="Assets" value={(will.assets || []).length} />
+        <Row label="Beneficiaries" value={(will.beneficiaries || []).length} />
+      </section>
 
-      <div className={styles.tabRow}>
-        {TABS.map((t) => (
-          <button key={t} className={tab === t ? styles.tabActive : styles.tab} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
-      </div>
+      {/* Assets: each row expands to the recipients and the executor */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Assets</h2>
+        {(will.assets || []).length === 0 && <p className={styles.itemMeta}>No assets in this will.</p>}
+        {(will.assets || []).map((entry) => {
+          const key = entry.willAssetId || entry.assetId;
+          const full = assetById(entry.assetId);
+          const recipients = beneficiariesFor(entry);
+          const open = openAssets.has(key);
+          return (
+            <div key={key} className={styles.assetBlock}>
+              <button type="button" className={styles.assetHead} aria-expanded={open} onClick={() => toggleAsset(key)}>
+                <div>
+                  <p className={styles.itemTitle}>{full?.name || entry.assetName || "Asset"}</p>
+                  <p className={styles.itemMeta}>
+                    {full?.type || entry.assetType}
+                    {full?.type === "Online Account" && full.accountType ? ` · ${providerLabel(full.accountType)}` : ""}
+                    {full ? ` · ${verificationInfo(full).label}` : ""}
+                  </p>
+                </div>
+                <div>
+                  <p className={styles.itemMeta}>Assigned To</p>
+                  <p className={styles.itemTitle}>{recipients.map((b) => b.fullName).join(", ") || "—"}</p>
+                </div>
+                <span className={styles.chev}>{open ? "▲ Hide" : "▼ Details"}</span>
+              </button>
+              {open && (
+                <div className={styles.assetBody}>
+                  <p className={styles.itemTitle}>Recipients</p>
+                  {recipients.length === 0 && <p className={styles.itemMeta}>No recipient assigned.</p>}
+                  {recipients.map((b) => (
+                    <p key={b.id} className={styles.itemMeta}>
+                      {b.fullName} · {b.email}
+                      {b.phone ? ` · ${b.phone}` : ""} · {b.relationship || "Relationship not set"} ·{" "}
+                      {b.beneficiaryAccountId ? "Has a LegacyVault account" : "No account yet"}
+                    </p>
+                  ))}
+                  <p className={styles.itemTitle} style={{ marginTop: 10 }}>Executor</p>
+                  <p className={styles.itemMeta}>
+                    {will.executor
+                      ? `${will.executor.name} · ${EXECUTOR_STATUS_LABEL[will.executor.status] || will.executor.status}`
+                      : "No executor assigned."}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <p className={styles.hintSmall}>Assets are locked to this will once submitted; add new assets in a new will.</p>
+      </section>
 
-      <div className={styles.card}>
-        {tab === "Overview" && <OverviewTab will={will} userId={user?.id} onUpdated={setWill} />}
-        {tab === "Assets" && <AssetsTab will={will} assetName={assetName} />}
-        {tab === "Beneficiaries" && (
-          <BeneficiariesTab will={will} assets={assets} userId={user?.id} onUpdated={setWill} />
+      {/* Beneficiaries */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Beneficiaries</h2>
+        {(will.beneficiaries || []).length === 0 && <p className={styles.itemMeta}>No beneficiaries yet.</p>}
+        {(will.beneficiaries || []).map((b) => {
+          const count = (will.assignments || []).filter((a) => a.beneficiaryDesignationId === b.id).length;
+          return (
+            <div key={b.id} className={styles.assetRow}>
+              <div>
+                <p className={styles.itemTitle}>{b.fullName}</p>
+                <p className={styles.itemMeta}>
+                  {b.email}
+                  {b.phone ? ` · ${b.phone}` : ""}
+                </p>
+                <p className={styles.itemMeta}>
+                  Relationship: {b.relationship || "—"} · {b.beneficiaryAccountId ? "Has a LegacyVault account" : "No account yet"}
+                </p>
+              </div>
+              <div>
+                <p className={styles.itemMeta}>Status</p>
+                <p className={styles.itemTitle}>{(b.status || "").replaceAll("_", " ") || "—"}</p>
+                <p className={styles.itemMeta}>{count} asset{count === 1 ? "" : "s"}</p>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* Executor */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Executor</h2>
+        {will.executor ? (
+          <>
+            <Row label="Name" value={will.executor.name || "—"} />
+            <Row label="Assignment Status" value={EXECUTOR_STATUS_LABEL[will.executor.status] || will.executor.status} />
+            {executorProfile && (
+              <>
+                <Row label="Introduction" value={executorProfile.specialization || "—"} />
+                <Row label="Experience" value={`${executorProfile.experienceYears} years`} />
+                <Row label="Completed Cases" value={executorProfile.completedCases} />
+                <Row label="Rating" value={`⭐ ${Number(executorProfile.rating || 0).toFixed(1)}`} />
+              </>
+            )}
+          </>
+        ) : (
+          <p className={styles.itemMeta}>No executor assigned.</p>
         )}
-        {tab === "Executor" && <ExecutorTab executors={executors} will={will} userId={user?.id} onUpdated={setWill} />}
-        {tab === "DMS" && <DmsTab will={will} userId={user?.id} onUpdated={setWill} />}
-      </div>
+      </section>
+
+      {/* DMS */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Dead Man's Switch</h2>
+        {!will.dms ? (
+          <p className={styles.itemMeta}>Not configured yet.</p>
+        ) : (
+          <>
+            <Row label="Status" value={will.dms.enabled ? will.dms.status : "Disabled"} />
+            <Row label="Check-in Interval" value={`Every ${will.dms.checkInDays} day${will.dms.checkInDays === 1 ? "" : "s"}`} />
+            <Row label="Reminder Before Due Date" value={`${will.dms.reminderDays} day${will.dms.reminderDays === 1 ? "" : "s"}`} />
+            <Row label="Maximum Missed Check-ins" value={will.dms.maxMissed} />
+            <Row label="Missed Check-ins" value={`${will.dms.missedCount ?? 0} / ${will.dms.maxMissed}`} />
+            <Row label="Last Check-in" value={fmtDate(will.dms.lastCheckIn)} />
+            <Row label="Next Check-in Due" value={fmtDate(will.dms.nextCheckInAt)} />
+
+            {(will.dms.missedCount ?? 0) > 0 && (
+              <div className={styles.bannerDanger}>
+                Miss {will.dms.missedCount} of {will.dms.maxMissed}. When the maximum is reached your executor is asked to verify.
+              </div>
+            )}
+
+            {will.status === "PENDING_VERIFICATION" && (
+              <div className={styles.pendingNote}>
+                Your Dead Man's Switch has triggered and a handover case is open with your Executor.
+                <div className={styles.demoRow}>
+                  <button className={styles.primaryBtn} onClick={handleCancelHandover}>
+                    I'm Still Active / Cancel Handover
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {checkInError && <p role="alert" className={styles.errorText}>{checkInError}</p>}
+            {checkInDone && <p role="status" className={styles.successText}>{checkInDone}</p>}
+
+            <div className={styles.actions}>
+              <button
+                className={styles.primaryBtn}
+                onClick={handleCheckIn}
+                disabled={checkInBusy || !will.dms.enabled || !dms.active || will.status === "PENDING_VERIFICATION"}
+                title={!dms.active ? "Check-in is available once the will is submitted and the DMS is active." : undefined}
+              >
+                {checkInBusy ? "Checking in..." : "Check In Now"}
+              </button>
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }
 
-function OverviewTab({ will, userId, onUpdated }) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(will.name);
-  const [description, setDescription] = useState(will.description);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    const updated = await updateWillOverview(userId, will.id, { name, description });
-    onUpdated(updated);
-    setSaving(false);
-    setEditing(false);
-  }
-
-  return (
-    <div>
-      {editing ? (
-        <>
-          <label className={styles.label}>Will Name</label>
-          <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
-          <label className={styles.label}>Description</label>
-          <textarea className={styles.textarea} value={description} onChange={(e) => setDescription(e.target.value)} />
-          <div className={styles.actions}>
-            <button className={styles.secondaryBtn} onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-            <button className={styles.primaryBtn} disabled={saving} onClick={handleSave}>
-              Save Changes
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <Row label="Will Name" value={will.name} onEdit={() => setEditing(true)} />
-          <Row label="Description" value={will.description || "—"} />
-          <Row label="Status" value={will.status.replaceAll("_", " ")} />
-          <Row label="Created Date" value={new Date(will.createdAt).toLocaleDateString()} />
-          <Row label="Assets" value={(will.assets || []).length} />
-          <Row label="Beneficiaries" value={(will.beneficiaries || []).length} />
-          {will.executor && <Row label="Executor" value={will.executor.name} />}
-          {will.payment && will.payment.status !== "NONE" && (
-            <Row label="Payment" value={`${will.payment.fee?.toLocaleString("vi-VN")} VND · ${will.payment.status}`} />
-          )}
-          {will.dms?.enabled && <Row label="Dead Man's Switch" value={will.dms.status} />}
-        </>
-      )}
-    </div>
-  );
-}
-
-function Row({ label, value, onEdit }) {
+function Row({ label, value }) {
   return (
     <div className={styles.row}>
       <span className={styles.rowLabel}>{label}</span>
-      <span className={styles.rowValue}>
-        {value} {onEdit && <button className={styles.linkBtn} onClick={onEdit}>Edit</button>}
-      </span>
-    </div>
-  );
-}
-
-function AssetsTab({ will, assetName }) {
-  return (
-    <div>
-      {(will.assets || []).map((a) => (
-        <div key={a.assetId} className={styles.assetRow}>
-          <div>
-            <p className={styles.itemTitle}>{assetName(a.assetId)}</p>
-            <p className={styles.itemMeta}>Status: Secured 🔒</p>
-          </div>
-          <div>
-            <p className={styles.itemMeta}>Assigned To</p>
-            <p className={styles.itemTitle}>{a.beneficiary?.fullName || "—"}</p>
-          </div>
-        </div>
-      ))}
-      <p className={styles.hintSmall}>Assets are locked to this will once submitted; add new assets in a new will.</p>
-    </div>
-  );
-}
-
-function BeneficiariesTab({ will, assets, userId, onUpdated }) {
-  const [editingAssetId, setEditingAssetId] = useState(null);
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "", relationship: "Daughter" });
-  const [saving, setSaving] = useState(false);
-
-  function assetName(assetId) {
-    return assets.find((a) => a.id === assetId)?.name || "Asset";
-  }
-
-  function startEdit(entry) {
-    setEditingAssetId(entry.assetId);
-    setForm(entry.beneficiary || { fullName: "", email: "", phone: "", relationship: "Daughter" });
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    const updated = await updateWillBeneficiary(userId, will.id, editingAssetId, form);
-    onUpdated(updated);
-    setSaving(false);
-    setEditingAssetId(null);
-  }
-
-  return (
-    <div>
-      {(will.assets || []).map((entry) => (
-        <div key={entry.assetId} className={styles.assetRow}>
-          {editingAssetId === entry.assetId ? (
-            <div className={styles.editForm}>
-              <label className={styles.label}>Full Name</label>
-              <input className={styles.input} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-              <label className={styles.label}>Email</label>
-              <input className={styles.input} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <label className={styles.label}>Phone</label>
-              <input className={styles.input} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <label className={styles.label}>Relationship</label>
-              <input className={styles.input} value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} />
-              <div className={styles.actions}>
-                <button className={styles.secondaryBtn} onClick={() => setEditingAssetId(null)}>
-                  Cancel
-                </button>
-                <button className={styles.primaryBtn} disabled={saving} onClick={handleSave}>
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div>
-                <p className={styles.itemTitle}>{assetName(entry.assetId)}</p>
-                <p className={styles.itemMeta}>{entry.beneficiary?.fullName}</p>
-                <p className={styles.itemMeta}>
-                  {entry.beneficiary?.email} · {entry.beneficiary?.relationship}
-                </p>
-              </div>
-              <button className={styles.linkBtn} onClick={() => startEdit(entry)}>
-                Edit
-              </button>
-            </>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ExecutorTab({ will, userId, onUpdated  , executors }) {
-  const [changing, setChanging] = useState(false);
-
-  async function handleChange(executor) {
-    const updated = await changeWillExecutor(userId, will.id, executor);
-    onUpdated(updated);
-    setChanging(false);
-  }
-
-  if (changing) {
-    return (
-      <div>
-        <p className={styles.hintSmall}>Choose a replacement executor for this will.</p>
-        {executors.map((ex) => (
-          <div key={ex.id} className={styles.assetRow}>
-            <div>
-              <p className={styles.itemTitle}>{ex.name}</p>
-              <p className={styles.itemMeta}>
-                {ex.specialization}{ex.fee != null ? ` · ${ex.fee.toLocaleString("vi-VN")} VND` : ""}
-              </p>
-            </div>
-            <button className={styles.primaryBtn} onClick={() => handleChange(ex)}>
-              Select
-            </button>
-          </div>
-        ))}
-        <button className={styles.secondaryBtn} onClick={() => setChanging(false)}>
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <Row label="Name" value={will.executor?.name || "—"} />
-      <Row label="Specialization" value={will.executor?.specialization || "—"} />
-      <Row label="License" value={will.executor?.license || "—"} />
-      <Row label="Rating" value={will.executor ? `⭐ ${will.executor.rating}` : "—"} />
-      <Row label="Service Fee" value={will.executor?.fee != null ? `${will.executor.fee.toLocaleString("vi-VN")} VND` : "—"} />
-      <Row label="Assignment Status" value={will.status === "ACTIVE" ? "Active ✓" : will.status.replaceAll("_", " ")} />
-      <Row label="Payment Status" value={will.payment?.status || "—"} />
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={() => setChanging(true)}>
-          Change Executor
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DmsTab({ will, userId, onUpdated }) {
-  const [editing, setEditing] = useState(false);
-  const [checkInDays, setCheckInDays] = useState(will.dms?.checkInDays ?? 30);
-  const [reminderDays, setReminderDays] = useState(will.dms?.reminderDays ?? 3);
-  const [maxMissed, setMaxMissed] = useState(will.dms?.maxMissed ?? 2);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    const updated = await updateWillDms(userId, will.id, { checkInDays, reminderDays, maxMissed });
-    onUpdated(updated);
-    setSaving(false);
-    setEditing(false);
-  }
-
-  async function handleCheckIn() {
-    const updated = await checkInDms(userId, will.id);
-    onUpdated(updated);
-  }
-
-  async function handleCancelHandover() {
-    const updated = await cancelDeathHandover(userId, will.id);
-    onUpdated(updated);
-  }
-
-  if (editing) {
-    return (
-      <div>
-        <label className={styles.label}>Check-in Interval (days)</label>
-        <input className={styles.input} type="number" value={checkInDays} onChange={(e) => setCheckInDays(Number(e.target.value))} />
-        <label className={styles.label}>Reminder Before Due (days)</label>
-        <input className={styles.input} type="number" value={reminderDays} onChange={(e) => setReminderDays(Number(e.target.value))} />
-        <label className={styles.label}>Maximum Missed Check-ins</label>
-        <input className={styles.input} type="number" value={maxMissed} onChange={(e) => setMaxMissed(Number(e.target.value))} />
-        <div className={styles.actions}>
-          <button className={styles.secondaryBtn} onClick={() => setEditing(false)}>
-            Cancel
-          </button>
-          <button className={styles.primaryBtn} disabled={saving} onClick={handleSave}>
-            Save Changes
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <Row label="Status" value={will.dms?.enabled ? "Active" : "Disabled"} />
-      <Row label="Check-in Interval" value={`Every ${will.dms?.checkInDays ?? "—"} Days`} />
-      <Row label="Reminder Before Due Date" value={`${will.dms?.reminderDays ?? "—"} Days`} />
-      <Row label="Maximum Missed Check-ins" value={will.dms?.maxMissed ?? "—"} />
-      <Row label="Missed Check-ins" value={`${will.dms?.missedCount ?? 0}/${will.dms?.maxMissed ?? "—"}`} />
-      <Row label="Last Check-in" value={will.dms?.lastCheckIn ? new Date(will.dms?.lastCheckIn).toLocaleDateString() : "—"} />
-
-      {will.status === "PENDING_VERIFICATION" && (
-        <div className={styles.pendingNote}>
-          Your Dead Man's Switch has triggered and a handover case is now open with your Executor.
-          If this is a mistake, you can cancel it below.
-          <div className={styles.demoRow}>
-            <button className={styles.primaryBtn} onClick={handleCancelHandover}>
-              I'm Still Active / Cancel Handover
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.actions}>
-        <button
-          className={styles.secondaryBtn}
-          onClick={handleCheckIn}
-          disabled={will.status === "PENDING_VERIFICATION"}
-          title={
-            will.status === "PENDING_VERIFICATION"
-              ? "Use \"I'm Still Active / Cancel Handover\" above to resolve the open case first"
-              : undefined
-          }
-        >
-          Check In Now
-        </button>
-        <button className={styles.primaryBtn} onClick={() => setEditing(true)}>
-          Edit Settings
-        </button>
-      </div>
+      <span className={styles.rowValue}>{value}</span>
     </div>
   );
 }

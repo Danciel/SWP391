@@ -1,26 +1,24 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getAssets, addAsset, updateAsset, getAssetSecret, deleteAsset } from "../../api/vaultApi";
+import { getAssets, addAsset, updateAsset, getAssetSecret, deleteAsset, getWills } from "../../api/vaultApi";
+import { verifyAsset } from "../../api/assetVerifyApi";
 import { ApiError } from "../../api/client";
+import {
+  ACCOUNT_PROVIDERS,
+  ENABLED_ASSET_TYPES,
+  isVerifiable,
+  providerLabel,
+  verificationInfo,
+} from "../../utils/assetCatalog";
+import { buildAssetLocks } from "../../utils/willHelpers";
+import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
+import { MAX_FILE_BYTES, formatBytes, readAssetFile, downloadAssetFile, assetFileFromSecret } from "../../utils/assetFile";
+import { useBackdropClose } from "../../utils/useBackdropClose";
 import styles from "./Assets.module.css";
 
-export const ASSET_TYPES = ["Document", "Crypto Wallet", "Online Account", "Bank Account", "Cloud Storage", "Other"];
-export const ACCOUNT_TYPES = [
-  "Facebook",
-  "Instagram",
-  "TikTok",
-  "X (Twitter)",
-  "YouTube",
-  "LinkedIn",
-  "Zalo",
-  "Telegram",
-  "Gmail",
-  "GitHub",
-  "Dropbox",
-  "Microsoft",
-  "Binance",
-  "Other",
-];
+// Re-exported so CreateWill keeps working with the same import.
+export const ASSET_TYPES = ENABLED_ASSET_TYPES;
+export const ACCOUNT_TYPES = ACCOUNT_PROVIDERS;
 
 export const EMPTY_FORM = {
   name: "",
@@ -29,6 +27,7 @@ export const EMPTY_FORM = {
   description: "",
   username: "",
   password: "",
+  file: null,
 };
 
 export function AssetFields({ form, setForm }) {
@@ -49,12 +48,18 @@ export function AssetFields({ form, setForm }) {
         value={form.type}
         onChange={(e) => setForm({ ...form, type: e.target.value })}
       >
-        {ASSET_TYPES.map((t) => (
+        {(ASSET_TYPES.includes(form.type) ? ASSET_TYPES : [form.type, ...ASSET_TYPES]).map((t) => (
           <option key={t} value={t}>
             {t}
           </option>
         ))}
       </select>
+
+      {!isVerifiable(form.type) && (
+        <p className={styles.assetDesc} style={{ margin: "-6px 0 14px" }}>
+          This type is stored as content only and cannot be verified with a provider.
+        </p>
+      )}
 
       {form.type === "Online Account" && (
         <>
@@ -97,7 +102,7 @@ export function AssetFields({ form, setForm }) {
           type={showPassword ? "text" : "password"}
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-          placeholder="Optional"
+          placeholder="Required for account verification"
           autoComplete="new-password"
         />
         <button
@@ -112,6 +117,67 @@ export function AssetFields({ form, setForm }) {
   );
 }
 
+// True when the user has typed/attached something worth protecting from an accidental close.
+export function isAssetFormDirty(form) {
+  return Boolean(
+    form.name.trim() || form.description.trim() || form.username || form.password || form.file
+  );
+}
+
+export function AssetFileField({ form, setForm }) {
+  const inputRef = useRef(null);
+  const [fileError, setFileError] = useState("");
+  const [reading, setReading] = useState(false);
+
+  async function handleChange(e) {
+    const picked = e.target.files?.[0];
+    e.target.value = ""; // allow choosing the same file again
+    if (!picked) return;
+    setFileError("");
+    setReading(true);
+    try {
+      const file = await readAssetFile(picked);
+      setForm((prev) => ({ ...prev, file }));
+    } catch (err) {
+      setFileError(err.message || "Could not read this file");
+    } finally {
+      setReading(false);
+    }
+  }
+
+  return (
+    <>
+      <label className={styles.label}>Upload File / Asset Information</label>
+      <input ref={inputRef} type="file" style={{ display: "none" }} onChange={handleChange} />
+      {form.file ? (
+        <div className={styles.fileRow}>
+          <span className={styles.fileName} title={form.file.name}>
+            {form.file.name} <span className={styles.fileMeta}>({formatBytes(form.file.size)})</span>
+          </span>
+          <button type="button" className={styles.toggleBtn} onClick={() => inputRef.current?.click()}>
+            Replace
+          </button>
+          <button
+            type="button"
+            className={styles.toggleBtn}
+            onClick={() => setForm((prev) => ({ ...prev, file: null }))}
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <button type="button" className={styles.fileBtn} disabled={reading} onClick={() => inputRef.current?.click()}>
+          {reading ? "Reading file..." : "Choose file"}
+        </button>
+      )}
+      <p className={styles.assetDesc} style={{ margin: "0 0 14px" }}>
+        Optional. Max {formatBytes(MAX_FILE_BYTES)}. The file is encrypted together with this asset.
+      </p>
+      {fileError && <p className={styles.error}>{fileError}</p>}
+    </>
+  );
+}
+
 export default function Assets() {
   const { user } = useAuth();
   const [assets, setAssets] = useState([]);
@@ -120,6 +186,7 @@ export default function Assets() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showDiscard, setShowDiscard] = useState(false);
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [detailMode, setDetailMode] = useState("view");
@@ -132,6 +199,9 @@ export default function Assets() {
   const [secretLoading, setSecretLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [locks, setLocks] = useState(new Map());
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
 
   useEffect(() => {
     load();
@@ -142,6 +212,8 @@ export default function Assets() {
     setError("");
     try {
       setAssets(await getAssets(user?.id));
+      // LV-18: which assets already sit in a will (shown as a lock). Failure must not block the list.
+      getWills().then((w) => setLocks(buildAssetLocks(w))).catch(() => setLocks(new Map()));
     } catch (err) {
       setAssets([]);
       setError(err.message || "Could not load assets");
@@ -153,8 +225,34 @@ export default function Assets() {
   function openModal() {
     setForm(EMPTY_FORM);
     setError("");
+    setShowDiscard(false);
     setShowModal(true);
   }
+
+  // Backdrop click / Esc: ask first if the user already entered something.
+  function requestCloseModal() {
+    if (saving) return;
+    if (isAssetFormDirty(form)) setShowDiscard(true);
+    else setShowModal(false);
+  }
+
+  function confirmDiscard() {
+    setShowDiscard(false);
+    setShowModal(false);
+    setForm(EMPTY_FORM);
+    setError("");
+  }
+
+  const addBackdrop = useBackdropClose(requestCloseModal);
+
+  useEffect(() => {
+    if (!showModal) return undefined;
+    function onKey(e) {
+      if (e.key === "Escape" && !showDiscard) requestCloseModal();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -187,17 +285,20 @@ export default function Assets() {
     setDetailForm({
       name: asset.name,
       type: asset.type,
-      accountType: asset.accountType || ACCOUNT_TYPES[0],
+      accountType: asset.type === "Online Account" ? providerLabel(asset.accountType) || ACCOUNT_TYPES[0] : ACCOUNT_TYPES[0],
       description: asset.description || "",
-      username: asset.username || "",
-      password: asset.password || "",
+      username: "",
+      password: "",
+      file: null,
     });
+    setVerifyResult(null);
     setDetailError("");
     try {
       const revealed = await getAssetSecret(asset.id);
       if (requestId !== secretRequest.current) return;
       setSecret(revealed);
-      setDetailForm(prev => ({...prev, username: revealed.username || "", password: ""}));
+      // Prefill both fields: saving with an empty password would overwrite the stored one.
+      setDetailForm(prev => ({...prev, username: revealed.username || "", password: revealed.password || "", file: assetFileFromSecret(revealed)}));
     } catch (err) {
       if (requestId === secretRequest.current) setDetailError(err.message || "Could not load asset information");
     } finally { if (requestId === secretRequest.current) setSecretLoading(false); }
@@ -224,6 +325,22 @@ export default function Assets() {
     } catch (err) {
       setDetailError(err.message || "Cannot delete this asset. It may be linked to a Will.");
     } finally { setDeleting(false); }
+  }
+
+  async function handleVerify() {
+    setVerifying(true);
+    setVerifyResult(null);
+    setDetailError("");
+    try {
+      const result = await verifyAsset(selectedAsset.id);
+      setSelectedAsset((a) => ({ ...a, verificationStatus: result.status }));
+      setVerifyResult({ ok: result.status === "VERIFIED", text: result.message || result.status });
+      await load();
+    } catch (err) {
+      setDetailError(err.message || "Could not verify this asset");
+    } finally {
+      setVerifying(false);
+    }
   }
 
   async function handleUpdate(e) {
@@ -276,9 +393,13 @@ export default function Assets() {
                 <h3 className={styles.assetName}>{asset.name}</h3>
                 <p className={styles.assetType}>
                   Type: {asset.type}
-                  {asset.type === "Online Account" && asset.accountType ? ` · ${asset.accountType}` : ""}
+                  {asset.type === "Online Account" && asset.accountType ? ` · ${providerLabel(asset.accountType)}` : ""}
                 </p>
                 {asset.description && <p className={styles.assetDesc}>{asset.description}</p>}
+                <p className={styles.assetDesc} title={verificationInfo(asset).hint}>
+                  {verificationInfo(asset).label}
+                  {locks.has(asset.id) ? ` · 🔒 Used in will "${locks.get(asset.id).willName}"` : ""}
+                </p>
               </div>
 
             </div>
@@ -287,16 +408,13 @@ export default function Assets() {
       )}
 
       {showModal && (
-        <div className={styles.overlay} onClick={() => setShowModal(false)}>
+        <div className={styles.overlay} {...addBackdrop}>
           <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleAdd}>
             <h2 className={styles.modalTitle}>Add Asset</h2>
 
             <AssetFields form={form} setForm={setForm} />
 
-            <label className={styles.label}>Upload File / Asset Information</label>
-            <button type="button" className={styles.fileBtn} disabled title="File uploads are not supported by the backend">
-              File upload not available yet
-            </button>
+            <AssetFileField form={form} setForm={setForm} />
 
             {error && <p className={styles.error}>{error}</p>}
 
@@ -312,6 +430,10 @@ export default function Assets() {
         </div>
       )}
 
+      {showModal && showDiscard && (
+        <ConfirmDiscardDialog onConfirm={confirmDiscard} onCancel={() => setShowDiscard(false)} />
+      )}
+
       {selectedAsset && (
         <div className={styles.overlay} onClick={closeDetail}>
           {detailMode === "view" ? (
@@ -325,7 +447,7 @@ export default function Assets() {
                 <>
                   <label className={styles.label}>Account Type</label>
                   <p className={styles.assetType} style={{ marginBottom: 14 }}>
-                    {selectedAsset.accountType || "—"}
+                    {providerLabel(selectedAsset.accountType) || "—"}
                   </p>
                 </>
               )}
@@ -357,8 +479,47 @@ export default function Assets() {
                 </>
               )}
 
+              {secret?.fileData && (
+                <>
+                  <label className={styles.label}>Attached file</label>
+                  <div className={styles.fileRow} style={{ marginBottom: 14 }}>
+                    <span className={styles.fileName} title={secret.fileName}>
+                      {secret.fileName || "file"}
+                      {secret.fileSize ? <span className={styles.fileMeta}> ({formatBytes(Number(secret.fileSize))})</span> : null}
+                    </span>
+                    <button type="button" className={styles.toggleBtn} onClick={() => downloadAssetFile(secret)}>
+                      Download
+                    </button>
+                  </div>
+                </>
+              )}
+
               <label className={styles.label}>Status</label>
               <p className={styles.assetDesc} style={{ marginBottom: 14 }}>{selectedAsset.status}</p>
+
+              <label className={styles.label}>Verification</label>
+              <p className={styles.assetDesc} style={{ marginBottom: 6 }}>{verificationInfo(selectedAsset).label}</p>
+              <p className={styles.assetDesc} style={{ margin: "0 0 14px" }}>{verificationInfo(selectedAsset).hint}</p>
+              {isVerifiable(selectedAsset.type) && (
+                <>
+                  <button type="button" className={styles.toggleBtn} disabled={verifying || secretLoading} onClick={handleVerify} style={{ marginBottom: 14 }}>
+                    {verifying ? "Verifying..." : "Verify with provider"}
+                  </button>
+                  <p className={styles.assetDesc} style={{ margin: "0 0 14px" }}>
+                    Demo check: credentials are compared with the mock provider accounts, not with the real service.
+                  </p>
+                </>
+              )}
+              {verifyResult && (
+                <p role="status" className={verifyResult.ok ? styles.assetType : styles.error} style={{ marginBottom: 14 }}>
+                  {verifyResult.text}
+                </p>
+              )}
+              {locks.has(selectedAsset.id) && (
+                <p className={styles.assetDesc} style={{ marginBottom: 14 }}>
+                  🔒 Used in will "{locks.get(selectedAsset.id).willName}".
+                </p>
+              )}
 
               {detailError && <p role="alert" className={styles.error}>{detailError}</p>}
               {confirmDelete && <p role="alert" className={styles.error}>Delete this asset permanently? Only assets not used in any Will can be deleted.</p>}

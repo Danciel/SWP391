@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/vaultApi";
+import { dmsMessage, dmsState } from "../../utils/willHelpers";
 import styles from "./MyWills.module.css";
 
 const FILTERS = ["All", "Draft", "Pending", "Active"];
@@ -128,6 +129,16 @@ export default function MyWills() {
                   )}
                   {will.dms?.status && <span>DMS: {will.dms.status}</span>}
                 </div>
+                {(() => {
+                  // LV-24 / LV-26: tell the owner when a check-in is due or missed (from the DMS data the API returns).
+                  const note = will.dms ? dmsMessage(dmsState(will.dms)) : null;
+                  return note ? (
+                    <p role="alert" className={styles.errorText} style={note.tone === "warn" ? { color: "#92400e" } : undefined}>
+                      {note.text}{" "}
+                      <Link to={`/dashboard/my-wills/${will.id}`}>Open to check in</Link>
+                    </p>
+                  ) : null;
+                })()}
                 <div className={styles.cardActions}>
                   <Link
                     className={styles.viewBtn}
