@@ -45,6 +45,8 @@ function CaseBadge({ status }) {
   );
 }
 
+// --- NEW INLINE EDITABLE ROW COMPONENT ---
+function EditableAccountRow({ acc, onSave, onDelete, onToggleStatus, busyId, roleBusyId }) {
   const [form, setForm] = useState({
     fullName: acc.fullName || acc.name || "",
     email: acc.email || "",
