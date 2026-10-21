@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -16,10 +16,12 @@ import {
 import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
+import { getExecutorReviews } from "../../api/executorApi";
 import styles from "./CreateWill.module.css";
 import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
 import {useBackdropClose} from "../../utils/useBackdropClose";
+import { validateEmail } from "../../utils/validation";
 
 const STEPS = ["Information", "Assets", "Beneficiaries", "Executor", "DMS", "Review"];
 
@@ -465,6 +467,8 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [lookupError,setLookupError]=useState("");
   const [searching,setSearching]=useState(false);
   const [assigning,setAssigning]=useState(false);
+  const backdrop = useBackdropClose(onClose);
+  const newEmailError = newForm.email ? validateEmail(newForm.email) : "";
 
   function handleQueryChange(value) { setQuery(value); setFound(undefined); setLookupError(""); }
   async function handleSearch() {
@@ -482,7 +486,7 @@ function BeneficiaryModal({ onClose, onAssign }) {
   }
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} {...backdrop}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.tabRow}>
           <button
@@ -546,7 +550,8 @@ function BeneficiaryModal({ onClose, onAssign }) {
               onChange={(e) => setNewForm({ ...newForm, fullName: e.target.value })}
             />
             <label className={styles.label}>Email</label>
-            <input className={styles.input} value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
+            <input className={styles.input} type="email" value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
+            {newEmailError && <p className={styles.error} role="alert">{newEmailError}</p>}
             <label className={styles.label}>Phone Number (optional)</label>
             <input className={styles.input} value={newForm.phone} onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })} />
             <p className={styles.hint}>
@@ -566,9 +571,9 @@ function BeneficiaryModal({ onClose, onAssign }) {
               </button>
               <button
                 className={styles.primaryBtn}
-                disabled={!newForm.fullName || !newForm.email}
+                disabled={assigning || !newForm.fullName.trim() || !newForm.email || Boolean(validateEmail(newForm.email))}
                 onClick={() =>
-                  assign({ ...newForm, relationship, accountId: null })
+                  assign({ ...newForm, fullName: newForm.fullName.trim(), email: newForm.email.trim(), phone: newForm.phone.trim(), relationship, accountId: null })
                 }
               >
                 Assign
@@ -586,6 +591,21 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   const [saving, setSaving] = useState(false);
   const selected = executors.find((e) => e.id === selectedId);
   const [error,setError]=useState("");
+  const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
+
+  async function toggleReviews(executorId) {
+    if (review.id === executorId) {
+      setReview({ id: null, loading: false, items: [], message: "" });
+      return;
+    }
+    setReview({ id: executorId, loading: true, items: [], message: "" });
+    try {
+      const items = await getExecutorReviews(executorId);
+      setReview({ id: executorId, loading: false, items: items || [], message: "" });
+    } catch (err) {
+      setReview({ id: executorId, loading: false, items: [], message: "Reviews are not available yet." });
+    }
+  }
 
   async function handleNext() {
     setSaving(true);
@@ -601,7 +621,8 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
       {executors.length === 0 && <p className={styles.hint}>No executors available yet.</p>}
       <div className={styles.executorList}>
         {executors.map((ex) => (
-          <div key={ex.id} className={styles.executorCard}>
+          <Fragment key={ex.id}>
+          <div className={styles.executorCard}>
             <div>
               <h4 className={styles.beneficiaryName}>{ex.name}</h4>
               <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
@@ -609,13 +630,36 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
                 ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
               </p>
             </div>
-            <button
-              className={selectedId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
-              onClick={() => setSelectedId(ex.id)}
-            >
-              {selectedId === ex.id ? "Selected" : "Select"}
-            </button>
+            <div className={styles.actions} style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                aria-expanded={review.id === ex.id}
+                onClick={() => toggleReviews(ex.id)}
+              >
+                {review.id === ex.id ? "Hide reviews" : "View reviews"}
+              </button>
+              <button
+                className={selectedId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
+                onClick={() => setSelectedId(ex.id)}
+              >
+                {selectedId === ex.id ? "Selected" : "Select"}
+              </button>
+            </div>
           </div>
+          {review.id === ex.id && (
+            <div className={styles.hint} role="status">
+              {review.loading && "Loading reviews..."}
+              {!review.loading && review.message}
+              {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
+              {!review.loading && review.items.map((r) => (
+                <p key={r.id} className={styles.beneficiaryMeta}>
+                  ⭐ {Number(r.rating || 0).toFixed(1)}{r.reviewerName ? ` · ${r.reviewerName}` : ""} — {r.comment}
+                </p>
+              ))}
+            </div>
+          )}
+          </Fragment>
         ))}
       </div>
 
@@ -704,6 +748,7 @@ function DmsStep({ will, onSave, onNext, onBack }) {
 
 function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
   const [showPayment, setShowPayment] = useState(false);
+  const payBackdrop = useBackdropClose(() => setShowPayment(false));
   const [submitting, setSubmitting] = useState(false);
   const [submitError,setSubmitError]=useState("");
 
@@ -769,7 +814,7 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
       </div>
 
       {showPayment && (
-        <div className={styles.overlay} onClick={() => setShowPayment(false)}>
+        <div className={styles.overlay} {...payBackdrop}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>Confirm Will Submission</h3>
             {submitError && <p className={styles.error} role="alert">{submitError}</p>}

@@ -4,6 +4,9 @@ export const getExecutorDashboard=async()=>{
  const requests=await request("/executor-inbox");
  return {hireRequests:[],requests,activeWills:requests.filter(r=>r.status==="ACCEPTED"),cases:[],dmsTriggers:[],handoverRequests:[],stats:{}};
 };
+// TODO(LV-22): replace with request(`/executors/${executorId}/reviews`) once the backend exposes it.
+// Expected item shape: { id, rating, comment, createdAt, reviewerName }.
+export const getExecutorReviews=unsupported("Executor reviews");
 export const getExecutorFee=async()=>({fee:null});
 export const setExecutorFee=unsupported("Executor fee management");
 export const respondToExecutorRequest=({requestId,accept})=>request(`/executor-inbox/${requestId}/respond`,{method:"POST",body:{accept}});

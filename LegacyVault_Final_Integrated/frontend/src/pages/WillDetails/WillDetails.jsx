@@ -11,6 +11,7 @@ import {
 } from "../../api/vaultApi";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { dmsMessage, dmsState, fmtDate } from "../../utils/willHelpers";
+import { useBackdropClose } from "../../utils/useBackdropClose";
 import styles from "./WillDetails.module.css";
 
 const EXECUTOR_STATUS_LABEL = {
@@ -34,6 +35,9 @@ export default function WillDetails() {
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInError, setCheckInError] = useState("");
   const [checkInDone, setCheckInDone] = useState("");
+  const handoverBackdrop = useBackdropClose(() => {
+    if (!handoverBusy) setConfirmingHandover(false);
+  });
 
   useEffect(() => {
     load();
@@ -171,7 +175,7 @@ export default function WillDetails() {
       )}
 
       {confirmingHandover && (
-        <div className={styles.overlay} onClick={() => !handoverBusy && setConfirmingHandover(false)}>
+        <div className={styles.overlay} {...handoverBackdrop}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Are you sure?</h2>
             <p className={styles.itemMeta}>
