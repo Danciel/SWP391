@@ -39,6 +39,10 @@ namespace LegacyVault.Data
 
         public DbSet<DmsCheckIn> DmsCheckIns { get; set; }
 
+        public DbSet<Face> Faces { get; set; }
+
+        public DbSet<IdpUser> IdpUsers { get; set; }
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
@@ -396,6 +400,60 @@ namespace LegacyVault.Data
                     .WithMany(x => x.CheckIns)
                     .HasForeignKey(x =>
                         x.DmsConfigurationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =========================
+            // IDP USER
+            // =========================
+            modelBuilder.Entity<IdpUser>(entity =>
+            {
+                entity.ToTable("IdpUsers","public");
+
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.FullName)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.Email)
+                    .HasMaxLength(256)
+                    .IsRequired();
+
+                entity.Property(x => x.Phone)
+                    .HasMaxLength(32);
+
+                entity.Property(x => x.IdentityStatus)
+                    .HasMaxLength(32)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.Email).IsUnique();
+
+                // Denormalized pointer, managed by the face service.
+                // No navigation property → EF will NOT create a second relationship.
+                entity.Property(x => x.FaceId);
+            });
+
+            // =========================
+            // FACE (one-to-one, owned by IdpUser)
+            // =========================
+            modelBuilder.Entity<Face>(entity =>
+            {
+                entity.ToTable("Faces", "public");
+
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.EmbeddingJson).IsRequired();
+
+                entity.Property(x => x.CreatedAt).IsRequired();
+
+                entity.Property(x => x.UpdatedAt).IsRequired();
+
+                entity.HasIndex(x => x.IdpUserId).IsUnique();
+
+                entity.HasOne(x => x.IdpUser)
+                    .WithOne()
+                    .HasForeignKey<Face>(x => x.IdpUserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

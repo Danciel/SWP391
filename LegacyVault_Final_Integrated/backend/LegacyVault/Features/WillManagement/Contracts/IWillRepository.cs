@@ -55,6 +55,19 @@ namespace LegacyVault.Features.WillManagement.Contracts
 
         Task AddDmsCheckInAsync(DmsCheckIn checkIn);
 
+        // W02: atomically check the exclusive lock and insert.
+        // Returns the Id of the Will that already holds the Asset,
+        // or null when the insert succeeded.
+        Task<Guid?> TryAddWillAssetExclusiveAsync(
+            WillAsset willAsset);
+
+        Task<List<Guid>> GetLockedAssetIdsAsync(
+            Guid ownerAccountId);
+
+        Task RemoveWillAssetAsync(WillAsset willAsset);
+
+        Task RemoveAssignmentAsync(AssetAssignment assignment);
+
         void RemoveWill(Will will);
 
         Task SaveChangesAsync();

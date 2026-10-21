@@ -1,5 +1,6 @@
 using LegacyVault.Features.WillManagement.Contracts;
 using LegacyVault.Features.WillManagement.DTOs;
+using LegacyVault.Features.WillManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -105,6 +106,103 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 return Ok(
                     await _willService.AddAssetAsync(
                         id,
+                        request));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(
+                    new { message = ex.Message });
+            }
+            catch (WillConflictException ex)
+            {
+                return Conflict(
+                    new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(
+                    new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id:guid}/assets/{willAssetId:guid}")]
+        public async Task<IActionResult> RemoveAsset(
+            Guid id,
+            Guid willAssetId)
+        {
+            try
+            {
+                await _willService.RemoveAssetAsync(id, willAssetId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id:guid}/assignments/{assignmentId:guid}")]
+        public async Task<IActionResult> RemoveAssignment(
+            Guid id,
+            Guid assignmentId)
+        {
+            try
+            {
+                await _willService.RemoveAssignmentAsync(id, assignmentId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("locked-assets")]
+        public async Task<IActionResult> GetLockedAssets()
+        {
+            return Ok(
+                await _willService.GetLockedAssetIdsAsync());
+        }
+
+        [HttpPost("{id:guid}/cancel")]
+        public async Task<IActionResult> Cancel(Guid id)
+        {
+            try
+            {
+                return Ok(await _willService.CancelAsync(id));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(
+                    new { message = ex.Message });
+            }
+            catch (WillConflictException ex)
+            {
+                return Conflict(
+                    new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id:guid}/beneficiaries/{beneficiaryId:guid}/link")]
+        public async Task<IActionResult> LinkBeneficiary(
+            Guid id,
+            Guid beneficiaryId,
+            [FromBody] LinkBeneficiaryRequest request)
+        {
+            try
+            {
+                return Ok(
+                    await _willService.LinkBeneficiaryAsync(
+                        id,
+                        beneficiaryId,
                         request));
             }
             catch (KeyNotFoundException ex)

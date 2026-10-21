@@ -43,6 +43,7 @@ namespace LegacyVault.Features.WillManagement.Repositories
                         .ThenInclude(x => x.Asset)
                     .Include(x => x.WillAssets)
                         .ThenInclude(x => x.Assignments)
+                            .ThenInclude(x => x.BeneficiaryDesignation)
                     .Include(x => x.Beneficiaries)
                     .Include(x => x.ExecutorAssignment)
                         .ThenInclude(x => x.ExecutorAccount)
@@ -179,6 +180,68 @@ namespace LegacyVault.Features.WillManagement.Repositories
             DmsCheckIn checkIn)
         {
             await _context.DmsCheckIns.AddAsync(checkIn);
+        }
+
+        // A Will in these statuses does NOT hold an Asset lock.
+        // R01 (pending decision): DRAFT locks immediately, so only
+        // CANCELLED releases. Change here if the team decides otherwise.
+        private static readonly string[] NonLockingStatuses =
+            { "CANCELLED" };
+
+        public async Task<Guid?> TryAddWillAssetExclusiveAsync(
+            WillAsset willAsset)
+        {
+            await using var tx =
+                await _context.Database.BeginTransactionAsync();
+
+            // Serialize concurrent requests for the SAME asset only.
+            // Lock is released automatically at commit/rollback.
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({willAsset.AssetId.ToString()}, 0))");
+
+            var holder = await _context.WillAssets
+                .Where(x =>
+                    x.AssetId == willAsset.AssetId &&
+                    x.WillId != willAsset.WillId &&
+                    !NonLockingStatuses.Contains(x.Will!.Status))
+                .Select(x => (Guid?)x.WillId)
+                .FirstOrDefaultAsync();
+
+            if (holder != null)
+            {
+                await tx.RollbackAsync();
+                return holder;
+            }
+
+            await _context.WillAssets.AddAsync(willAsset);
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return null;
+        }
+
+        public async Task<List<Guid>> GetLockedAssetIdsAsync(
+            Guid ownerAccountId)
+        {
+            return await _context.WillAssets
+                .AsNoTracking()
+                .Where(x =>
+                    x.Asset!.OwnerAccountId == ownerAccountId &&
+                    !NonLockingStatuses.Contains(x.Will!.Status))
+                .Select(x => x.AssetId)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        public Task RemoveWillAssetAsync(WillAsset willAsset)
+        {
+            _context.WillAssets.Remove(willAsset);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAssignmentAsync(AssetAssignment assignment)
+        {
+            _context.AssetAssignments.Remove(assignment);
+            return Task.CompletedTask;
         }
 
         public void RemoveWill(Will will)

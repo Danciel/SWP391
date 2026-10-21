@@ -51,8 +51,17 @@ public class ExecutorInboxController : ControllerBase
         var assignment=await _db.ExecutorAssignments.Include(x=>x.Will).FirstOrDefaultAsync(x=>x.Id==assignmentId && x.ExecutorAccountId==me);
         if (assignment==null) return NotFound(new {message="Executor assignment not found."});
         if (assignment.Will==null || assignment.Will.Status!="PENDING_EXECUTOR" || assignment.Status!="PENDING") return BadRequest(new {message="Assignment is not pending."});
-        assignment.Status=request.Accept ? "ACCEPTED" : "DECLINED";
-        assignment.RespondedAt=DateTimeOffset.UtcNow;
+        // Atomic guard: only one concurrent response can flip PENDING.
+        var newStatus = request.Accept ? "ACCEPTED" : "DECLINED";
+        var respondedAt = DateTimeOffset.UtcNow;
+        var changed = await _db.ExecutorAssignments
+            .Where(x => x.Id == assignmentId && x.Status == "PENDING")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.Status, newStatus)
+                .SetProperty(x => x.RespondedAt, respondedAt));
+        if (changed == 0) return Conflict(new {message="Assignment was already answered."});
+        assignment.Status=newStatus;
+        assignment.RespondedAt=respondedAt;
         // Executor acceptance activates the will; decline retains pending state for owner reassignment.
         if(request.Accept) { assignment.Will.Status="ACTIVE"; assignment.Will.ActivatedAt=DateTimeOffset.UtcNow; }
         assignment.Will.UpdatedAt=DateTimeOffset.UtcNow;
