@@ -10,7 +10,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
         private static readonly HashSet<string> AllowedRoles =
             new(StringComparer.OrdinalIgnoreCase)
-            { "USER", "ADMIN", "OWNER", "BENEFICIARY", "LEGAL_VERIFIER" };
+            { "USER", "ADMIN", "OWNER", "BENEFICIARY", "LEGAL_VERIFIER", "EXECUTOR" };
 
         private readonly IAccountRepository _accountRepository;
 

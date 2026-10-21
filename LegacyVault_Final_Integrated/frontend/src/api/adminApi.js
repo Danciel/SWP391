@@ -14,6 +14,7 @@ const ACCOUNT_ROLES = [
   "OWNER",
   "BENEFICIARY",
   "LEGAL_VERIFIER",
+  "EXECUTOR",
 ];
 
 const hasOwn = (object, key) =>
