@@ -1,15 +1,9 @@
-// Pure helpers shared by Assets / CreateWill / WillDetails / MyWills / OwnerDashboard.
-
-// LV-18 — from which will status on an asset counts as "used".
-// The team has NOT decided DRAFT vs. submitted yet (see task note), so it is one line to change:
-// "ANY" = every will that contains the asset locks it (same rule the backend already uses when deleting an asset).
-export const ASSET_LOCK_STATUSES = "ANY"; // or e.g. ["PENDING_EXECUTOR", "ACTIVE"]
+export const ASSET_LOCK_STATUSES = "ANY";
 
 function locks(status) {
   return ASSET_LOCK_STATUSES === "ANY" || ASSET_LOCK_STATUSES.includes(status);
 }
 
-// Map<assetId, { willId, willName }> for assets that sit in a will other than `exceptWillId`.
 export function buildAssetLocks(wills, exceptWillId = null) {
   const map = new Map();
   (wills || []).forEach((w) => {
@@ -33,7 +27,6 @@ export function fmtDate(iso, withTime = false) {
   return withTime ? d.toLocaleString("en-US") : d.toLocaleDateString("en-US");
 }
 
-// LV-23 / LV-24 / LV-26 — everything the UI needs to say about a DMS, derived only from API fields.
 export function dmsState(dms) {
   if (!dms || !dms.enabled) return { enabled: false };
   const next = dms.nextCheckInAt ? new Date(dms.nextCheckInAt) : null;
@@ -75,7 +68,6 @@ export function dmsMessage(state) {
 
 export const INTERVAL_PRESETS = [1, 7, 14, 30, 60, 90, 180, 365];
 
-// Same limits as backend ConfigureDmsRequest + WillService.ConfigureDmsAsync.
 export function validateDms({ checkInDays, reminderDays, maxMissed }) {
   if (!Number.isInteger(checkInDays) || checkInDays < 1 || checkInDays > 3650) return "Check-in interval must be between 1 and 3650 days.";
   if (!Number.isInteger(reminderDays) || reminderDays < 0) return "Reminder days cannot be negative.";

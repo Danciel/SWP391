@@ -16,7 +16,6 @@ import { MAX_FILE_BYTES, formatBytes, readAssetFile, downloadAssetFile, assetFil
 import { useBackdropClose } from "../../utils/useBackdropClose";
 import styles from "./Assets.module.css";
 
-// Re-exported so CreateWill keeps working with the same import.
 export const ASSET_TYPES = ENABLED_ASSET_TYPES;
 export const ACCOUNT_TYPES = ACCOUNT_PROVIDERS;
 
@@ -117,7 +116,6 @@ export function AssetFields({ form, setForm }) {
   );
 }
 
-// True when the user has typed/attached something worth protecting from an accidental close.
 export function isAssetFormDirty(form) {
   return Boolean(
     form.name.trim() || form.description.trim() || form.username || form.password || form.file
@@ -131,7 +129,7 @@ export function AssetFileField({ form, setForm }) {
 
   async function handleChange(e) {
     const picked = e.target.files?.[0];
-    e.target.value = ""; // allow choosing the same file again
+    e.target.value = "";
     if (!picked) return;
     setFileError("");
     setReading(true);
@@ -212,7 +210,6 @@ export default function Assets() {
     setError("");
     try {
       setAssets(await getAssets(user?.id));
-      // LV-18: which assets already sit in a will (shown as a lock). Failure must not block the list.
       getWills().then((w) => setLocks(buildAssetLocks(w))).catch(() => setLocks(new Map()));
     } catch (err) {
       setAssets([]);
@@ -229,7 +226,6 @@ export default function Assets() {
     setShowModal(true);
   }
 
-  // Backdrop click / Esc: ask first if the user already entered something.
   function requestCloseModal() {
     if (saving) return;
     if (isAssetFormDirty(form)) setShowDiscard(true);
@@ -297,7 +293,6 @@ export default function Assets() {
       const revealed = await getAssetSecret(asset.id);
       if (requestId !== secretRequest.current) return;
       setSecret(revealed);
-      // Prefill both fields: saving with an empty password would overwrite the stored one.
       setDetailForm(prev => ({...prev, username: revealed.username || "", password: revealed.password || "", file: assetFileFromSecret(revealed)}));
     } catch (err) {
       if (requestId === secretRequest.current) setDetailError(err.message || "Could not load asset information");

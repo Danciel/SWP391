@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
 import styles from "./ConfirmDiscardDialog.module.css";
 
-// Small confirmation popup shown on top of a form modal.
-// Clicking outside it or pressing Esc = "keep editing" (the safe choice).
 export default function ConfirmDiscardDialog({
   title = "Discard this asset?",
   message = "The information you entered will be lost.",

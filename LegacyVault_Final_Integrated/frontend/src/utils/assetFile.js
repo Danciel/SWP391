@@ -1,7 +1,4 @@
-// File upload helpers for assets.
-// The backend stores an asset's secret as an encrypted JSON dictionary (string -> string),
-// so an uploaded file travels inside that dictionary as base64 (fileName / fileType / fileSize / fileData).
-export const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 export function formatBytes(n) {
   if (!n && n !== 0) return "";
@@ -24,14 +21,13 @@ export function readAssetFile(file) {
         name: file.name,
         type: file.type || "application/octet-stream",
         size: file.size,
-        data: result.slice(result.indexOf(",") + 1), // strip "data:...;base64,"
+        data: result.slice(result.indexOf(",") + 1),
       });
     };
     reader.readAsDataURL(file);
   });
 }
 
-// Rebuild the form's file object from a revealed secret (used when editing).
 export function assetFileFromSecret(secret) {
   if (!secret?.fileData) return null;
   return {

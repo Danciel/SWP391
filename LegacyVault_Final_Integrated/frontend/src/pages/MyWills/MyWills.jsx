@@ -130,7 +130,6 @@ export default function MyWills() {
                   {will.dms?.status && <span>DMS: {will.dms.status}</span>}
                 </div>
                 {(() => {
-                  // LV-24 / LV-26: tell the owner when a check-in is due or missed (from the DMS data the API returns).
                   const note = will.dms ? dmsMessage(dmsState(will.dms)) : null;
                   return note ? (
                     <p role="alert" className={styles.errorText} style={note.tone === "warn" ? { color: "#92400e" } : undefined}>

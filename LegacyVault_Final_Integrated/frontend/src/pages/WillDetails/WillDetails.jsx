@@ -13,10 +13,6 @@ import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { dmsMessage, dmsState, fmtDate } from "../../utils/willHelpers";
 import styles from "./WillDetails.module.css";
 
-// LV-17: Overview / Assets / Beneficiaries / Executor / DMS are shown together on one page.
-// Backend allows editing a will only while it is DRAFT (WillService.EnsureDraft), so editing lives in the
-// create-will wizard; this page is the read view plus the actions the backend allows after submit (check-in).
-
 const EXECUTOR_STATUS_LABEL = {
   PENDING: "Waiting for the executor to accept",
   ACCEPTED: "Accepted",
@@ -68,7 +64,6 @@ export default function WillDetails() {
   const executorProfile = will.executor ? executors.find((e) => e.id === will.executor.id) : null;
   const assetById = (assetId) => assets.find((a) => a.id === assetId);
 
-  // Beneficiaries assigned to one will-asset (backend allows more than one).
   function beneficiariesFor(entry) {
     return (will.assignments || [])
       .filter((a) => a.willAssetId === entry.willAssetId)

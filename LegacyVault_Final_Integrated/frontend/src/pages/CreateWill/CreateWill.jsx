@@ -50,7 +50,6 @@ export default function CreateWill() {
     const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
     setAssets(assetsData);
     getExecutors().then(setExecutors).catch(console.error);
-    // LV-18: assets already used by another will are locked here.
     getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
     setProfile(profileData);
 
@@ -62,7 +61,6 @@ export default function CreateWill() {
         throw new Error(`Could not load this will: ${err.message}`);
       }
     } else {
-      // Only local draft at first: no request until the user saves Information.
       currentWill = {id:null,name:"",description:"",assets:[],beneficiaries:[],executor:null,dms:null,status:"DRAFT"};
     }
     setWill(currentWill);
