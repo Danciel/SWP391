@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/vaultApi";
 import { dmsMessage, dmsState } from "../../utils/willHelpers";
+import { useBackdropClose } from "../../utils/useBackdropClose";
 import styles from "./MyWills.module.css";
 
 const FILTERS = ["All", "Draft", "Pending", "Active"];
@@ -36,6 +37,12 @@ export default function MyWills() {
   const [handoverError, setHandoverError] = useState("");
   const [deleteWill, setDeleteWill] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const handoverBackdrop = useBackdropClose(() => {
+    if (!handoverBusy) setHandoverWill(null);
+  });
+  const deleteBackdrop = useBackdropClose(() => {
+    if (!deleteBusy) setDeleteWill(null);
+  });
   const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
@@ -130,7 +137,6 @@ export default function MyWills() {
                   {will.dms?.status && <span>DMS: {will.dms.status}</span>}
                 </div>
                 {(() => {
-                  // LV-24 / LV-26: tell the owner when a check-in is due or missed (from the DMS data the API returns).
                   const note = will.dms ? dmsMessage(dmsState(will.dms)) : null;
                   return note ? (
                     <p role="alert" className={styles.errorText} style={note.tone === "warn" ? { color: "#92400e" } : undefined}>
@@ -176,7 +182,7 @@ export default function MyWills() {
       )}
 
       {handoverWill && (
-        <div className={styles.overlay} onClick={() => !handoverBusy && setHandoverWill(null)}>
+        <div className={styles.overlay} {...handoverBackdrop}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Are you sure?</h2>
             <p className={styles.modalMeta}>
@@ -206,7 +212,7 @@ export default function MyWills() {
       )}
 
       {deleteWill && (
-        <div className={styles.overlay} onClick={() => !deleteBusy && setDeleteWill(null)}>
+        <div className={styles.overlay} {...deleteBackdrop}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Delete this Will?</h2>
             <p className={styles.modalMeta}>

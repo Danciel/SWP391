@@ -2,3 +2,6 @@
 .vs/
 **/.vs/
 *.vsidx
+/LegacyVault_Final_Integrated/backend/LegacyVault/bin
+/LegacyVault_Final_Integrated/backend/LegacyVault/obj
+/LegacyVault_Final_Integrated/frontend/node_modules

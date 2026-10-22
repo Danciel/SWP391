@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7ab8b8aa-cbf2-4248-8a80-a42adf0c8c5c" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/Features/IdentityAccess/Services/AccountsService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/Features/IdentityAccess/Services/AccountsService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/appsettings.Development.json" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/backend/LegacyVault/appsettings.Development.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/api/adminApi.js" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/api/adminApi.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/pages/AdminDashboard/AdminDashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/LegacyVault_Final_Integrated/frontend/src/pages/AdminDashboard/AdminDashboard.jsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.043585740131927" />
+      <entry key="MS500" value="1.5589567716817565" />
+      <entry key="S2" value="2.520730543319447" />
+      <entry key="S5" value="3.227359482942272" />
+      <entry key="S10" value="3.5803026932133477" />
+      <entry key="S30" value="4.07650939141079" />
+      <entry key="S60" value="4.564785553332438" />
+      <entry key="M2" value="5.084175556557182" />
+      <entry key="M5" value="5.6967483815424265" />
+      <entry key="M10" value="6.279239475607788" />
+      <entry key="M15" value="6.926072923621876" />
+      <entry key="M30" value="10.19081644622083" />
+      <entry key="H1" value="21.71405162048611" />
+      <entry key="H2" value="51.05585450955217" />
+      <entry key="H4" value="94.73655133397583" />
+      <entry key="D1" value="175.12412533421048" />
+      <entry key="W1" value="196.20350997480472" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="3.883284856768514E-227" />
+      <entry key="S30" value="3.386359668611764E-76" />
+      <entry key="S60" value="1.840206420109375E-38" />
+      <entry key="M2" value="1.3565420844092402E-19" />
+      <entry key="M5" value="2.8386484910230663E-8" />
+      <entry key="M10" value="1.7146347949621447E-4" />
+      <entry key="M15" value="0.0032594971410798436" />
+      <entry key="M30" value="0.07102453255442873" />
+      <entry key="H1" value="0.42021881326237204" />
+      <entry key="H2" value="1.3264558092359804" />
+      <entry key="H4" value="2.6824916075388643" />
+      <entry key="D1" value="5.210836104308806" />
+      <entry key="W1" value="5.879387425009713" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.9442357672796623" />
+      <entry key="MS500" value="1.4156246692288599" />
+      <entry key="S2" value="2.443466349115385" />
+      <entry key="S5" value="3.1869198012509234" />
+      <entry key="S10" value="3.5576008697739763" />
+      <entry key="S30" value="4.065954008958929" />
+      <entry key="S60" value="4.557736688096418" />
+      <entry key="M2" value="5.079840768023767" />
+      <entry key="M5" value="5.694721115573558" />
+      <entry key="M10" value="6.278149475573037" />
+      <entry key="M15" value="6.9282327605600065" />
+      <entry key="M30" value="10.260793162068913" />
+      <entry key="H1" value="22.133020309542093" />
+      <entry key="H2" value="52.38091748206136" />
+      <entry key="H4" value="97.41787523851117" />
+      <entry key="D1" value="180.33464425844332" />
+      <entry key="W1" value="202.08284788154336" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="3Kfc0jf6gPO8ztzEtnEPqsKmHpp" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/Nhienfolder/HocTap/Semester7/SWP391/LegacyVault_Final_Integrated/frontend/src/pages",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "D:\\Nhienfolder\\IntelliJ IDEA 2026.1.2\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\backend\LegacyVault\Migrations" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\backend\LegacyVault\Features\IdentityAccess\Services" />
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\frontend\src\pages\FaceRecognitionTestPage" />
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\backend\LegacyVault\Features\IdentityAccess\Contracts" />
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\backend\LegacyVault\Features\IdentityAccess\Repositories" />
+      <recent name="D:\Nhienfolder\HocTap\Semester7\SWP391\LegacyVault_Final_Integrated\backend\LegacyVault\Features\IdentityAccess\Controllers" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7ab8b8aa-cbf2-4248-8a80-a42adf0c8c5c" name="Changes" comment="" />
+      <created>1791951847565</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1791951847565</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

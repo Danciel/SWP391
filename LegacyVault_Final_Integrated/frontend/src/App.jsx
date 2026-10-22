@@ -20,7 +20,6 @@ import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifier
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import FaceRecognitionTestPage from "./pages/FaceRecognitionTestPage/FaceRecognitionTestPage";
 
-
 const ROLE_HOME = {
   OWNER: "assets",
   EXECUTOR: "executor",
