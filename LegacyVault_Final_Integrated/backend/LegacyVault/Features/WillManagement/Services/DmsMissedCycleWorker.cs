@@ -1,14 +1,15 @@
 using LegacyVault.Data;
+using LegacyVault.Features.IdentityAccess.Contracts;
+using LegacyVault.Features.WillManagement.Contracts;
 using LegacyVault.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LegacyVault.Features.WillManagement.Services
 {
-    // D04: counts missed check-in cycles. Safe to run repeatedly
-    // and after downtime: each cycle is recorded once (MISSED row)
-    // and NextCheckInAt moves forward, so nothing is counted twice.
-    // At the threshold it only sets THRESHOLD_REACHED. It never marks
-    // anyone deceased or starts handover (R04); D05/D06 build on this.
+    // Hourly DMS job (D03 reminder, D04 missed cycles, D05 threshold,
+    // D06 executor email). Safe to run repeatedly and after downtime:
+    // every step records what it already did in the database.
+    // It never marks anyone deceased or starts handover (R04).
     public class DmsMissedCycleWorker : BackgroundService
     {
         private static readonly TimeSpan Period =
@@ -33,9 +34,13 @@ namespace LegacyVault.Features.WillManagement.Services
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();
-                    var db = scope.ServiceProvider
-                        .GetRequiredService<LegacyVaultDbContext>();
-                    await EvaluateAsync(db, DateTimeOffset.UtcNow,
+                    var sp = scope.ServiceProvider;
+                    await EvaluateAsync(
+                        sp.GetRequiredService<LegacyVaultDbContext>(),
+                        sp.GetRequiredService<IEmailSender>(),
+                        sp.GetRequiredService<ILifeStatusClient>(),
+                        _logger,
+                        DateTimeOffset.UtcNow,
                         stoppingToken);
                 }
                 catch (Exception ex) when (
@@ -50,13 +55,32 @@ namespace LegacyVault.Features.WillManagement.Services
         }
 
         // Public so a test or an admin endpoint can call it directly.
-        public static async Task<int> EvaluateAsync(
+        public static async Task EvaluateAsync(
             LegacyVaultDbContext db,
+            IEmailSender email,
+            ILifeStatusClient lifeStatus,
+            ILogger logger,
+            DateTimeOffset now,
+            CancellationToken ct)
+        {
+            await CountMissedAndRemindAsync(
+                db, email, logger, now, ct);
+
+            await EscalateAsync(
+                db, email, lifeStatus, logger, now, ct);
+        }
+
+        // D03 + D04
+        private static async Task CountMissedAndRemindAsync(
+            LegacyVaultDbContext db,
+            IEmailSender email,
+            ILogger logger,
             DateTimeOffset now,
             CancellationToken ct)
         {
             var configs = await db.DmsConfigurations
                 .Include(x => x.Will)
+                    .ThenInclude(w => w!.OwnerAccount)
                 .Where(x =>
                     x.Enabled &&
                     x.Status == "ACTIVE" &&
@@ -64,58 +88,156 @@ namespace LegacyVault.Features.WillManagement.Services
                     x.Will!.Status == "ACTIVE")
                 .ToListAsync(ct);
 
-            var changed = 0;
-
             foreach (var dms in configs)
             {
+                // --- D04: record missed cycles (once each)
                 var room = Math.Max(
                     0, dms.MaxMissedCheckIns - dms.MissedCheckIns);
 
                 var missed = DmsCycleCalculator.GetMissedCycles(
                     dms.NextCheckInAt!.Value,
                     dms.CheckInIntervalDays,
-                    DmsCycleCalculator.DefaultGraceDays,
+                    dms.GraceDays,
                     now,
                     room);
 
-                if (missed.Count == 0) continue;
+                var newlyMissed = false;
 
-                var existing = await db.DmsCheckIns
-                    .Where(c => c.DmsConfigurationId == dms.Id &&
-                                c.Status == "MISSED")
-                    .Select(c => c.ScheduledAt)
-                    .ToListAsync(ct);
-
-                foreach (var scheduledAt in missed)
+                if (missed.Count > 0)
                 {
-                    if (existing.Contains(scheduledAt)) continue;
+                    var existing = await db.DmsCheckIns
+                        .Where(c => c.DmsConfigurationId == dms.Id &&
+                                    c.Status == "MISSED")
+                        .Select(c => c.ScheduledAt)
+                        .ToListAsync(ct);
 
-                    db.DmsCheckIns.Add(new DmsCheckIn
+                    foreach (var scheduledAt in missed)
                     {
-                        Id = Guid.NewGuid(),
-                        DmsConfigurationId = dms.Id,
-                        ScheduledAt = scheduledAt,
-                        CheckedInAt = null,
-                        Status = "MISSED",
-                        CreatedAt = now
-                    });
-                    dms.MissedCheckIns++;
-                }
+                        if (existing.Contains(scheduledAt)) continue;
 
-                dms.NextCheckInAt = dms.NextCheckInAt.Value
-                    .AddDays(dms.CheckInIntervalDays * missed.Count);
-                dms.UpdatedAt = now;
+                        db.DmsCheckIns.Add(new DmsCheckIn
+                        {
+                            Id = Guid.NewGuid(),
+                            DmsConfigurationId = dms.Id,
+                            ScheduledAt = scheduledAt,
+                            CheckedInAt = null,
+                            Status = "MISSED",
+                            CreatedAt = now
+                        });
+                        dms.MissedCheckIns++;
+                        newlyMissed = true;
+                    }
+
+                    dms.NextCheckInAt = dms.NextCheckInAt.Value
+                        .AddDays(dms.CheckInIntervalDays * missed.Count);
+                    dms.UpdatedAt = now;
+                }
 
                 if (dms.MissedCheckIns >= dms.MaxMissedCheckIns)
                 {
+                    // D05: threshold reached -> review marker only.
                     dms.Status = "THRESHOLD_REACHED";
+                    dms.ThresholdReachedAt ??= now;
+                    await db.SaveChangesAsync(ct);
+                    continue;
                 }
 
-                changed++;
-            }
+                // --- D03: remind the Owner (below threshold only)
+                var due = dms.NextCheckInAt!.Value;
+                var inWindow =
+                    newlyMissed ||
+                    now >= due.AddDays(-dms.ReminderBeforeDays);
 
-            if (changed > 0) await db.SaveChangesAsync(ct);
-            return changed;
+                if (inWindow && dms.LastReminderForDueAt != due)
+                {
+                    var owner = dms.Will?.OwnerAccount;
+                    if (owner != null)
+                    {
+                        try
+                        {
+                            await email.SendDmsReminderEmailAsync(
+                                owner.Email, owner.FullName, due);
+                            dms.LastReminderForDueAt = due;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Not marked as sent -> retried next hour.
+                            logger.LogWarning(ex,
+                                "DMS reminder failed for will {WillId}.",
+                                dms.WillId);
+                        }
+                    }
+                }
+
+                await db.SaveChangesAsync(ct);
+            }
+        }
+
+        // D05 + D06
+        private static async Task EscalateAsync(
+            LegacyVaultDbContext db,
+            IEmailSender email,
+            ILifeStatusClient lifeStatus,
+            ILogger logger,
+            DateTimeOffset now,
+            CancellationToken ct)
+        {
+            var configs = await db.DmsConfigurations
+                .Include(x => x.Will)
+                    .ThenInclude(w => w!.OwnerAccount)
+                .Include(x => x.Will)
+                    .ThenInclude(w => w!.ExecutorAssignment)
+                        .ThenInclude(e => e!.ExecutorAccount)
+                .Where(x =>
+                    x.Status == "THRESHOLD_REACHED" &&
+                    x.ExecutorNotifiedAt == null &&
+                    x.Will!.Status == "ACTIVE")
+                .ToListAsync(ct);
+
+            foreach (var dms in configs)
+            {
+                var will = dms.Will!;
+
+                // D05: ask the LifeStatus source; we only log it.
+                // DMS never writes DECEASED and never hands over.
+                var life = await lifeStatus.GetStatusAsync(
+                    will.OwnerAccountId, ct);
+
+                logger.LogInformation(
+                    "DMS threshold for will {WillId}, LifeStatus={Life}.",
+                    will.Id, life);
+
+                // D06: only an ACCEPTED executor is told.
+                var assignment = will.ExecutorAssignment;
+                var executor = assignment?.ExecutorAccount;
+
+                if (assignment == null ||
+                    assignment.Status != "ACCEPTED" ||
+                    executor == null ||
+                    will.OwnerAccount == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await email.SendDmsTriggerEmailAsync(
+                        executor.Email,
+                        executor.FullName,
+                        will.OwnerAccount.FullName,
+                        will.Title);
+
+                    dms.ExecutorNotifiedAt = now;
+                    dms.UpdatedAt = now;
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Executor email failed for will {WillId}.",
+                        will.Id);
+                }
+            }
         }
     }
 }

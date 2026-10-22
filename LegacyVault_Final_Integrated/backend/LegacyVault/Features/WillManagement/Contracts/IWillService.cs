@@ -29,7 +29,13 @@ namespace LegacyVault.Features.WillManagement.Contracts
             Guid willId,
             CreateAssetAssignmentRequest request);
 
+        Task<AssetAssignmentResponse> UpdateAssetAssignmentAsync(
+            Guid willId, Guid assignmentId, UpdateAssetAssignmentRequest request);
+
         Task<List<ExecutorListItemResponse>> GetExecutorsAsync();
+
+        Task<ExecutorPricingResponse> UpdateMyExecutorPricingAsync(
+            UpdateExecutorPricingRequest request);
 
         Task<ExecutorAssignmentResponse> AssignExecutorAsync(
             Guid willId,

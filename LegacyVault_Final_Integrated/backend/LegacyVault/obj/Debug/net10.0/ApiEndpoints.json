@@ -369,6 +369,16 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorInboxController",
+    "Method": "Triggers",
+    "RelativePath": "api/executor-inbox/triggers",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorsController",
     "Method": "GetVerified",
     "RelativePath": "api/executors",
@@ -376,6 +386,22 @@
     "IsController": true,
     "Order": 0,
     "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorsController",
+    "Method": "UpdateMyPricing",
+    "RelativePath": "api/executors/me/pricing",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.UpdateExecutorPricingRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -751,6 +777,32 @@
       {
         "Name": "assignmentId",
         "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.WillsController",
+    "Method": "UpdateAssetAssignment",
+    "RelativePath": "api/wills/{id}/assignments/{assignmentId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "assignmentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.UpdateAssetAssignmentRequest",
         "IsRequired": true
       }
     ],

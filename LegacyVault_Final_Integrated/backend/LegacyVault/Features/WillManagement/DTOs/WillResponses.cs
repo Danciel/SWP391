@@ -51,6 +51,8 @@ namespace LegacyVault.Features.WillManagement.DTOs
 
         public Guid BeneficiaryDesignationId { get; set; }
 
+        public decimal AllocationPercentage { get; set; }
+
         public string? BeneficiaryName { get; set; }
 
         public string? Relationship { get; set; }
@@ -65,6 +67,12 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public string ExecutorName { get; set; } = string.Empty;
 
         public string Status { get; set; } = string.Empty;
+
+        public string Scope { get; set; } = "WILL";
+
+        public decimal ServiceFeeSnapshot { get; set; }
+
+        public string CurrencySnapshot { get; set; } = "VND";
     }
 
     public class DmsConfigurationResponse
@@ -80,6 +88,10 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public int MaxMissedCheckIns { get; set; }
 
         public int MissedCheckIns { get; set; }
+
+        public int GraceDays { get; set; }
+
+        public DateTimeOffset? ThresholdReachedAt { get; set; }
 
         public DateTimeOffset? LastCheckInAt { get; set; }
 
@@ -101,6 +113,10 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public int ExperienceYears { get; set; }
 
         public string? Bio { get; set; }
+
+        public decimal ServiceFee { get; set; }
+
+        public string Currency { get; set; } = "VND";
     }
 
     public class WillDetailResponse
@@ -128,6 +144,11 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public List<AssetAssignmentResponse> Assignments { get; set; } = new();
 
         public ExecutorAssignmentResponse? Executor { get; set; }
+
+        // Convenient top-level fee display for the unified Will Details page.
+        public decimal? ExecutorServiceFee { get; set; }
+
+        public string? ExecutorServiceFeeCurrency { get; set; }
 
         public DmsConfigurationResponse? Dms { get; set; }
     }

@@ -12,6 +12,11 @@ namespace LegacyVault.Models
 
         public string? Bio { get; set; }
 
+        // Executor's current advertised fee for handling one whole Will.
+        public decimal ServiceFee { get; set; } = 0m;
+
+        public string Currency { get; set; } = "VND";
+
         public bool IsVerified { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; }

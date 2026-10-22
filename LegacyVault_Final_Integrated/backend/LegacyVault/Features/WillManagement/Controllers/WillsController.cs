@@ -268,6 +268,24 @@ namespace LegacyVault.Features.WillManagement.Controllers
             }
         }
 
+        [HttpPut("{id:guid}/assignments/{assignmentId:guid}")]
+        public async Task<IActionResult> UpdateAssetAssignment(
+            Guid id, Guid assignmentId, [FromBody] UpdateAssetAssignmentRequest request)
+        {
+            try
+            {
+                return Ok(await _willService.UpdateAssetAssignmentAsync(id, assignmentId, request));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("{id:guid}/executor")]
         public async Task<IActionResult> AssignExecutor(
             Guid id,

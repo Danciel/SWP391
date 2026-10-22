@@ -121,6 +121,15 @@ namespace LegacyVault.Data
                 entity.Property(x => x.Rating)
                     .HasPrecision(3, 2);
 
+                entity.Property(x => x.ServiceFee)
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0m);
+
+                entity.Property(x => x.Currency)
+                    .HasMaxLength(3)
+                    .HasDefaultValue("VND")
+                    .IsRequired();
+
                 entity.HasOne(x => x.Account)
                     .WithOne()
                     .HasForeignKey<ExecutorProfile>(
@@ -342,6 +351,10 @@ namespace LegacyVault.Data
                     })
                     .IsUnique();
 
+                entity.Property(x => x.AllocationPercentage)
+                    .HasPrecision(5, 2)
+                    .HasDefaultValue(100m);
+
                 entity.HasOne(x => x.WillAsset)
                     .WithMany(x => x.Assignments)
                     .HasForeignKey(x => x.WillAssetId)
@@ -365,7 +378,22 @@ namespace LegacyVault.Data
                 entity.Property(x => x.Status)
                     .IsRequired();
 
-                entity.HasIndex(x => x.WillId);
+                entity.Property(x => x.ServiceFeeSnapshot)
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0m);
+
+                entity.Property(x => x.CurrencySnapshot)
+                    .HasMaxLength(3)
+                    .HasDefaultValue("VND")
+                    .IsRequired();
+
+                entity.Property(x => x.Scope)
+                    .HasMaxLength(16)
+                    .HasDefaultValue("WILL")
+                    .IsRequired();
+
+                // One Executor assignment per Will (whole-Will scope).
+                entity.HasIndex(x => x.WillId).IsUnique();
 
                 entity.HasOne(x => x.ExecutorAccount)
                     .WithMany()
@@ -382,6 +410,9 @@ namespace LegacyVault.Data
 
                 entity.HasIndex(x => x.WillId)
                     .IsUnique();
+
+                entity.Property(x => x.GraceDays)
+                    .HasDefaultValue(2);
 
                 entity.Property(x => x.Status)
                     .IsRequired();

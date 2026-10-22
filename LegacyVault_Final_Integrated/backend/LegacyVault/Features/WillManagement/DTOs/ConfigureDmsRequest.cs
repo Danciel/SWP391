@@ -14,5 +14,8 @@ namespace LegacyVault.Features.WillManagement.DTOs
 
         [Range(1, 100)]
         public int MaxMissedCheckIns { get; set; } = 3;
+
+        [Range(0, 30)]
+        public int GraceDays { get; set; } = 2;
     }
 }

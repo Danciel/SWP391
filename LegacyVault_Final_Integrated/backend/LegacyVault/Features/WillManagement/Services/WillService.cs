@@ -323,6 +323,20 @@ namespace LegacyVault.Features.WillManagement.Services
                     "This asset is already assigned to this beneficiary.");
             }
 
+            if (request.AllocationPercentage <= 0m ||
+                request.AllocationPercentage > 100m)
+            {
+                throw new InvalidOperationException(
+                    "AllocationPercentage must be greater than 0 and at most 100.");
+            }
+
+            var existingAllocations = willAsset.Assignments.Sum(x => x.AllocationPercentage);
+            if (existingAllocations + request.AllocationPercentage > 100m)
+            {
+                throw new InvalidOperationException(
+                    $"Total allocation for this asset cannot exceed 100%. Current allocation: {existingAllocations:0.##}%.");
+            }
+
             var assignment =
                 new AssetAssignment
                 {
@@ -330,21 +344,71 @@ namespace LegacyVault.Features.WillManagement.Services
                     WillAssetId = willAsset.Id,
                     BeneficiaryDesignationId =
                         beneficiary.Id,
+                    AllocationPercentage = request.AllocationPercentage,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 
-            await _willRepository.AddAssetAssignmentAsync(
-                assignment);
-
             will.UpdatedAt = DateTimeOffset.UtcNow;
-            await _willRepository.SaveChangesAsync();
+            var added = await _willRepository.TryAddAssetAssignmentWithinLimitAsync(assignment);
+            if (!added)
+            {
+                throw new InvalidOperationException(
+                    "Total allocation for this asset cannot exceed 100%; another request may have changed the allocation concurrently.");
+            }
 
             return new AssetAssignmentResponse
             {
                 Id = assignment.Id,
                 WillAssetId = assignment.WillAssetId,
                 BeneficiaryDesignationId =
-                    assignment.BeneficiaryDesignationId
+                    assignment.BeneficiaryDesignationId,
+                AllocationPercentage = assignment.AllocationPercentage
+            };
+        }
+
+        public async Task<AssetAssignmentResponse> UpdateAssetAssignmentAsync(
+            Guid willId, Guid assignmentId, UpdateAssetAssignmentRequest request)
+        {
+            var will = await GetOwnedWillRequiredAsync(willId, includeDetails: true);
+            EnsureDraft(will);
+
+            var assignment = will.WillAssets
+                .SelectMany(x => x.Assignments)
+                .FirstOrDefault(x => x.Id == assignmentId);
+            if (assignment == null)
+            {
+                throw new KeyNotFoundException("Asset assignment not found.");
+            }
+
+            var otherAllocations = will.WillAssets
+                .First(x => x.Id == assignment.WillAssetId)
+                .Assignments
+                .Where(x => x.Id != assignment.Id)
+                .Sum(x => x.AllocationPercentage);
+
+            if (request.AllocationPercentage <= 0m || request.AllocationPercentage > 100m ||
+                otherAllocations + request.AllocationPercentage > 100m)
+            {
+                throw new InvalidOperationException(
+                    $"Allocation for this asset cannot exceed 100%. Other beneficiaries currently hold {otherAllocations:0.##}%.");
+            }
+
+            will.UpdatedAt = DateTimeOffset.UtcNow;
+            var updated = await _willRepository.TryUpdateAssetAllocationWithinLimitAsync(assignment, request.AllocationPercentage);
+            if (!updated)
+            {
+                throw new InvalidOperationException(
+                    "Total allocation for this asset cannot exceed 100%; another request may have changed the allocation concurrently.");
+            }
+
+            return new AssetAssignmentResponse
+            {
+                Id = assignment.Id,
+                WillAssetId = assignment.WillAssetId,
+                BeneficiaryDesignationId = assignment.BeneficiaryDesignationId,
+                AllocationPercentage = assignment.AllocationPercentage,
+                BeneficiaryName = assignment.BeneficiaryDesignation?.FullName,
+                Relationship = assignment.BeneficiaryDesignation?.Relationship
             };
         }
 
@@ -368,9 +432,40 @@ namespace LegacyVault.Features.WillManagement.Services
                             x.CompletedCases,
                         ExperienceYears =
                             x.ExperienceYears,
-                        Bio = x.Bio
+                        Bio = x.Bio,
+                        ServiceFee = x.ServiceFee,
+                        Currency = x.Currency
                     })
                 .ToList();
+        }
+
+        public async Task<ExecutorPricingResponse> UpdateMyExecutorPricingAsync(
+            UpdateExecutorPricingRequest request)
+        {
+            var accountId = _currentUserService.GetRequiredAccountId();
+            var account = await _willRepository.GetAccountAsync(accountId);
+            if (account == null || !string.Equals(account.Role, "EXECUTOR", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only an Executor can update Executor pricing.");
+            }
+
+            var profile = await _willRepository.GetExecutorProfileAsync(accountId);
+            if (profile == null)
+            {
+                throw new InvalidOperationException("Executor profile was not found.");
+            }
+
+            profile.ServiceFee = request.ServiceFee;
+            profile.Currency = request.Currency.Trim().ToUpperInvariant();
+            profile.UpdatedAt = DateTimeOffset.UtcNow;
+            await _willRepository.SaveChangesAsync();
+
+            return new ExecutorPricingResponse
+            {
+                ServiceFee = profile.ServiceFee,
+                Currency = profile.Currency,
+                UpdatedAt = profile.UpdatedAt
+            };
         }
 
         public async Task<ExecutorAssignmentResponse>
@@ -418,7 +513,8 @@ namespace LegacyVault.Features.WillManagement.Services
                 assignment = new ExecutorAssignment
                 {
                     Id = Guid.NewGuid(),
-                    WillId = will.Id
+                    WillId = will.Id,
+                    Scope = "WILL"
                 };
 
                 await _willRepository
@@ -431,6 +527,9 @@ namespace LegacyVault.Features.WillManagement.Services
             assignment.AssignedAt =
                 DateTimeOffset.UtcNow;
             assignment.RespondedAt = null;
+            assignment.Scope = "WILL";
+            assignment.ServiceFeeSnapshot = profile.ServiceFee;
+            assignment.CurrencySnapshot = profile.Currency;
             assignment.ExecutorAccount =
                 profile.Account;
 
@@ -445,7 +544,10 @@ namespace LegacyVault.Features.WillManagement.Services
                     assignment.ExecutorAccountId,
                 ExecutorName =
                     profile.Account.FullName,
-                Status = assignment.Status
+                Status = assignment.Status,
+                Scope = assignment.Scope,
+                ServiceFeeSnapshot = assignment.ServiceFeeSnapshot,
+                CurrencySnapshot = assignment.CurrencySnapshot
             };
         }
 
@@ -490,6 +592,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 request.ReminderBeforeDays;
             dms.MaxMissedCheckIns =
                 request.MaxMissedCheckIns;
+            dms.GraceDays = request.GraceDays;
             dms.Status = "WAITING";
             dms.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -545,6 +648,8 @@ namespace LegacyVault.Features.WillManagement.Services
                 now.AddDays(dms.CheckInIntervalDays);
             dms.MissedCheckIns = 0;
             dms.Status = "ACTIVE";
+            dms.ThresholdReachedAt = null;
+            dms.ExecutorNotifiedAt = null;
             dms.UpdatedAt = now;
 
             await _willRepository.SaveChangesAsync();
@@ -725,6 +830,14 @@ namespace LegacyVault.Features.WillManagement.Services
                     "Every will asset must have at least one beneficiary assignment.");
             }
 
+            var incompletelyAllocatedAsset = will.WillAssets.FirstOrDefault(x =>
+                Math.Abs(x.Assignments.Sum(a => a.AllocationPercentage) - 100m) > 0.01m);
+            if (incompletelyAllocatedAsset != null)
+            {
+                throw new InvalidOperationException(
+                    $"Beneficiary allocation for asset '{incompletelyAllocatedAsset.Asset?.Name ?? incompletelyAllocatedAsset.Id.ToString()}' must total 100% before submitting. Current total: {incompletelyAllocatedAsset.Assignments.Sum(a => a.AllocationPercentage):0.##}%.");
+            }
+
             if (will.ExecutorAssignment == null)
             {
                 throw new InvalidOperationException(
@@ -845,6 +958,8 @@ namespace LegacyVault.Features.WillManagement.Services
                     dms.MaxMissedCheckIns,
                 MissedCheckIns =
                     dms.MissedCheckIns,
+                GraceDays = dms.GraceDays,
+                ThresholdReachedAt = dms.ThresholdReachedAt,
                 LastCheckInAt =
                     dms.LastCheckInAt,
                 NextCheckInAt =
@@ -896,6 +1011,7 @@ namespace LegacyVault.Features.WillManagement.Services
                                 x.WillAssetId,
                             BeneficiaryDesignationId =
                                 x.BeneficiaryDesignationId,
+                            AllocationPercentage = x.AllocationPercentage,
                             BeneficiaryName =
                                 x.BeneficiaryDesignation?.FullName,
                             Relationship =
@@ -920,8 +1036,18 @@ namespace LegacyVault.Features.WillManagement.Services
                                 ?? string.Empty,
                             Status =
                                 will.ExecutorAssignment
-                                    .Status
+                                    .Status,
+                            Scope = will.ExecutorAssignment.Scope,
+                            ServiceFeeSnapshot = will.ExecutorAssignment.ServiceFeeSnapshot,
+                            CurrencySnapshot = will.ExecutorAssignment.CurrencySnapshot
                         },
+
+                ExecutorServiceFee = will.ExecutorAssignment == null
+                    ? null
+                    : will.ExecutorAssignment.ServiceFeeSnapshot,
+                ExecutorServiceFeeCurrency = will.ExecutorAssignment == null
+                    ? null
+                    : will.ExecutorAssignment.CurrencySnapshot,
 
                 Dms =
                     will.DmsConfiguration == null

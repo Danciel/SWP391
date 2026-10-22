@@ -102,6 +102,7 @@ namespace LegacyVault.Features.WillManagement.Repositories
         {
             return await _context.WillAssets
                 .Include(x => x.Asset)
+                .Include(x => x.Assignments)
                 .FirstOrDefaultAsync(x =>
                     x.Id == willAssetId);
         }
@@ -160,6 +161,52 @@ namespace LegacyVault.Features.WillManagement.Repositories
         {
             await _context.AssetAssignments
                 .AddAsync(assignment);
+        }
+
+        // Serialize allocation changes for the same WillAsset so concurrent requests
+        // cannot make the total exceed 100 percent.
+        public async Task<bool> TryAddAssetAssignmentWithinLimitAsync(AssetAssignment assignment)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({assignment.WillAssetId.ToString()}, 0))");
+
+            var currentTotal = await _context.AssetAssignments
+                .Where(x => x.WillAssetId == assignment.WillAssetId)
+                .SumAsync(x => (decimal?)x.AllocationPercentage) ?? 0m;
+
+            if (currentTotal + assignment.AllocationPercentage > 100m)
+            {
+                await tx.RollbackAsync();
+                return false;
+            }
+
+            await _context.AssetAssignments.AddAsync(assignment);
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return true;
+        }
+
+        public async Task<bool> TryUpdateAssetAllocationWithinLimitAsync(AssetAssignment assignment, decimal newPercentage)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({assignment.WillAssetId.ToString()}, 0))");
+
+            var otherTotal = await _context.AssetAssignments
+                .Where(x => x.WillAssetId == assignment.WillAssetId && x.Id != assignment.Id)
+                .SumAsync(x => (decimal?)x.AllocationPercentage) ?? 0m;
+
+            if (newPercentage <= 0m || newPercentage > 100m || otherTotal + newPercentage > 100m)
+            {
+                await tx.RollbackAsync();
+                return false;
+            }
+
+            assignment.AllocationPercentage = newPercentage;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return true;
         }
 
         public async Task AddExecutorAssignmentAsync(

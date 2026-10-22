@@ -90,6 +90,9 @@ builder.Services.AddScoped<IAssetService, AssetService>();
 // =========================
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
+builder.Services.AddSingleton<
+    LegacyVault.Features.WillManagement.Contracts.ILifeStatusClient,
+    LegacyVault.Features.WillManagement.Services.NullLifeStatusClient>();
 builder.Services.AddHostedService<
     LegacyVault.Features.WillManagement.Services.DmsMissedCycleWorker>();
 

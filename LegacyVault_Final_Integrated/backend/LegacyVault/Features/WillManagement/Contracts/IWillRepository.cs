@@ -47,6 +47,10 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task AddAssetAssignmentAsync(
             AssetAssignment assignment);
 
+        Task<bool> TryAddAssetAssignmentWithinLimitAsync(AssetAssignment assignment);
+
+        Task<bool> TryUpdateAssetAllocationWithinLimitAsync(AssetAssignment assignment, decimal newPercentage);
+
         Task AddExecutorAssignmentAsync(
             ExecutorAssignment assignment);
 

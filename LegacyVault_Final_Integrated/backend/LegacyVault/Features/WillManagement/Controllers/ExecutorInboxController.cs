@@ -44,6 +44,27 @@ public class ExecutorInboxController : ControllerBase
             }).ToListAsync();
         return Ok(assignments);
     }
+    // D06: wills whose DMS reached the missed threshold. Shown only to
+    // the ACCEPTED executor of that will. No secrets, no death claim.
+    [HttpGet("triggers")]
+    public async Task<IActionResult> Triggers()
+    {
+        var me=_user.GetRequiredAccountId();
+        var items=await _db.ExecutorAssignments.AsNoTracking()
+            .Where(x=>x.ExecutorAccountId==me && x.Status=="ACCEPTED"
+                && x.Will!=null && x.Will.DmsConfiguration!=null
+                && x.Will.DmsConfiguration.Status=="THRESHOLD_REACHED")
+            .Select(x=>new {
+                assignmentId=x.Id, willId=x.WillId, willTitle=x.Will!.Title,
+                ownerName=x.Will.OwnerAccount!=null?x.Will.OwnerAccount.FullName:"",
+                missedCheckIns=x.Will.DmsConfiguration!.MissedCheckIns,
+                maxMissedCheckIns=x.Will.DmsConfiguration.MaxMissedCheckIns,
+                thresholdReachedAt=x.Will.DmsConfiguration.ThresholdReachedAt,
+                lastCheckInAt=x.Will.DmsConfiguration.LastCheckInAt
+            }).ToListAsync();
+        return Ok(items);
+    }
+
     [HttpPost("{assignmentId:guid}/respond")]
     public async Task<IActionResult> Respond(Guid assignmentId, [FromBody] ExecutorDecision request)
     {
