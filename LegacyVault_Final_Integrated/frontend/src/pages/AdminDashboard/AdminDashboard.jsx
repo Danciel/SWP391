@@ -29,13 +29,32 @@ const CASE_STATUS_LABEL = {
   REJECTED: "Rejected",
 };
 
+
 function AccountBadge({ status }) {
+  const normalizedStatus = String(status ?? "").toUpperCase();
+
+  let label = "Unknown";
+  let badgeClass = styles.SUSPENDED;
+
+  if (normalizedStatus === "ACTIVE") {
+    label = "Active";
+    badgeClass = styles.ACTIVE;
+  } else if (normalizedStatus === "SUSPENDED") {
+    label = "Suspended";
+  } else if (normalizedStatus === "UNVERIFIED") {
+    label = "Unverified";
+  } else if (normalizedStatus === "VERIFIED") {
+    label = "Verified";
+    badgeClass = styles.ACTIVE;
+  }
+
   return (
-    <span className={`${styles.badge} ${status === "ACTIVE" ? styles.ACTIVE : styles.SUSPENDED}`}>
-      {status === "ACTIVE" ? "Active" : "Suspended"}
+    <span className={`${styles.badge} ${badgeClass}`}>
+      {label}
     </span>
   );
 }
+
 
 function CaseBadge({ status }) {
   return (
@@ -53,6 +72,7 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState("");
   const [roleBusyId, setRoleBusyId] = useState(null);
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -82,7 +102,7 @@ export default function AdminDashboard() {
       const response = await listAccounts({
         page,
         pageSize,
-        search,
+        search: appliedSearch,
         role: roleFilter,
       });
 
@@ -110,7 +130,7 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, roleFilter]);
+  }, [page, pageSize, appliedSearch, roleFilter]);
 
   useEffect(() => {
     load();
@@ -520,16 +540,34 @@ export default function AdminDashboard() {
 
 
             <div className={styles.accountToolbar}>
-              <input
-                className={styles.searchInput}
-                type="text"
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
+
+              <div className={styles.searchGroup}>
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPage(1);
+                      setAppliedSearch(search.trim());
+                    }
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  onClick={() => {
+                    setPage(1);
+                    setAppliedSearch(search.trim());
+                  }}
+                >
+                  Search
+                </button>
+              </div>
+
 
               <select
                 className={styles.roleSelect}
@@ -561,7 +599,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {data.accounts.map((acc) => (
                     <tr key={acc.id}>
-                      <td>{acc.fullName || acc.name || "—"}</td>
+                      <td>{acc.fullName || acc.name || "â€”"}</td>
                       <td>
                         <select
                           className={styles.roleSelect}
@@ -577,7 +615,7 @@ export default function AdminDashboard() {
                         </select>
                       </td>
                       <td>
-                        <AccountBadge status={acc.status} />
+                        <AccountBadge status={acc.status ?? acc.identityStatus} />
                       </td>
 
                       <td className={styles.actionCell}>
@@ -655,7 +693,7 @@ export default function AdminDashboard() {
             <div className={styles.pagination}>
               <span className={styles.mutedText}>
                 Page {page} of {pagination.totalPages}
-                {" · "}
+                {" Â· "}
                 {pagination.totalItems} accounts
               </span>
 
@@ -685,7 +723,7 @@ export default function AdminDashboard() {
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Flagged Cases ({data.cases.length})</h2>
             <p className={styles.mutedText}>
-              Only cases a Legal Verifier has flagged as suspected fraud appear here — regular executor cases are not
+              Only cases a Legal Verifier has flagged as suspected fraud appear here â€” regular executor cases are not
               visible to Admin.
             </p>
             {data.cases.length === 0 ? (
@@ -710,7 +748,7 @@ export default function AdminDashboard() {
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Payments — ${totalPaid.toFixed(2)} total
+              Payments â€” ${totalPaid.toFixed(2)} total
             </h2>
             {data.payments.length === 0 ? (
               <p className={styles.mutedText}>No payments recorded</p>
@@ -721,7 +759,7 @@ export default function AdminDashboard() {
                     <div>
                       <strong>{p.user}</strong>
                       <div className={styles.metaText}>
-                        {p.plan} · {formatDate(p.date)}
+                        {p.plan} Â· {formatDate(p.date)}
                       </div>
                     </div>
                     <span className={styles.amount}>${p.amount.toFixed(2)}</span>
@@ -740,7 +778,7 @@ export default function AdminDashboard() {
                 {data.auditLog.map((log) => (
                   <li key={log.id} className={styles.listItem}>
                     <span>
-                      <strong>{log.actor}</strong> — {log.action}
+                      <strong>{log.actor}</strong> â€” {log.action}
                     </span>
                     <span className={styles.metaText}>{formatDate(log.time)}</span>
                   </li>
@@ -755,6 +793,6 @@ export default function AdminDashboard() {
 }
 
 function formatDate(iso) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleString("en-US");
 }
