@@ -190,6 +190,7 @@ export default function ExecutorDashboard() {
       setBusyId(null);
     }
   }
+  const dmsTriggers = data?.dmsTriggers ?? [];
 
   return (
     <div className={styles.page}>
@@ -518,34 +519,45 @@ export default function ExecutorDashboard() {
           </section>
 
 
+
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Dead Man's Switch Triggers ({data.dmsTriggers.length})
+              Dead Man's Switch Triggers ({dmsTriggers.length})
             </h2>
 
-            {data.dmsTriggers.length === 0 ? (
+            {dmsTriggers.length === 0 ? (
               <p className={styles.mutedText}>No triggers</p>
             ) : (
               <ul className={styles.list}>
-                {data.dmsTriggers.map((trig) => (
-                  <li key={trig.assignmentId || trig.id} className={styles.listItem}>
+                {dmsTriggers.map((trig) => (
+                  <li
+                    key={trig.assignmentId || trig.id}
+                    className={styles.listItem}
+                  >
                     <div>
-                      <strong>{trig.ownerName || "Unknown Owner"}</strong>
+                      <strong>
+                        {trig.ownerName || "Unknown Owner"}
+                      </strong>
+
                       <div className={styles.metaText}>
                         Will: {trig.willTitle || "—"}
                       </div>
+
                       <div className={styles.metaText}>
-                        Triggered: {trig.thresholdReachedAt
+                        Triggered:{" "}
+                        {trig.thresholdReachedAt
                           ? formatDate(trig.thresholdReachedAt)
                           : trig.triggeredAt
                             ? formatDate(trig.triggeredAt)
                             : "—"}
                       </div>
+
                       <div className={styles.metaText}>
                         Missed check-ins: {trig.missedCheckIns ?? "—"} /{" "}
                         {trig.maxMissedCheckIns ?? "—"}
                       </div>
                     </div>
+
                     <div className={styles.itemRight}>
                       <Badge status={trig.status || "TRIGGERED"} />
                     </div>
@@ -554,6 +566,7 @@ export default function ExecutorDashboard() {
               </ul>
             )}
           </section>
+
 
 
           <section className={`${styles.card} ${styles.cardWide}`}>

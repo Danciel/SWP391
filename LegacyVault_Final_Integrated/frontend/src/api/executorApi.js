@@ -2,8 +2,9 @@ import { request } from "./client";
 import { unsupported } from "./unsupported";
 
 
+
 export const getExecutorDashboard = async () => {
-    const [requests, triggers] = await Promise.all([
+    const [requests, dmsTriggers] = await Promise.all([
         request("/executor-inbox"),
         request("/executor-inbox/triggers"),
     ]);
@@ -11,14 +12,11 @@ export const getExecutorDashboard = async () => {
     return {
         hireRequests: [],
         requests,
-        activeWills: requests.filter((r) => r.status === "ACCEPTED"),
+        activeWills: requests.filter(
+            (r) => r.status === "ACCEPTED"
+        ),
         cases: [],
-        dmsTriggers: triggers.map((trigger) => ({
-            ...trigger,
-            id: trigger.assignmentId,
-            triggeredAt: trigger.thresholdReachedAt,
-            status: trigger.status || "TRIGGERED",
-        })),
+        dmsTriggers,
         handoverRequests: [],
         stats: {},
     };

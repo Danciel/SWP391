@@ -136,7 +136,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 if (dms.MissedCheckIns >= dms.MaxMissedCheckIns)
                 {
                     // D05: threshold reached -> review marker only.
-                    dms.Status = "THRESHOLD_REACHED";
+                    dms.Status = "TRIGGERED";
                     dms.ThresholdReachedAt ??= now;
                     await db.SaveChangesAsync(ct);
                     continue;
@@ -189,7 +189,7 @@ namespace LegacyVault.Features.WillManagement.Services
                     .ThenInclude(w => w!.ExecutorAssignment)
                         .ThenInclude(e => e!.ExecutorAccount)
                 .Where(x =>
-                    x.Status == "THRESHOLD_REACHED" &&
+                    x.Status == "TRIGGERED" &&
                     x.ExecutorNotifiedAt == null &&
                     x.Will!.Status == "ACTIVE")
                 .ToListAsync(ct);
