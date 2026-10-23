@@ -15,6 +15,8 @@ namespace LegacyVault.Data
 
         public DbSet<EmailOtp> EmailOtps { get; set; }
 
+        public DbSet<PhoneOtp> PhoneOtps { get; set; }
+
         public DbSet<ExecutorProfile> ExecutorProfiles { get; set; }
 
         public DbSet<Asset> Assets { get; set; }
@@ -123,6 +125,17 @@ namespace LegacyVault.Data
                     .WithMany()
                     .HasForeignKey(x => x.AccountId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PhoneOtp>(entity =>
+            {
+                entity.ToTable("PhoneOtps");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.OtpHash).IsRequired();
+                entity.HasOne(x => x.Account)
+                      .WithMany()
+                      .HasForeignKey(x => x.AccountId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // =========================

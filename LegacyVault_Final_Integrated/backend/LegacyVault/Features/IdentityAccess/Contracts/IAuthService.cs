@@ -11,5 +11,9 @@ namespace LegacyVault.Features.IdentityAccess.Contracts
         Task ResendEmailOtpAsync(ResendEmailOtpRequest request);
 
         Task<LoginResponse> LoginAsync(LoginRequest request);
+
+        Task SendPhoneOtpAsync(Guid accountId); // or pass email to find account
+
+        Task VerifyPhoneOtpAsync(Guid accountId, string otp);
     }
 }

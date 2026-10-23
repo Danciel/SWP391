@@ -58,6 +58,14 @@ builder.Services.AddScoped<IEmailOtpService, EmailOtpService>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<ISmsSender, MockSmsSender>();
+//builder.Services.AddScoped<ISmsSender, TwilioSmsSender>();
+//builder.Services.AddScoped<ISmsSender, TextbeltSmsSender>();
+builder.Services.AddScoped<IPhoneOtpRepository, PhoneOtpRepository>();
+builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
+
 // FACE RECOGNITION
 // IdpUser CRUD (FaceId managed by a separate service)
 builder.Services.AddHttpClient<IIdpIntegrationService, IdpIntegrationService>();
