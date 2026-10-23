@@ -51,6 +51,7 @@ builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
 // EXISTING IDENTITY / AUTH
 // =========================
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IAccountService, AccountsService>();
 builder.Services.AddScoped<IEmailOtpRepository, EmailOtpRepository>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
