@@ -9,9 +9,6 @@ using LegacyVault.Features.IdentityAccess.Services;
 using LegacyVault.Features.WillManagement.Contracts;
 using LegacyVault.Features.WillManagement.Repositories;
 using LegacyVault.Features.WillManagement.Services;
-using LegacyVault.Features.FaceRecognition.Contracts;
-using LegacyVault.Features.FaceRecognition.Repositories;
-using LegacyVault.Features.FaceRecognition.Services;
 using LegacyVault.Shared.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -63,14 +60,7 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 // FACE RECOGNITION
 // IdpUser CRUD (FaceId managed by a separate service)
-builder.Services.AddScoped<IIdpUserRepository, IdpUserRepository>();
-builder.Services.AddScoped<IIdpUserService, IdpUsersService>();
-
-builder.Services.AddSingleton<
-    IFaceRecognitionService,
-    FaceRecognitionService>();
-builder.Services.AddScoped<IFaceRepository, FaceRepository>();
-builder.Services.AddScoped<IFaceService, FaceService>();
+builder.Services.AddHttpClient<IIdpIntegrationService, IdpIntegrationService>();
 
 // =========================
 // SHARED CURRENT USER

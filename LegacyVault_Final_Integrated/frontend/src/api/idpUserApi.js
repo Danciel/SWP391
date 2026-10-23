@@ -1,6 +1,7 @@
-import { request } from "./client";
+import { getToken, ApiError } from "./client";
 
-// Builds "?a=1&b=2", skipping empty values (copied from accountApi.js)
+const IDP_BASE_URL = /*import.meta.env.VITE_IDP_API_URL ||*/ "https://localhost:7176/api";
+
 const qs = (params = {}) => {
     const q = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -10,72 +11,52 @@ const qs = (params = {}) => {
     return s ? `?${s}` : "";
 };
 
-// ==========================================
-// ADMIN ONLY (JWT must carry role "ADMIN")
-// ==========================================
+// Custom request helper for MockIdpApi
+async function idpRequest(path, { method = "GET", body } = {}) {
+    const headers = { "Content-Type": "application/json" };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-/**
- * List IdpUsers with pagination, search, and optional status filter.
- * @param {Object} params
- * @param {number} [params.page=1]
- * @param {number} [params.pageSize=20]
- * @param {string} [params.search] - Matches FullName, Email, or Phone
- * @param {string} [params.identityStatus] - e.g., "UNVERIFIED", "VERIFIED", "ALIVE"
- */
+    const url = `${IDP_BASE_URL}${path}`;
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+            throw new ApiError(data?.message || `Error ${res.status}`, res.status, data);
+        }
+        return data;
+    } catch (err) {
+        if (err instanceof ApiError) throw err;
+        throw new ApiError(`Could not reach the Mock IDP at ${IDP_BASE_URL}`, 0, null);
+    }
+}
+
 export const listIdpUsers = ({ page = 1, pageSize = 20, search, identityStatus } = {}) =>
-    request(`/idp-users${qs({ page, pageSize, search, identityStatus })}`);
+    idpRequest(`/idp-users${qs({ page, pageSize, search, identityStatus })}`);
 
-/**
- * Get a single IdpUser by their GUID.
- * @param {string} id
- */
 export const getIdpUser = (id) =>
-    request(`/idp-users/${id}`);
+    idpRequest(`/idp-users/${id}`);
 
-/**
- * Search for an IdpUser by exactly ONE of email or phone (not both).
- * @param {Object} params
- * @param {string} [params.email]
- * @param {string} [params.phone]
- * @returns {Promise<{id: string, fullName: string, maskedEmail: string, maskedPhoneNumber: string, identityStatus: string}>}
- */
 export const searchIdpUsers = ({ email, phone } = {}) =>
-    request(`/idp-users/search${qs({ email, phone })}`);
+    idpRequest(`/idp-users/search${qs({ email, phone })}`);
 
-/**
- * Create a new IdpUser.
- * Note: FaceId is intentionally omitted (managed by the Face service).
- * @param {Object} data
- * @param {string} data.fullName
- * @param {string} data.email
- * @param {string} [data.phoneNumber]
- * @param {string} [data.identityStatus="UNVERIFIED"]
- */
-export const createIdpUser = ({ fullName, email, phoneNumber, identityStatus = "UNVERIFIED" }) =>
-    request("/idp-users", {
+export const createIdpUser = ({ fullName, email, phoneNumber, identityStatus = "UNVERIFIED", lifeStatus = "ALIVE" }) =>
+    idpRequest("/idp-users", {
         method: "POST",
-        body: { fullName, email, phoneNumber, identityStatus }
+        body: { fullName, email, phoneNumber, identityStatus, lifeStatus }
     });
 
-/**
- * Partially update an existing IdpUser.
- * Only the fields you pass will be sent and changed.
- * @param {string} id
- * @param {Object} data
- * @param {string} [data.fullName]
- * @param {string} [data.email]
- * @param {string} [data.phoneNumber]
- * @param {string} [data.identityStatus]
- */
-export const updateIdpUser = (id, { fullName, email, phoneNumber, identityStatus }) =>
-    request(`/idp-users/${id}`, {
+export const updateIdpUser = (id, { fullName, email, phoneNumber, identityStatus, lifeStatus }) =>
+    idpRequest(`/idp-users/${id}`, {
         method: "PUT",
-        body: { fullName, email, phoneNumber, identityStatus }
+        body: { fullName, email, phoneNumber, identityStatus, lifeStatus }
     });
 
-/**
- * Delete an IdpUser.
- * @param {string} id
- */
 export const deleteIdpUser = (id) =>
-    request(`/idp-users/${id}`, { method: "DELETE" });
+    idpRequest(`/idp-users/${id}`, { method: "DELETE" });

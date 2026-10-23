@@ -3,6 +3,7 @@ using LegacyVault.Features.IdentityAccess.Contracts;
 using LegacyVault.Features.IdentityAccess.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace LegacyVault.Features.IdentityAccess.Controllers
 {
@@ -13,14 +14,17 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountService _accountService;
+        private readonly IIdpIntegrationService _idpIntegrationService;
         private const string AdminRole = "ADMIN";
 
         public AccountsController(
             IAccountRepository accountRepository,
-            IAccountService accountService)
+            IAccountService accountService,
+            IIdpIntegrationService idpIntegrationService)
         {
             _accountRepository = accountRepository;
             _accountService = accountService;
+            _idpIntegrationService = idpIntegrationService;
         }
 
         // =========================
@@ -127,6 +131,48 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
                 };
 
             return Ok(response);
+        }
+
+
+        //LINK IDP
+        [HttpPost("link-idp")]
+        [Authorize] // Any logged-in user can link their account
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> LinkIdpAccount(
+            [FromForm] LinkIdpAccountRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentAccountId(out var accountId))
+                return Unauthorized(new { message = "Invalid token." });
+
+            var account = await _accountRepository.GetByIdAsync(accountId);
+            if (account == null)
+                return NotFound(new { message = "Account not found." });
+
+            if (!Guid.TryParse(request.ExternalIdentityId, out var idpUserId))
+                return BadRequest(new { message = "Invalid Identity Code format." });
+
+            // 1. Verify the face with the Mock IDP
+            using var stream = request.FaceImage.OpenReadStream();
+            var isFaceMatched = await _idpIntegrationService.VerifyFaceAsync(idpUserId, stream, cancellationToken);
+
+            if (!isFaceMatched)
+            {
+                return BadRequest(new { message = "Face verification failed. Identity not linked." });
+            }
+
+            // 2. Success! Update the LegacyVault Account
+            account.ExternalIdentityId = idpUserId.ToString();
+            account.IdentityStatus = "VERIFIED"; // Mark as verified
+            account.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _accountRepository.UpdateAsync(account, cancellationToken);
+
+            return Ok(new
+            {
+                message = "Identity verified and linked successfully.",
+                identityStatus = account.IdentityStatus
+            });
         }
 
         // =========================
