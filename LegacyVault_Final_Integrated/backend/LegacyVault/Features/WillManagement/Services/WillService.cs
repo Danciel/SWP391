@@ -10,12 +10,16 @@ namespace LegacyVault.Features.WillManagement.Services
         private readonly IWillRepository _willRepository;
         private readonly ICurrentUserService _currentUserService;
 
+        private readonly IWalletService _wallet;
+
         public WillService(
             IWillRepository willRepository,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            IWalletService wallet)
         {
             _willRepository = willRepository;
             _currentUserService = currentUserService;
+            _wallet = wallet;
         }
 
         public async Task<WillSummaryResponse> CreateAsync(
@@ -41,6 +45,7 @@ namespace LegacyVault.Features.WillManagement.Services
             };
 
             await _willRepository.AddWillAsync(will);
+            Audit("WILL_CREATED", will.Id, new { will.Title });
             await _willRepository.SaveChangesAsync();
 
             return ToSummary(will);
@@ -98,6 +103,7 @@ namespace LegacyVault.Features.WillManagement.Services
             EnsureDraft(will);
 
             _willRepository.RemoveWill(will);
+            Audit("WILL_DELETED", will.Id, new { will.Title });
             await _willRepository.SaveChangesAsync();
         }
 
@@ -153,6 +159,7 @@ namespace LegacyVault.Features.WillManagement.Services
             }
 
             will.UpdatedAt = DateTimeOffset.UtcNow;
+            Audit("WILL_ASSET_ADDED", will.Id, new { assetId = asset.Id });
             await _willRepository.SaveChangesAsync();
 
             return new WillAssetResponse
@@ -182,6 +189,7 @@ namespace LegacyVault.Features.WillManagement.Services
             string fullName;
             string email;
             string? phone;
+            string? identityNumber = null;
 
             if (request.BeneficiaryAccountId.HasValue)
             {
@@ -215,6 +223,11 @@ namespace LegacyVault.Features.WillManagement.Services
                 email =
                     request.Email?.Trim()
                     ?? string.Empty;
+
+                identityNumber =
+                    string.IsNullOrWhiteSpace(request.IdentityNumber)
+                        ? null
+                        : request.IdentityNumber.Trim();
 
                 phone =
                     string.IsNullOrWhiteSpace(request.Phone)
@@ -261,6 +274,7 @@ namespace LegacyVault.Features.WillManagement.Services
                     FullName = fullName,
                     Email = email,
                     Phone = phone,
+                    IdentityNumber = identityNumber,
                     Relationship =
                         string.IsNullOrWhiteSpace(
                             request.Relationship)
@@ -275,6 +289,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 beneficiary);
 
             will.UpdatedAt = now;
+            Audit("BENEFICIARY_ADDED", will.Id, new { beneficiaryId = beneficiary.Id, beneficiary.Relationship });
             await _willRepository.SaveChangesAsync();
 
             return ToBeneficiaryResponse(beneficiary);
@@ -433,6 +448,7 @@ namespace LegacyVault.Features.WillManagement.Services
                         ExperienceYears =
                             x.ExperienceYears,
                         Bio = x.Bio,
+                        Specialty = x.Specialty,
                         ServiceFee = x.ServiceFee,
                         Currency = x.Currency
                     })
@@ -479,7 +495,27 @@ namespace LegacyVault.Features.WillManagement.Services
             var will =
                 await GetOwnedWillRequiredAsync(willId);
 
-            EnsureDraft(will);
+            var current =
+                await _willRepository
+                    .GetExecutorAssignmentAsync(will.Id);
+
+            // After the executor declines, the Owner picks another one
+            // without reopening the draft; the fee is held again below.
+            var replacingDeclined =
+                will.Status == "PENDING_EXECUTOR" &&
+                current != null &&
+                current.Status == "DECLINED";
+
+            if (!replacingDeclined)
+            {
+                EnsureDraft(will);
+            }
+            else if (current!.ExecutorAccountId ==
+                     request.ExecutorAccountId)
+            {
+                throw new InvalidOperationException(
+                    "This executor already declined the will. Select a different executor.");
+            }
 
             if (request.ExecutorAccountId == ownerId)
             {
@@ -493,6 +529,7 @@ namespace LegacyVault.Features.WillManagement.Services
                         request.ExecutorAccountId);
 
             if (profile == null ||
+                profile.IsSuspended ||
                 !profile.IsVerified ||
                 profile.Account == null ||
                 !string.Equals(
@@ -504,9 +541,18 @@ namespace LegacyVault.Features.WillManagement.Services
                     "Selected account is not a verified executor.");
             }
 
-            var assignment =
-                await _willRepository
-                    .GetExecutorAssignmentAsync(will.Id);
+            var assignment = current;
+
+            if (replacingDeclined)
+            {
+                // Insufficient balance throws here, before anything changes.
+                await _wallet.HoldFeeAsync(
+                    will.Id,
+                    ownerId,
+                    profile.AccountId,
+                    profile.ServiceFee,
+                    profile.Currency);
+            }
 
             if (assignment == null)
             {
@@ -535,6 +581,7 @@ namespace LegacyVault.Features.WillManagement.Services
 
             will.UpdatedAt = DateTimeOffset.UtcNow;
 
+            Audit("EXECUTOR_SELECTED", will.Id, new { executorAccountId = request.ExecutorAccountId, fee = profile.ServiceFee, currency = profile.Currency, replacedDeclined = replacingDeclined });
             await _willRepository.SaveChangesAsync();
 
             return new ExecutorAssignmentResponse
@@ -598,6 +645,7 @@ namespace LegacyVault.Features.WillManagement.Services
 
             will.UpdatedAt = DateTimeOffset.UtcNow;
 
+            Audit("DMS_CONFIGURED", will.Id, new { dms.Enabled, dms.CheckInIntervalDays, dms.ReminderBeforeDays, dms.MaxMissedCheckIns, dms.GraceDays });
             await _willRepository.SaveChangesAsync();
 
             return ToDmsResponse(dms);
@@ -652,6 +700,7 @@ namespace LegacyVault.Features.WillManagement.Services
             dms.ExecutorNotifiedAt = null;
             dms.UpdatedAt = now;
 
+            Audit("DMS_CHECKED_IN", will.Id, new { nextCheckInAt = dms.NextCheckInAt });
             await _willRepository.SaveChangesAsync();
 
             return ToDmsResponse(dms);
@@ -692,7 +741,11 @@ namespace LegacyVault.Features.WillManagement.Services
 
             // CANCELLED is not in NonLockingStatuses' complement,
             // so every asset of this will is released automatically.
+            Audit("WILL_CANCELLED", will.Id, new { will.Title });
             await _willRepository.SaveChangesAsync();
+
+            // LV-35: give a still-held fee back to the Owner.
+            await _wallet.RefundFeeAsync(will.Id);
 
             return ToDetail(will);
         }
@@ -770,6 +823,7 @@ namespace LegacyVault.Features.WillManagement.Services
             will.WillAssets.Remove(willAsset);
             await _willRepository.RemoveWillAssetAsync(willAsset);
             will.UpdatedAt = DateTimeOffset.UtcNow;
+            Audit("WILL_ASSET_REMOVED", will.Id, new { willAssetId, willAsset.AssetId });
             await _willRepository.SaveChangesAsync();
         }
 
@@ -850,6 +904,15 @@ namespace LegacyVault.Features.WillManagement.Services
                     "Configure DMS before submitting.");
             }
 
+            // LV-35: hold the agreed executor fee first. If the balance
+            // is not enough nothing else has changed yet.
+            await _wallet.HoldFeeAsync(
+                will.Id,
+                will.OwnerAccountId,
+                will.ExecutorAssignment.ExecutorAccountId,
+                will.ExecutorAssignment.ServiceFeeSnapshot,
+                will.ExecutorAssignment.CurrencySnapshot);
+
             var now = DateTimeOffset.UtcNow;
 
             will.Status = "PENDING_EXECUTOR";
@@ -867,6 +930,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 will.DmsConfiguration.UpdatedAt = now;
             }
 
+            Audit("WILL_SUBMITTED", will.Id, new { executorAccountId = will.ExecutorAssignment.ExecutorAccountId, fee = will.ExecutorAssignment.ServiceFeeSnapshot });
             await _willRepository.SaveChangesAsync();
 
             var refreshed =
@@ -897,6 +961,27 @@ namespace LegacyVault.Features.WillManagement.Services
             }
 
             return will;
+        }
+
+        // AD09: who did what to which will. Metadata only, no secrets.
+        private void Audit(string action, Guid? entityId, object? details = null)
+        {
+            Guid? actor;
+            try { actor = _currentUserService.GetRequiredAccountId(); }
+            catch { actor = null; }
+
+            _willRepository.AddAuditLog(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorAccountId = actor,
+                Action = action,
+                EntityType = "Will",
+                EntityId = entityId,
+                Details = details == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Serialize(details),
+                CreatedAt = DateTimeOffset.UtcNow
+            });
         }
 
         private static void EnsureDraft(Will will)
@@ -939,6 +1024,10 @@ namespace LegacyVault.Features.WillManagement.Services
                 Phone = beneficiary.Phone,
                 Relationship =
                     beneficiary.Relationship,
+                IdentityNumberMasked =
+                    string.IsNullOrEmpty(beneficiary.IdentityNumber)
+                        ? null
+                        : "***" + beneficiary.IdentityNumber[^Math.Min(3, beneficiary.IdentityNumber.Length)..],
                 Status = beneficiary.Status
             };
         }

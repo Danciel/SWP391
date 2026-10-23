@@ -80,6 +80,32 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 """);
         }
 
+        public Task SendBeneficiaryInviteEmailAsync(
+            string toEmail,
+            string beneficiaryName,
+            string ownerName)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(beneficiaryName);
+            var owner = System.Net.WebUtility.HtmlEncode(ownerName);
+            var url = System.Net.WebUtility.HtmlEncode(
+                _configuration["App:FrontendUrl"] ?? "http://localhost:5173");
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - You have been named as a beneficiary",
+                $"""
+                <h2>Invitation</h2>
+
+                <p>Hello {name},</p>
+
+                <p>{owner} named you as a beneficiary in LegacyVault and a
+                handover has started.</p>
+
+                <p>Please register with <b>this email address</b> at
+                <a href="{url}">{url}</a>, then verify your identity.</p>
+                """);
+        }
+
         private async Task SendAsync(
             string toEmail,
             string subject,

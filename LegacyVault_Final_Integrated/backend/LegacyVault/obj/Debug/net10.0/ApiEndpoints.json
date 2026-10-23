@@ -131,6 +131,230 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminOperationsController",
+    "Method": "AuditLogs",
+    "RelativePath": "api/admin/audit-logs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "action",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "entityType",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "actorAccountId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "from",
+        "Type": "System.Nullable\u00601[[System.DateTimeOffset, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "to",
+        "Type": "System.Nullable\u00601[[System.DateTimeOffset, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminDmsController",
+    "Method": "List",
+    "RelativePath": "api/admin/dms",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminDmsController",
+    "Method": "Configure",
+    "RelativePath": "api/admin/dms/{willId}/configure",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.AdminDmsRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminDmsController",
+    "Method": "Evaluate",
+    "RelativePath": "api/admin/dms/evaluate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.AdminEvaluateRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminOperationsController",
+    "Method": "Executors",
+    "RelativePath": "api/admin/executors",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "suspended",
+        "Type": "System.Nullable\u00601[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "verified",
+        "Type": "System.Nullable\u00601[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminOperationsController",
+    "Method": "SetExecutorSuspension",
+    "RelativePath": "api/admin/executors/{accountId}/suspension",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "accountId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.Controllers.ExecutorSuspensionRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminOperationsController",
+    "Method": "LegalCases",
+    "RelativePath": "api/admin/legal-cases",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "willId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.PaymentDisputesController",
+    "Method": "ListAdmin",
+    "RelativePath": "api/admin/payment-disputes",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.PaymentDisputesController",
+    "Method": "Resolve",
+    "RelativePath": "api/admin/payment-disputes/{id}/resolve",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.Controllers.ResolvePaymentDisputeRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.AdminOperationsController",
+    "Method": "Payments",
+    "RelativePath": "api/admin/payments",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "willId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "LegacyVault.Features.AssetManagement.Controllers.AssetMaintenanceController",
     "Method": "DeleteUnused",
     "RelativePath": "api/asset-maintenance/{id}",
@@ -338,6 +562,16 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.DmsController",
+    "Method": "Alerts",
+    "RelativePath": "api/dms/alerts",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorInboxController",
     "Method": "Mine",
     "RelativePath": "api/executor-inbox",
@@ -389,6 +623,59 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorProfileController",
+    "Method": "Get",
+    "RelativePath": "api/executors/{accountId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "accountId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorProfileController",
+    "Method": "Reviews",
+    "RelativePath": "api/executors/{accountId}/reviews",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "accountId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorProfileController",
+    "Method": "CreateReview",
+    "RelativePath": "api/executors/{accountId}/reviews",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "accountId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.CreateExecutorReviewRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorsController",
     "Method": "UpdateMyPricing",
     "RelativePath": "api/executors/me/pricing",
@@ -399,6 +686,191 @@
       {
         "Name": "request",
         "Type": "LegacyVault.Features.WillManagement.DTOs.UpdateExecutorPricingRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorProfileController",
+    "Method": "UpdateMine",
+    "RelativePath": "api/executors/me/profile",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.UpdateExecutorProfileRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.ExecutorProfileController",
+    "Method": "PricingReference",
+    "RelativePath": "api/executors/pricing-reference",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Get",
+    "RelativePath": "api/handover/{willId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Abort",
+    "RelativePath": "api/handover/{willId}/abort",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Immediate",
+    "RelativePath": "api/handover/{willId}/immediate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Pause",
+    "RelativePath": "api/handover/{willId}/pause",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.HandoverReasonRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Reassign",
+    "RelativePath": "api/handover/{willId}/reassign-executor",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.ReassignExecutorRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Resume",
+    "RelativePath": "api/handover/{willId}/resume",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "StartAfterDeath",
+    "RelativePath": "api/handover/{willId}/start",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Deliver",
+    "RelativePath": "api/handover/items/{itemId}/deliver",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "itemId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.HandoverController",
+    "Method": "Reopen",
+    "RelativePath": "api/handover/items/{itemId}/reopen",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "itemId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.HandoverReasonRequest",
         "IsRequired": true
       }
     ],
@@ -597,6 +1069,179 @@
       },
       {
         "Name": "phone",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.LegalCasesController",
+    "Method": "Submit",
+    "RelativePath": "api/legal-cases",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "willId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      },
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.LegalCasesController",
+    "Method": "List",
+    "RelativePath": "api/legal-cases",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.LegalCasesController",
+    "Method": "Get",
+    "RelativePath": "api/legal-cases/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.LegalCasesController",
+    "Method": "Certificate",
+    "RelativePath": "api/legal-cases/{id}/certificate",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.LegalCasesController",
+    "Method": "Decide",
+    "RelativePath": "api/legal-cases/{id}/decision",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.LegalDecisionRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.RelationshipsController",
+    "Method": "Asset",
+    "RelativePath": "api/relationships/assets/{assetId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assetId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.RelationshipsController",
+    "Method": "Me",
+    "RelativePath": "api/relationships/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.WalletController",
+    "Method": "Get",
+    "RelativePath": "api/wallet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.PaymentDisputesController",
+    "Method": "Open",
+    "RelativePath": "api/wallet/disputes",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.Controllers.OpenPaymentDisputeRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.PaymentDisputesController",
+    "Method": "Mine",
+    "RelativePath": "api/wallet/disputes/mine",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LegacyVault.Features.WillManagement.Controllers.WalletController",
+    "Method": "TopUp",
+    "RelativePath": "api/wallet/topup",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LegacyVault.Features.WillManagement.DTOs.TopUpRequest",
+        "IsRequired": true
+      },
+      {
+        "Name": "Idempotency-Key",
         "Type": "System.String",
         "IsRequired": false
       }

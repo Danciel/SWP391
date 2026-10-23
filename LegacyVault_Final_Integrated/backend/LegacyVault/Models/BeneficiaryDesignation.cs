@@ -17,6 +17,9 @@ namespace LegacyVault.Models
 
         public string? Relationship { get; set; }
 
+        // LV-15: optional ID document number for an unregistered person.
+        public string? IdentityNumber { get; set; }
+
         public string Status { get; set; } = "DESIGNATED";
 
         public DateTimeOffset CreatedAt { get; set; }

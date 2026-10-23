@@ -231,3 +231,154 @@ Accept: application/json
 
 # DELETE {{LegacyVault_HostAddress}}/api/assets/{{assetId}}
 # Authorization: Bearer {{token}}
+
+
+### =========================================================
+### SPRINT 4 - WALLET / ADMIN OVERSIGHT / AUDIT
+### Use an ADMIN JWT for the /api/admin requests.
+### =========================================================
+
+### Mock top-up: use a NEW Idempotency-Key for each intended top-up; reuse it only to retry that same request.
+POST {{LegacyVault_HostAddress}}/api/wallet/topup
+Authorization: Bearer {{token}}
+Idempotency-Key: 7f9d67e6-7e89-4d9c-a0a2-9d35e9a6a001
+Content-Type: application/json
+
+{
+  "amount": 1000000
+}
+
+### Admin: list executors (optional ?suspended=true / ?verified=true)
+GET {{LegacyVault_HostAddress}}/api/admin/executors
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Admin: suspend executor (reason required)
+PUT {{LegacyVault_HostAddress}}/api/admin/executors/{{executorAccountId}}/suspension
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isSuspended": true,
+  "reason": "Demo suspension for policy review"
+}
+
+### Admin: reinstate executor
+PUT {{LegacyVault_HostAddress}}/api/admin/executors/{{executorAccountId}}/suspension
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isSuspended": false
+}
+
+### Admin: legal case oversight only (does not approve/reject)
+GET {{LegacyVault_HostAddress}}/api/admin/legal-cases?status=PENDING
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Admin: payments + associated wallet ledger
+GET {{LegacyVault_HostAddress}}/api/admin/payments?page=1&pageSize=50
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Admin: searchable audit trail
+GET {{LegacyVault_HostAddress}}/api/admin/audit-logs?page=1&pageSize=50
+Authorization: Bearer {{token}}
+Accept: application/json
+
+
+### Owner or assigned Executor: open one dispute while fee is HELD
+POST {{LegacyVault_HostAddress}}/api/wallet/disputes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "willId": "{{willId}}",
+  "reason": "The agreed handover scope needs review."
+}
+
+### My payment disputes
+GET {{LegacyVault_HostAddress}}/api/wallet/disputes/mine
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Admin: list open payment disputes
+GET {{LegacyVault_HostAddress}}/api/admin/payment-disputes?status=OPEN
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Admin: resolve dispute by refund (or use RELEASE only after HANDED_OVER)
+POST {{LegacyVault_HostAddress}}/api/admin/payment-disputes/PASTE_DISPUTE_ID_HERE/resolve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "action": "REFUND",
+  "note": "Reviewed the dispute; refund approved."
+}
+
+### ===== Sprint 4 completion (H06 / E10 / W09 / audit) =====
+
+### H06 Admin: pause an unfinished handover (a dispute pauses it automatically)
+POST {{LegacyVault_HostAddress}}/api/handover/{{willId}}/pause
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Executor reported a problem with one item."
+}
+
+### H06 Admin: resume a paused handover (refused while a dispute is OPEN)
+POST {{LegacyVault_HostAddress}}/api/handover/{{willId}}/resume
+Authorization: Bearer {{token}}
+
+### H06 revise: Admin sends a delivered item back to PENDING (handover must be PAUSED)
+POST {{LegacyVault_HostAddress}}/api/handover/items/PASTE_ITEM_ID_HERE/reopen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Beneficiary did not receive the asset."
+}
+
+### H06 reassign: Admin picks another executor (will ACTIVE or handover PAUSED)
+POST {{LegacyVault_HostAddress}}/api/handover/{{willId}}/reassign-executor
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "newExecutorAccountId": "PASTE_EXECUTOR_ACCOUNT_ID_HERE",
+  "reason": "Previous executor is unresponsive."
+}
+
+### H06 Admin: resolve a dispute. action = REFUND | RELEASE | RESUME | REASSIGN
+POST {{LegacyVault_HostAddress}}/api/admin/payment-disputes/PASTE_DISPUTE_ID_HERE/resolve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "action": "REASSIGN",
+  "note": "Moving the case to a different executor.",
+  "newExecutorAccountId": "PASTE_EXECUTOR_ACCOUNT_ID_HERE"
+}
+
+### E10 Reference price (platform data only, not a market price)
+GET {{LegacyVault_HostAddress}}/api/executors/pricing-reference
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### W09 My relationships (owner / beneficiary / executor, scoped to the caller)
+GET {{LegacyVault_HostAddress}}/api/relationships/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### W09 Owner: where one of my assets is used and who receives it
+GET {{LegacyVault_HostAddress}}/api/relationships/assets/{{assetId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### AD09 Audit log (look for WILL_*, EXECUTOR_*, DMS_*, HANDOVER_*, PAYMENT_* actions)
+GET {{LegacyVault_HostAddress}}/api/admin/audit-logs?pageSize=50
+Authorization: Bearer {{token}}
+Accept: application/json

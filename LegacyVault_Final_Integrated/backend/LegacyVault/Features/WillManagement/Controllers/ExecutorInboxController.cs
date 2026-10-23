@@ -12,7 +12,8 @@ public class ExecutorInboxController : ControllerBase
 {
     private readonly LegacyVaultDbContext _db;
     private readonly ICurrentUserService _user;
-    public ExecutorInboxController(LegacyVaultDbContext db, ICurrentUserService user) { _db=db; _user=user; }
+    private readonly LegacyVault.Features.WillManagement.Contracts.IWalletService _wallet;
+    public ExecutorInboxController(LegacyVaultDbContext db, ICurrentUserService user, LegacyVault.Features.WillManagement.Contracts.IWalletService wallet) { _db=db; _user=user; _wallet=wallet; }
 
     [HttpGet]
     public async Task<IActionResult> Mine()
@@ -69,6 +70,8 @@ public class ExecutorInboxController : ControllerBase
     public async Task<IActionResult> Respond(Guid assignmentId, [FromBody] ExecutorDecision request)
     {
         var me=_user.GetRequiredAccountId();
+        var suspended = await _db.ExecutorProfiles.AnyAsync(x => x.AccountId == me && x.IsSuspended);
+        if (suspended) return StatusCode(403, new { message = "This executor account is suspended and cannot respond to assignments." });
         var assignment=await _db.ExecutorAssignments.Include(x=>x.Will).FirstOrDefaultAsync(x=>x.Id==assignmentId && x.ExecutorAccountId==me);
         if (assignment==null) return NotFound(new {message="Executor assignment not found."});
         if (assignment.Will==null || assignment.Will.Status!="PENDING_EXECUTOR" || assignment.Status!="PENDING") return BadRequest(new {message="Assignment is not pending."});
@@ -81,11 +84,20 @@ public class ExecutorInboxController : ControllerBase
                 .SetProperty(x => x.Status, newStatus)
                 .SetProperty(x => x.RespondedAt, respondedAt));
         if (changed == 0) return Conflict(new {message="Assignment was already answered."});
+        if (!request.Accept) await _wallet.RefundFeeAsync(assignment.WillId);
         assignment.Status=newStatus;
         assignment.RespondedAt=respondedAt;
         // Executor acceptance activates the will; decline retains pending state for owner reassignment.
         if(request.Accept) { assignment.Will.Status="ACTIVE"; assignment.Will.ActivatedAt=DateTimeOffset.UtcNow; }
         assignment.Will.UpdatedAt=DateTimeOffset.UtcNow;
+        _db.AuditLogs.Add(new LegacyVault.Models.AuditLog
+        {
+            Id = Guid.NewGuid(), ActorAccountId = me,
+            Action = request.Accept ? "EXECUTOR_ACCEPTED" : "EXECUTOR_DECLINED",
+            EntityType = "ExecutorAssignment", EntityId = assignment.Id,
+            Details = System.Text.Json.JsonSerializer.Serialize(new { assignment.WillId, willStatus = assignment.Will.Status }),
+            CreatedAt = DateTimeOffset.UtcNow
+        });
         await _db.SaveChangesAsync();
         return Ok(new {assignment.Id,assignment.WillId,assignment.Status,willStatus=assignment.Will.Status});
     }

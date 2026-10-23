@@ -9,6 +9,11 @@
             string ownerName,
             DateTimeOffset dueDate);
 
+        Task SendBeneficiaryInviteEmailAsync(
+            string toEmail,
+            string beneficiaryName,
+            string ownerName);
+
         Task SendDmsTriggerEmailAsync(
             string toEmail,
             string executorName,

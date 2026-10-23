@@ -90,6 +90,7 @@ namespace LegacyVault.Features.WillManagement.Repositories
                 .Include(x => x.Account)
                 .Where(x =>
                     x.IsVerified &&
+                    !x.IsSuspended &&
                     x.Account != null &&
                     x.Account.Role == "EXECUTOR")
                 .OrderByDescending(x => x.Rating)
@@ -294,6 +295,11 @@ namespace LegacyVault.Features.WillManagement.Repositories
         public void RemoveWill(Will will)
         {
             _context.Wills.Remove(will);
+        }
+
+        public void AddAuditLog(AuditLog log)
+        {
+            _context.AuditLogs.Add(log);
         }
 
         public async Task SaveChangesAsync()

@@ -39,6 +39,24 @@ namespace LegacyVault.Data
 
         public DbSet<DmsCheckIn> DmsCheckIns { get; set; }
 
+        public DbSet<ExecutorReview> ExecutorReviews { get; set; }
+
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
+        public DbSet<PaymentDispute> PaymentDisputes { get; set; }
+
+        public DbSet<LegalCase> LegalCases { get; set; }
+
+        public DbSet<HandoverCase> HandoverCases { get; set; }
+
+        public DbSet<HandoverItem> HandoverItems { get; set; }
+
+        public DbSet<Wallet> Wallets { get; set; }
+
+        public DbSet<WalletTransaction> WalletTransactions { get; set; }
+
+        public DbSet<ServicePayment> ServicePayments { get; set; }
+
         public DbSet<Face> Faces { get; set; }
 
         public DbSet<IdpUser> IdpUsers { get; set; }
@@ -129,6 +147,8 @@ namespace LegacyVault.Data
                     .HasMaxLength(3)
                     .HasDefaultValue("VND")
                     .IsRequired();
+
+                entity.Property(x => x.SuspensionReason).HasMaxLength(500);
 
                 entity.HasOne(x => x.Account)
                     .WithOne()
@@ -431,6 +451,131 @@ namespace LegacyVault.Data
                     .WithMany(x => x.CheckIns)
                     .HasForeignKey(x =>
                         x.DmsConfigurationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =========================
+            // HANDOVER / LEGAL / WALLET / REVIEWS
+            // =========================
+            modelBuilder.Entity<PaymentDispute>(entity =>
+            {
+                entity.ToTable("PaymentDisputes");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId).IsUnique();
+                entity.HasIndex(x => x.Status);
+                entity.HasIndex(x => new { x.RaisedByAccountId, x.CreatedAt });
+                entity.Property(x => x.Reason).HasMaxLength(1000).IsRequired();
+                entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+                entity.Property(x => x.ResolutionAction).HasMaxLength(20);
+                entity.Property(x => x.ResolutionNote).HasMaxLength(1000);
+                entity.HasOne<Will>().WithMany().HasForeignKey(x => x.WillId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AuditLog>(entity =>
+            {
+                entity.ToTable("AuditLogs");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Action).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.Details).HasMaxLength(2000);
+                entity.HasIndex(x => x.CreatedAt);
+                entity.HasIndex(x => new { x.ActorAccountId, x.CreatedAt });
+                entity.HasIndex(x => new { x.EntityType, x.EntityId, x.CreatedAt });
+            });
+
+            modelBuilder.Entity<ExecutorReview>(entity =>
+            {
+                entity.ToTable("ExecutorReviews");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId).IsUnique();
+                entity.HasIndex(x => x.ExecutorAccountId);
+                entity.Property(x => x.Comment).HasMaxLength(1000);
+                entity.HasOne(x => x.OwnerAccount)
+                    .WithMany()
+                    .HasForeignKey(x => x.OwnerAccountId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<LegalCase>(entity =>
+            {
+                entity.ToTable("LegalCases");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId);
+                entity.HasIndex(x => x.Status);
+                entity.Property(x => x.Status).IsRequired();
+                entity.Property(x => x.FilePath).IsRequired();
+                entity.HasOne(x => x.Will)
+                    .WithMany()
+                    .HasForeignKey(x => x.WillId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.ExecutorAccount)
+                    .WithMany()
+                    .HasForeignKey(x => x.ExecutorAccountId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<HandoverCase>(entity =>
+            {
+                entity.ToTable("HandoverCases");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId);
+                entity.Property(x => x.Type).IsRequired();
+                entity.Property(x => x.Status).IsRequired();
+                entity.HasOne(x => x.Will)
+                    .WithMany()
+                    .HasForeignKey(x => x.WillId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<HandoverItem>(entity =>
+            {
+                entity.ToTable("HandoverItems");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => new { x.HandoverCaseId, x.AssetAssignmentId })
+                    .IsUnique();
+                entity.Property(x => x.Status).IsRequired();
+                entity.HasOne(x => x.HandoverCase)
+                    .WithMany(x => x.Items)
+                    .HasForeignKey(x => x.HandoverCaseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(x => x.AssetAssignment)
+                    .WithMany()
+                    .HasForeignKey(x => x.AssetAssignmentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Wallet>(entity =>
+            {
+                entity.ToTable("Wallets");
+                entity.HasKey(x => x.AccountId);
+                entity.Property(x => x.Balance).HasPrecision(18, 2);
+                entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            });
+
+            modelBuilder.Entity<WalletTransaction>(entity =>
+            {
+                entity.ToTable("WalletTransactions");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => new { x.AccountId, x.CreatedAt });
+                entity.Property(x => x.Amount).HasPrecision(18, 2);
+                entity.Property(x => x.BalanceAfter).HasPrecision(18, 2);
+                entity.Property(x => x.Type).IsRequired();
+                entity.Property(x => x.IdempotencyKey).HasMaxLength(100);
+                entity.HasIndex(x => new { x.AccountId, x.IdempotencyKey }).IsUnique()
+                    .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            });
+
+            modelBuilder.Entity<ServicePayment>(entity =>
+            {
+                entity.ToTable("ServicePayments");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId).IsUnique();
+                entity.Property(x => x.Amount).HasPrecision(18, 2);
+                entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+                entity.Property(x => x.Status).IsRequired();
+                entity.HasOne(x => x.Will)
+                    .WithMany()
+                    .HasForeignKey(x => x.WillId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

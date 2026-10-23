@@ -40,6 +40,9 @@ namespace LegacyVault.Features.WillManagement.DTOs
 
         public string? Relationship { get; set; }
 
+        // Last 3 characters only; the full number is never returned.
+        public string? IdentityNumberMasked { get; set; }
+
         public string Status { get; set; } = string.Empty;
     }
 
@@ -113,6 +116,8 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public int ExperienceYears { get; set; }
 
         public string? Bio { get; set; }
+
+        public string? Specialty { get; set; }
 
         public decimal ServiceFee { get; set; }
 

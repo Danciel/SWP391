@@ -54,7 +54,6 @@ builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
 // EXISTING IDENTITY / AUTH
 // =========================
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<IAccountService, AccountsService>();
 builder.Services.AddScoped<IEmailOtpRepository, EmailOtpRepository>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -89,6 +88,18 @@ builder.Services.AddScoped<IAssetService, AssetService>();
 // =========================
 // CUONG - WILL FLOW
 // =========================
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IWalletService,
+    LegacyVault.Features.WillManagement.Services.WalletService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IExecutorProfileService,
+    LegacyVault.Features.WillManagement.Services.ExecutorProfileService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.ILegalService,
+    LegacyVault.Features.WillManagement.Services.LegalService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IHandoverService,
+    LegacyVault.Features.WillManagement.Services.HandoverService>();
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
 builder.Services.AddSingleton<

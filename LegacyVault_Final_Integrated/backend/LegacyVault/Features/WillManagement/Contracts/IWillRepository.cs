@@ -74,6 +74,9 @@ namespace LegacyVault.Features.WillManagement.Contracts
 
         void RemoveWill(Will will);
 
+        // AD09: audit rows are saved together with the business change.
+        void AddAuditLog(AuditLog log);
+
         Task SaveChangesAsync();
     }
 }
