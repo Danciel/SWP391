@@ -29,13 +29,32 @@ const CASE_STATUS_LABEL = {
   REJECTED: "Rejected",
 };
 
+
 function AccountBadge({ status }) {
+  const normalizedStatus = String(status ?? "").toUpperCase();
+
+  let label = "Unknown";
+  let badgeClass = styles.SUSPENDED;
+
+  if (normalizedStatus === "ACTIVE") {
+    label = "Active";
+    badgeClass = styles.ACTIVE;
+  } else if (normalizedStatus === "SUSPENDED") {
+    label = "Suspended";
+  } else if (normalizedStatus === "UNVERIFIED") {
+    label = "Unverified";
+  } else if (normalizedStatus === "VERIFIED") {
+    label = "Verified";
+    badgeClass = styles.ACTIVE;
+  }
+
   return (
-    <span className={`${styles.badge} ${status === "ACTIVE" ? styles.ACTIVE : styles.SUSPENDED}`}>
-      {status === "ACTIVE" ? "Active" : "Suspended"}
+    <span className={`${styles.badge} ${badgeClass}`}>
+      {label}
     </span>
   );
 }
+
 
 function CaseBadge({ status }) {
   return (
@@ -175,6 +194,7 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState("");
   const [roleBusyId, setRoleBusyId] = useState(null);
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState({
     fullName: "",
@@ -202,7 +222,7 @@ export default function AdminDashboard() {
       const response = await listAccounts({
         page,
         pageSize,
-        search,
+        search: appliedSearch,
         role: roleFilter,
       });
 
@@ -230,7 +250,7 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, roleFilter]);
+  }, [page, pageSize, appliedSearch, roleFilter]);
 
   useEffect(() => {
     load();
@@ -364,67 +384,205 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                {showCreateForm && (
-                    <form
-                        className={styles.createForm}
-                        onSubmit={handleCreateAccount}
-                    >
-                      <h3 className={styles.cardTitle}>Create Account</h3>
+                <label className={styles.formField}>
+                  Full Name *
+                  <input
+                    className={styles.searchInput}
+                    type="text"
+                    value={editingAccount.fullName}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        fullName: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </label>
 
-                      <label className={styles.formField}>
-                        Full Name *
-                        <input
-                            className={styles.searchInput}
-                            type="text"
-                            value={createForm.fullName}
-                            onChange={e =>
-                                setCreateForm({ ...createForm, fullName: e.target.value })
-                            }
-                            required
-                        />
-                      </label>
+                <label className={styles.formField}>
+                  Email *
+                  <input
+                    className={styles.searchInput}
+                    type="email"
+                    value={editingAccount.email}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        email: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </label>
 
-                      <label className={styles.formField}>
-                        Email *
-                        <input
-                            className={styles.searchInput}
-                            type="email"
-                            value={createForm.email}
-                            onChange={e =>
-                                setCreateForm({ ...createForm, email: e.target.value })
-                            }
-                            required
-                        />
-                      </label>
+                <label className={styles.formField}>
+                  Phone Number
+                  <input
+                    className={styles.searchInput}
+                    type="tel"
+                    value={editingAccount.phoneNumber}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        phoneNumber: e.target.value,
+                      })
+                    }
+                  />
+                </label>
 
-                      <label className={styles.formField}>
-                        Phone Number
-                        <input
-                            className={styles.searchInput}
-                            type="tel"
-                            value={createForm.phoneNumber}
-                            onChange={e =>
-                                setCreateForm({ ...createForm, phoneNumber: e.target.value })
-                            }
-                        />
-                      </label>
+                <label className={styles.formField}>
+                  New Password
+                  <input
+                    className={styles.searchInput}
+                    type="password"
+                    value={editingAccount.password}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        password: e.target.value,
+                      })
+                    }
+                    minLength={8}
+                    placeholder="Leave blank to keep current password"
+                  />
+                </label>
 
-                      <label className={styles.formField}>
-                        Password *
-                        <input
-                            className={styles.searchInput}
-                            type="password"
-                            value={createForm.password}
-                            onChange={e =>
-                                setCreateForm({ ...createForm, password: e.target.value })
-                            }
-                            minLength={8}
-                            required
-                        />
-                      </label>
+                <label className={styles.formField}>
+                  Role *
+                  <select
+                    className={styles.roleSelect}
+                    value={editingAccount.role}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        role: e.target.value,
+                      })
+                    }
+                    required
+                  >
+                    {ROLE_OPTIONS.map(role => (
+                      <option key={role} value={role}>
+                        {ROLE_LABEL[role]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                      <label className={styles.formField}>
-                        Role *
+                <label className={styles.formCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={editingAccount.emailVerified}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        emailVerified: e.target.checked,
+                      })
+                    }
+                  />
+                  Email verified
+                </label>
+
+                <label className={styles.formCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={editingAccount.phoneVerified}
+                    onChange={e =>
+                      setEditingAccount({
+                        ...editingAccount,
+                        phoneVerified: e.target.checked,
+                      })
+                    }
+                  />
+                  Phone verified
+                </label>
+
+                <div className={styles.formActions}>
+                  <button
+                    type="submit"
+                    className={styles.primaryBtn}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? "Saving..." : "Save Changes"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.dangerBtn}
+                    disabled={isUpdating}
+                    onClick={() => setEditingAccount(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+
+
+
+            <div className={styles.accountToolbar}>
+
+              <div className={styles.searchGroup}>
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPage(1);
+                      setAppliedSearch(search.trim());
+                    }
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  onClick={() => {
+                    setPage(1);
+                    setAppliedSearch(search.trim());
+                  }}
+                >
+                  Search
+                </button>
+              </div>
+
+
+              <select
+                className={styles.roleSelect}
+                value={roleFilter}
+                onChange={(e) => {
+                  setRoleFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All roles</option>
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABEL[role]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.accounts.map((acc) => (
+                    <tr key={acc.id}>
+                      <td>{acc.fullName || acc.name || "â€”"}</td>
+                      <td>
                         <select
                             className={styles.roleSelect}
                             value={createForm.role}
@@ -439,35 +597,10 @@ export default function AdminDashboard() {
                               </option>
                           ))}
                         </select>
-                      </label>
-
-                      <label className={styles.formCheckbox}>
-                        <input
-                            type="checkbox"
-                            checked={createForm.emailVerified}
-                            onChange={e =>
-                                setCreateForm({
-                                  ...createForm,
-                                  emailVerified: e.target.checked,
-                                })
-                            }
-                        />
-                        Email verified
-                      </label>
-
-                      <label className={styles.formCheckbox}>
-                        <input
-                            type="checkbox"
-                            checked={createForm.phoneVerified}
-                            onChange={e =>
-                                setCreateForm({
-                                  ...createForm,
-                                  phoneVerified: e.target.checked,
-                                })
-                            }
-                        />
-                        Phone verified
-                      </label>
+                      </td>
+                      <td>
+                        <AccountBadge status={acc.status ?? acc.identityStatus} />
+                      </td>
 
                       <div className={styles.formActions}>
                         <button
@@ -552,91 +685,92 @@ export default function AdminDashboard() {
                 <div className={styles.pagination}>
               <span className={styles.mutedText}>
                 Page {page} of {pagination.totalPages}
-                {" · "}
+                {" Â· "}
                 {pagination.totalItems} accounts
               </span>
 
-                  <div className={styles.paginationActions}>
-                    <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        disabled={page <= 1 || isLoading}
-                        onClick={() => setPage(current => current - 1)}
-                    >
-                      Previous
-                    </button>
+              <div className={styles.paginationActions}>
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  disabled={page <= 1 || isLoading}
+                  onClick={() => setPage(current => current - 1)}
+                >
+                  Previous
+                </button>
 
-                    <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        disabled={page >= pagination.totalPages || isLoading}
-                        onClick={() => setPage(current => current + 1)}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </section>
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  disabled={page >= pagination.totalPages || isLoading}
+                  onClick={() => setPage(current => current + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </section>
 
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>Flagged Cases ({data.cases.length})</h2>
-                <p className={styles.mutedText}>
-                  Only cases a Legal Verifier has flagged as suspected fraud appear here — regular executor cases are not
-                  visible to Admin.
-                </p>
-                {data.cases.length === 0 ? (
-                    <p className={styles.mutedText}>No flagged cases</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.cases.map((c) => (
-                          <li key={c.id} className={styles.listItem}>
-                            <div>
-                              <strong>{c.ownerName}</strong>
-                              <div className={styles.metaText}>Executor: {c.executorName}</div>
-                              {c.flagReason && (
-                                  <div className={styles.flagReasonText}>Flag reason: {c.flagReason}</div>
-                              )}
-                            </div>
-                            <CaseBadge status={c.status} />
-                          </li>
-                      ))}
-                    </ul>
-                )}
-              </section>
 
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>
-                  Payments — ${totalPaid.toFixed(2)} total
-                </h2>
-                {data.payments.length === 0 ? (
-                    <p className={styles.mutedText}>No payments recorded</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.payments.map((p) => (
-                          <li key={p.id} className={styles.listItem}>
-                            <div>
-                              <strong>{p.user}</strong>
-                              <div className={styles.metaText}>
-                                {p.plan} · {formatDate(p.date)}
-                              </div>
-                            </div>
-                            <span className={styles.amount}>${p.amount.toFixed(2)}</span>
-                          </li>
-                      ))}
-                    </ul>
-                )}
-              </section>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>Flagged Cases ({data.cases.length})</h2>
+            <p className={styles.mutedText}>
+              Only cases a Legal Verifier has flagged as suspected fraud appear here â€” regular executor cases are not
+              visible to Admin.
+            </p>
+            {data.cases.length === 0 ? (
+              <p className={styles.mutedText}>No flagged cases</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.cases.map((c) => (
+                  <li key={c.id} className={styles.listItem}>
+                    <div>
+                      <strong>{c.ownerName}</strong>
+                      <div className={styles.metaText}>Executor: {c.executorName}</div>
+                      {c.flagReason && (
+                        <div className={styles.flagReasonText}>Flag reason: {c.flagReason}</div>
+                      )}
+                    </div>
+                    <CaseBadge status={c.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-              <section className={`${styles.card} ${styles.cardWide}`}>
-                <h2 className={styles.cardTitle}>Audit Log</h2>
-                {data.auditLog.length === 0 ? (
-                    <p className={styles.mutedText}>No activity recorded yet</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.auditLog.map((log) => (
-                          <li key={log.id} className={styles.listItem}>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Payments â€” ${totalPaid.toFixed(2)} total
+            </h2>
+            {data.payments.length === 0 ? (
+              <p className={styles.mutedText}>No payments recorded</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.payments.map((p) => (
+                  <li key={p.id} className={styles.listItem}>
+                    <div>
+                      <strong>{p.user}</strong>
+                      <div className={styles.metaText}>
+                        {p.plan} Â· {formatDate(p.date)}
+                      </div>
+                    </div>
+                    <span className={styles.amount}>${p.amount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={`${styles.card} ${styles.cardWide}`}>
+            <h2 className={styles.cardTitle}>Audit Log</h2>
+            {data.auditLog.length === 0 ? (
+              <p className={styles.mutedText}>No activity recorded yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.auditLog.map((log) => (
+                  <li key={log.id} className={styles.listItem}>
                     <span>
-                      <strong>{log.actor}</strong> — {log.action}
+                      <strong>{log.actor}</strong> â€” {log.action}
                     </span>
                             <span className={styles.metaText}>{formatDate(log.time)}</span>
                           </li>
@@ -651,6 +785,6 @@ export default function AdminDashboard() {
 }
 
 function formatDate(iso) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleString("en-US");
 }
