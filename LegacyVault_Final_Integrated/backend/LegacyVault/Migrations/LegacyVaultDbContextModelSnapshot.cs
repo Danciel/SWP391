@@ -128,6 +128,12 @@ namespace LegacyVault.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("AllocationPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(100m);
+
                     b.Property<Guid>("BeneficiaryDesignationId")
                         .HasColumnType("uuid");
 
@@ -249,6 +255,9 @@ namespace LegacyVault.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("IdentityNumber")
+                        .HasColumnType("text");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 
@@ -319,7 +328,18 @@ namespace LegacyVault.Migrations
                     b.Property<bool>("Enabled")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("ExecutorNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GraceDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2);
+
                     b.Property<DateTimeOffset?>("LastCheckInAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastReminderForDueAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("MaxMissedCheckIns")
@@ -337,6 +357,9 @@ namespace LegacyVault.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ThresholdReachedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -390,11 +413,31 @@ namespace LegacyVault.Migrations
                     b.Property<DateTimeOffset>("AssignedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CurrencySnapshot")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("VND");
+
                     b.Property<Guid>("ExecutorAccountId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("RespondedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("WILL");
+
+                    b.Property<decimal>("ServiceFeeSnapshot")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -427,6 +470,13 @@ namespace LegacyVault.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("VND");
+
                     b.Property<int>("ExperienceYears")
                         .HasColumnType("integer");
 
@@ -437,12 +487,58 @@ namespace LegacyVault.Migrations
                         .HasPrecision(3, 2)
                         .HasColumnType("numeric(3,2)");
 
+                    b.Property<decimal>("ServiceFee")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Specialty")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("AccountId");
 
                     b.ToTable("ExecutorProfiles", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.ExecutorReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExecutorAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutorAccountId");
+
+                    b.HasIndex("OwnerAccountId");
+
+                    b.HasIndex("WillId")
+                        .IsUnique();
+
+                    b.ToTable("ExecutorReviews", (string)null);
                 });
 
             modelBuilder.Entity("LegacyVault.Models.Face", b =>
@@ -470,6 +566,71 @@ namespace LegacyVault.Migrations
                         .IsUnique();
 
                     b.ToTable("Faces", "public");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.HandoverCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InitiatedByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WillId");
+
+                    b.ToTable("HandoverCases", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.HandoverItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeliveredByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("HandoverCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetAssignmentId");
+
+                    b.HasIndex("HandoverCaseId", "AssetAssignmentId")
+                        .IsUnique();
+
+                    b.ToTable("HandoverItems", (string)null);
                 });
 
             modelBuilder.Entity("LegacyVault.Models.IdpUser", b =>
@@ -514,6 +675,57 @@ namespace LegacyVault.Migrations
                     b.ToTable("IdpUsers", "public");
                 });
 
+            modelBuilder.Entity("LegacyVault.Models.LegalCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ExecutorAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutorAccountId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WillId");
+
+                    b.ToTable("LegalCases", (string)null);
+                });
+
             modelBuilder.Entity("LegacyVault.Models.MockExternalAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -548,6 +760,111 @@ namespace LegacyVault.Migrations
                         .IsUnique();
 
                     b.ToTable("MockExternalAccounts", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.ServicePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("ExecutorAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("HeldAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RefundedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WillId")
+                        .IsUnique();
+
+                    b.ToTable("ServicePayments", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.Wallet", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("AccountId");
+
+                    b.ToTable("Wallets", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.WalletTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId", "CreatedAt");
+
+                    b.ToTable("WalletTransactions", (string)null);
                 });
 
             modelBuilder.Entity("LegacyVault.Models.Will", b =>
@@ -747,6 +1064,17 @@ namespace LegacyVault.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("LegacyVault.Models.ExecutorReview", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Account", "OwnerAccount")
+                        .WithMany()
+                        .HasForeignKey("OwnerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OwnerAccount");
+                });
+
             modelBuilder.Entity("LegacyVault.Models.Face", b =>
                 {
                     b.HasOne("LegacyVault.Models.IdpUser", "IdpUser")
@@ -756,6 +1084,64 @@ namespace LegacyVault.Migrations
                         .IsRequired();
 
                     b.Navigation("IdpUser");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.HandoverCase", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Will", "Will")
+                        .WithMany()
+                        .HasForeignKey("WillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Will");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.HandoverItem", b =>
+                {
+                    b.HasOne("LegacyVault.Models.AssetAssignment", "AssetAssignment")
+                        .WithMany()
+                        .HasForeignKey("AssetAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LegacyVault.Models.HandoverCase", "HandoverCase")
+                        .WithMany("Items")
+                        .HasForeignKey("HandoverCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AssetAssignment");
+
+                    b.Navigation("HandoverCase");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.LegalCase", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Account", "ExecutorAccount")
+                        .WithMany()
+                        .HasForeignKey("ExecutorAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LegacyVault.Models.Will", "Will")
+                        .WithMany()
+                        .HasForeignKey("WillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExecutorAccount");
+
+                    b.Navigation("Will");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.ServicePayment", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Will", null)
+                        .WithMany()
+                        .HasForeignKey("WillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("LegacyVault.Models.Will", b =>
@@ -803,6 +1189,11 @@ namespace LegacyVault.Migrations
             modelBuilder.Entity("LegacyVault.Models.DmsConfiguration", b =>
                 {
                     b.Navigation("CheckIns");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.HandoverCase", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("LegacyVault.Models.Will", b =>

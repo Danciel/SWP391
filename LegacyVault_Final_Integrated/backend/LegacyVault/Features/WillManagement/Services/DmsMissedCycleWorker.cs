@@ -136,7 +136,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 if (dms.MissedCheckIns >= dms.MaxMissedCheckIns)
                 {
                     // D05: threshold reached -> review marker only.
-                    dms.Status = "TRIGGERED";
+                    dms.Status = "THRESHOLD_REACHED";
                     dms.ThresholdReachedAt ??= now;
                     await db.SaveChangesAsync(ct);
                     continue;

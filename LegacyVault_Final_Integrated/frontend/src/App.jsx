@@ -18,6 +18,7 @@ import InheritedWillDetails from "./pages/InheritedWillDetails/InheritedWillDeta
 import ExecutorDashboard from "./pages/ExecutorDashboard/ExecutorDashboard";
 import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifierDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import FaceRecognitionTestPage from "./pages/FaceRecognitionTestPage/FaceRecognitionTestPage";
 
 const ROLE_HOME = {
   OWNER: "assets",
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="executor" element={<ExecutorDashboard />} />
             <Route path="verifier" element={<LegalVerifierDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/face-test" element={<FaceRecognitionTestPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

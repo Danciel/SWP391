@@ -47,6 +47,10 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task AddAssetAssignmentAsync(
             AssetAssignment assignment);
 
+        Task<bool> TryAddAssetAssignmentWithinLimitAsync(AssetAssignment assignment);
+
+        Task<bool> TryUpdateAssetAllocationWithinLimitAsync(AssetAssignment assignment, decimal newPercentage);
+
         Task AddExecutorAssignmentAsync(
             ExecutorAssignment assignment);
 
@@ -69,6 +73,9 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task RemoveAssignmentAsync(AssetAssignment assignment);
 
         void RemoveWill(Will will);
+
+        // AD09: audit rows are saved together with the business change.
+        void AddAuditLog(AuditLog log);
 
         Task SaveChangesAsync();
     }

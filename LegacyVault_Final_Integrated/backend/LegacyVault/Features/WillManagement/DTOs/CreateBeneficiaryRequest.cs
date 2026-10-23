@@ -22,5 +22,9 @@ namespace LegacyVault.Features.WillManagement.DTOs
 
         [MaxLength(100)]
         public string? Relationship { get; set; }
+
+        // Optional ID document number (only for unregistered people).
+        [MaxLength(30)]
+        public string? IdentityNumber { get; set; }
     }
 }

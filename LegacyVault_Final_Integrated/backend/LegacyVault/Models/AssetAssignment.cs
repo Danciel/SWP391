@@ -8,6 +8,9 @@ namespace LegacyVault.Models
 
         public Guid BeneficiaryDesignationId { get; set; }
 
+        // Percentage of the associated WillAsset allocated to this beneficiary.
+        public decimal AllocationPercentage { get; set; } = 100m;
+
         public DateTimeOffset CreatedAt { get; set; }
 
         public WillAsset? WillAsset { get; set; }
