@@ -311,6 +311,50 @@ namespace LegacyVault.Features.WillManagement.Controllers
             }
         }
 
+        // Optional specialist executor for ONE asset (DRAFT only).
+        [HttpPost("{id:guid}/assets/{willAssetId:guid}/executor")]
+        public async Task<IActionResult> AssignAssetExecutor(
+            Guid id,
+            Guid willAssetId,
+            [FromBody] AssignAssetExecutorRequest request)
+        {
+            try
+            {
+                return Ok(
+                    await _willService.AssignAssetExecutorAsync(
+                        id, willAssetId, request));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // Back to "use the Will executor" for this asset.
+        [HttpDelete("{id:guid}/assets/{willAssetId:guid}/executor")]
+        public async Task<IActionResult> ClearAssetExecutor(
+            Guid id,
+            Guid willAssetId)
+        {
+            try
+            {
+                await _willService.ClearAssetExecutorAsync(id, willAssetId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPut("{id:guid}/dms")]
         public async Task<IActionResult> ConfigureDms(
             Guid id,

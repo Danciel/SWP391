@@ -14,6 +14,11 @@ namespace LegacyVault.Models
 
         public Asset? Asset { get; set; }
 
+        // Optional specialist for this asset only (null = the Will's executor).
+        public Guid? ExecutorAccountId { get; set; }
+
+        public Account? ExecutorAccount { get; set; }
+
         public ICollection<AssetAssignment> Assignments { get; set; }
             = new List<AssetAssignment>();
     }

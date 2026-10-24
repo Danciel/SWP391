@@ -148,6 +148,9 @@ namespace LegacyVault.Features.WillManagement.DTOs
 
         public List<AssetAssignmentResponse> Assignments { get; set; } = new();
 
+        // Optional per-asset specialists; assets not listed use the Will executor.
+        public List<AssetExecutorItemResponse> AssetExecutors { get; set; } = new();
+
         public ExecutorAssignmentResponse? Executor { get; set; }
 
         // Convenient top-level fee display for the unified Will Details page.

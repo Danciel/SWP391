@@ -41,6 +41,17 @@ namespace LegacyVault.Features.WillManagement.Contracts
             Guid willId,
             AssignExecutorRequest request);
 
+        // Optional specialist for one asset (DRAFT only). Does not replace
+        // the Will executor, who still accepts and is paid.
+        Task<AssetExecutorItemResponse> AssignAssetExecutorAsync(
+            Guid willId,
+            Guid willAssetId,
+            AssignAssetExecutorRequest request);
+
+        Task ClearAssetExecutorAsync(
+            Guid willId,
+            Guid willAssetId);
+
         Task<DmsConfigurationResponse> ConfigureDmsAsync(
             Guid willId,
             ConfigureDmsRequest request);

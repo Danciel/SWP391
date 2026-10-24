@@ -42,6 +42,8 @@ namespace LegacyVault.Features.WillManagement.Repositories
                     .Include(x => x.WillAssets)
                         .ThenInclude(x => x.Asset)
                     .Include(x => x.WillAssets)
+                        .ThenInclude(x => x.ExecutorAccount)
+                    .Include(x => x.WillAssets)
                         .ThenInclude(x => x.Assignments)
                             .ThenInclude(x => x.BeneficiaryDesignation)
                     .Include(x => x.Beneficiaries)
