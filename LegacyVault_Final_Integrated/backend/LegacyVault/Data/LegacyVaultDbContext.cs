@@ -15,6 +15,8 @@ namespace LegacyVault.Data
 
         public DbSet<EmailOtp> EmailOtps { get; set; }
 
+        public DbSet<PhoneOtp> PhoneOtps { get; set; }
+
         public DbSet<ExecutorProfile> ExecutorProfiles { get; set; }
 
         public DbSet<Asset> Assets { get; set; }
@@ -57,9 +59,7 @@ namespace LegacyVault.Data
 
         public DbSet<ServicePayment> ServicePayments { get; set; }
 
-        public DbSet<Face> Faces { get; set; }
 
-        public DbSet<IdpUser> IdpUsers { get; set; }
 
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
@@ -125,6 +125,17 @@ namespace LegacyVault.Data
                     .WithMany()
                     .HasForeignKey(x => x.AccountId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PhoneOtp>(entity =>
+            {
+                entity.ToTable("PhoneOtps");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.OtpHash).IsRequired();
+                entity.HasOne(x => x.Account)
+                      .WithMany()
+                      .HasForeignKey(x => x.AccountId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // =========================
@@ -579,59 +590,7 @@ namespace LegacyVault.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // =========================
-            // IDP USER
-            // =========================
-            modelBuilder.Entity<IdpUser>(entity =>
-            {
-                entity.ToTable("IdpUsers","public");
 
-                entity.HasKey(x => x.Id);
-
-                entity.Property(x => x.FullName)
-                    .HasMaxLength(200)
-                    .IsRequired();
-
-                entity.Property(x => x.Email)
-                    .HasMaxLength(256)
-                    .IsRequired();
-
-                entity.Property(x => x.Phone)
-                    .HasMaxLength(32);
-
-                entity.Property(x => x.IdentityStatus)
-                    .HasMaxLength(32)
-                    .IsRequired();
-
-                entity.HasIndex(x => x.Email).IsUnique();
-
-                // Denormalized pointer, managed by the face service.
-                // No navigation property → EF will NOT create a second relationship.
-                entity.Property(x => x.FaceId);
-            });
-
-            // =========================
-            // FACE (one-to-one, owned by IdpUser)
-            // =========================
-            modelBuilder.Entity<Face>(entity =>
-            {
-                entity.ToTable("Faces", "public");
-
-                entity.HasKey(x => x.Id);
-
-                entity.Property(x => x.EmbeddingJson).IsRequired();
-
-                entity.Property(x => x.CreatedAt).IsRequired();
-
-                entity.Property(x => x.UpdatedAt).IsRequired();
-
-                entity.HasIndex(x => x.IdpUserId).IsUnique();
-
-                entity.HasOne(x => x.IdpUser)
-                    .WithOne()
-                    .HasForeignKey<Face>(x => x.IdpUserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
         }
     }
 }

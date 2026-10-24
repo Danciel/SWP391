@@ -54,7 +54,7 @@ public class ExecutorInboxController : ControllerBase
         var items=await _db.ExecutorAssignments.AsNoTracking()
             .Where(x=>x.ExecutorAccountId==me && x.Status=="ACCEPTED"
                 && x.Will!=null && x.Will.DmsConfiguration!=null
-                && x.Will.DmsConfiguration.Status=="THRESHOLD_REACHED")
+                && x.Will.DmsConfiguration.Status=="TRIGGERED")
             .Select(x=>new {
                 assignmentId=x.Id, willId=x.WillId, willTitle=x.Will!.Title,
                 ownerName=x.Will.OwnerAccount!=null?x.Will.OwnerAccount.FullName:"",

@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="LegacyVault/LegacyVault.csproj" />
+  <Project Path="MockIdpApi/MockIdpApi.csproj" />
 </Solution>

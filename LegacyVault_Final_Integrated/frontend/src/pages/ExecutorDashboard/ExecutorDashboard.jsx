@@ -18,6 +18,10 @@ const STATUS_LABEL = {
   ACTIVE: "Active",
   AWAITING_CASE: "Awaiting Case",
   CASE_OPENED: "Case Opened",
+  THRESHOLD_REACHED: "Threshold Reached",
+  TRIGGERED: "Triggered",
+  COMPLETED: "Completed",
+  CLOSED: "Closed",
   OPEN: "Open",
   SUBMITTED_FOR_REVIEW: "Submitted for Review",
   APPROVED: "Approved",
@@ -186,6 +190,7 @@ export default function ExecutorDashboard() {
       setBusyId(null);
     }
   }
+  const dmsTriggers = data?.dmsTriggers ?? [];
 
   return (
     <div className={styles.page}>
@@ -254,90 +259,90 @@ export default function ExecutorDashboard() {
                 {data.requests.map((req) => {
                   const deadline = req.status === "PENDING" ? formatDeadline(req.deadlineAt) : null;
                   return (
-                  <li key={req.id} className={styles.listItemColumn}>
-                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                      <div>
-                        <strong>{req.ownerName}</strong>
-                        <div className={styles.metaText}>
-                          Sent {formatDate(req.sentAt)}
-                        </div>
-                        {deadline && (
-                          <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
-                            {deadline.text}
+                    <li key={req.id} className={styles.listItemColumn}>
+                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                        <div>
+                          <strong>{req.ownerName}</strong>
+                          <div className={styles.metaText}>
+                            Sent {formatDate(req.sentAt)}
                           </div>
-                        )}
+                          {deadline && (
+                            <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
+                              {deadline.text}
+                            </div>
+                          )}
+                        </div>
+                        <div className={styles.itemRight}>
+                          <Badge status={req.status} />
+                          <button className={styles.linkBtn} onClick={() => toggleExpanded(req.id)}>
+                            {expandedId === req.id ? "Hide Details" : "View Details"}
+                          </button>
+                        </div>
                       </div>
-                      <div className={styles.itemRight}>
-                        <Badge status={req.status} />
-                        <button className={styles.linkBtn} onClick={() => toggleExpanded(req.id)}>
-                          {expandedId === req.id ? "Hide Details" : "View Details"}
-                        </button>
-                      </div>
-                    </div>
 
-                    {expandedId === req.id && (
-                      <div className={styles.detailPanel}>
-                        <div className={styles.detailRow}>
-                          <span>Will Title</span>
-                          <span>{req.willTitle || "—"}</span>
+                      {expandedId === req.id && (
+                        <div className={styles.detailPanel}>
+                          <div className={styles.detailRow}>
+                            <span>Will Title</span>
+                            <span>{req.willTitle || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Email</span>
+                            <span>{req.ownerEmail || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Phone</span>
+                            <span>{req.ownerPhone || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Assets</span>
+                            <span>{req.assetsCount ?? "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Proposed Fee</span>
+                            <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Assets ({req.assets?.length ?? 0})</strong>
+                            {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
+                              <ul style={{ paddingLeft: 18 }}>
+                                {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
+                                  <strong>{a.assetName}</strong>
+                                  <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
+                                  <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
+                                </li>)}
+                              </ul>}
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
+                            {(req.beneficiaries || []).map(b =>
+                              <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
+                          </div>
+                          {req.message && <p className={styles.metaText}>"{req.message}"</p>}
                         </div>
-                        <div className={styles.detailRow}>
-                          <span>Email</span>
-                          <span>{req.ownerEmail || "—"}</span>
-                        </div>
-                        <div className={styles.detailRow}>
-                          <span>Phone</span>
-                          <span>{req.ownerPhone || "—"}</span>
-                        </div>
-                        <div className={styles.detailRow}>
-                          <span>Assets</span>
-                          <span>{req.assetsCount ?? "—"}</span>
-                        </div>
-                        <div className={styles.detailRow}>
-                          <span>Proposed Fee</span>
-                          <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                          <strong>Assets ({req.assets?.length ?? 0})</strong>
-                          {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
-                            <ul style={{ paddingLeft: 18 }}>
-                              {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
-                                <strong>{a.assetName}</strong>
-                                <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
-                                <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
-                              </li>)}
-                            </ul>}
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                          <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
-                          {(req.beneficiaries || []).map(b =>
-                            <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
-                        </div>
-                        {req.message && <p className={styles.metaText}>"{req.message}"</p>}
-                      </div>
-                    )}
+                      )}
 
-                    {req.status === "PENDING" && (
-                      <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                        <button
-                          className={styles.primaryBtn}
-                          disabled={busyId === req.id || deadline?.overdue}
-                          onClick={() => handleRequest(req.id, true)}
-                          title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className={styles.secondaryBtn}
-                          disabled={busyId === req.id || deadline?.overdue}
-                          onClick={() => handleRequest(req.id, false)}
-                          title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    )}
-                  </li>
+                      {req.status === "PENDING" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, true)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className={styles.secondaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, false)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </li>
                   );
                 })}
               </ul>
@@ -513,39 +518,56 @@ export default function ExecutorDashboard() {
             )}
           </section>
 
+
+
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Dead Man's Switch Triggers ({data.dmsTriggers.length})
+              Dead Man's Switch Triggers ({dmsTriggers.length})
             </h2>
-            {data.dmsTriggers.length === 0 ? (
+
+            {dmsTriggers.length === 0 ? (
               <p className={styles.mutedText}>No triggers</p>
             ) : (
               <ul className={styles.list}>
-                {data.dmsTriggers.map((trig) => (
-                  <li key={trig.id} className={styles.listItem}>
+                {dmsTriggers.map((trig) => (
+                  <li
+                    key={trig.assignmentId || trig.id}
+                    className={styles.listItem}
+                  >
                     <div>
-                      <strong>{trig.ownerName}</strong>
+                      <strong>
+                        {trig.ownerName || "Unknown Owner"}
+                      </strong>
+
                       <div className={styles.metaText}>
-                        Triggered {formatDate(trig.triggeredAt)}
+                        Will: {trig.willTitle || "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Triggered:{" "}
+                        {trig.thresholdReachedAt
+                          ? formatDate(trig.thresholdReachedAt)
+                          : trig.triggeredAt
+                            ? formatDate(trig.triggeredAt)
+                            : "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Missed check-ins: {trig.missedCheckIns ?? "—"} /{" "}
+                        {trig.maxMissedCheckIns ?? "—"}
                       </div>
                     </div>
+
                     <div className={styles.itemRight}>
-                      <Badge status={trig.status} />
-                      {trig.status === "AWAITING_CASE" && (
-                        <button
-                          className={styles.primaryBtn}
-                          disabled={busyId === trig.id}
-                          onClick={() => handleOpenCase(trig.id)}
-                        >
-                          Open Case
-                        </button>
-                      )}
+                      <Badge status={trig.status || "TRIGGERED"} />
                     </div>
                   </li>
                 ))}
               </ul>
             )}
           </section>
+
+
 
           <section className={`${styles.card} ${styles.cardWide}`}>
             <h2 className={styles.cardTitle}>Legal Cases ({data.cases.length})</h2>

@@ -1,6 +1,9 @@
 ﻿using LegacyVault.Features.IdentityAccess.Contracts;
 using LegacyVault.Features.IdentityAccess.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace LegacyVault.Features.IdentityAccess.Controllers
 {
@@ -105,6 +108,47 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
                 {
                     message = ex.Message
                 });
+            }
+        }
+// ==========================================
+        // PHONE OTP ENDPOINTS
+        // ==========================================
+
+        [HttpPost("send-phone-otp")]
+        [Authorize] // <-- The user must be logged in to send an OTP to their own phone
+        public async Task<IActionResult> SendPhoneOtp()
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!Guid.TryParse(accountIdString, out var accountId))
+                    return Unauthorized(new { message = "Invalid token." });
+
+                await _authService.SendPhoneOtpAsync(accountId);
+                return Ok(new { message = "OTP sent successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("verify-phone-otp")]
+        [Authorize]
+        public async Task<IActionResult> VerifyPhoneOtp([FromBody] VerifyPhoneOtpRequest request)
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!Guid.TryParse(accountIdString, out var accountId))
+                    return Unauthorized(new { message = "Invalid token." });
+
+                await _authService.VerifyPhoneOtpAsync(accountId, request.Otp);
+                return Ok(new { message = "Phone verified successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

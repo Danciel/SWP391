@@ -11,6 +11,9 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private readonly IEmailOtpService _emailOtpService;
         private readonly IEmailSender _emailSender;
         private readonly IEmailOtpRepository _emailOtpRepository;
+        private readonly IPhoneOtpService _phoneOtpService;
+        private readonly ISmsSender _smsSender;
+        private readonly IPhoneOtpRepository _phoneOtpRepository;
 
         private readonly IJwtTokenService _jwtTokenService;
 
@@ -19,13 +22,19 @@ namespace LegacyVault.Features.IdentityAccess.Services
     IEmailOtpService emailOtpService,
     IEmailSender emailSender,
     IEmailOtpRepository emailOtpRepository,
-    IJwtTokenService jwtTokenService)
+    IJwtTokenService jwtTokenService,
+    IPhoneOtpService phoneOtpService,
+    ISmsSender smsSender,
+    IPhoneOtpRepository phoneOtpRepository)
         {
             _accountRepository = accountRepository;
             _emailOtpService = emailOtpService;
             _emailSender = emailSender;
             _emailOtpRepository = emailOtpRepository;
             _jwtTokenService = jwtTokenService;
+            _phoneOtpService = phoneOtpService;
+            _smsSender = smsSender;
+            _phoneOtpRepository = phoneOtpRepository;
         }
 
         public async Task<AccountResponse> RegisterAsync(
@@ -272,6 +281,39 @@ namespace LegacyVault.Features.IdentityAccess.Services
                     CreatedAt = account.CreatedAt
                 }
             };
+        }
+
+
+        public async Task SendPhoneOtpAsync(Guid accountId)
+        {
+            var account = await _accountRepository.GetByIdAsync(accountId);
+            if (account == null) throw new InvalidOperationException("Account not found.");
+            if (string.IsNullOrWhiteSpace(account.Phone))
+                throw new InvalidOperationException("No phone number linked to this account.");
+            if (account.PhoneVerified)
+                throw new InvalidOperationException("Phone number is already verified.");
+
+            var otp = await _phoneOtpService.GenerateAndSaveOtpAsync(account.Id);
+            await _smsSender.SendOtpAsync(account.Phone, otp);
+        }
+
+        public async Task VerifyPhoneOtpAsync(Guid accountId, string otpInput)
+        {
+            var account = await _accountRepository.GetByIdAsync(accountId);
+            if (account == null) throw new InvalidOperationException("Account not found.");
+
+            var otpRecord = await _phoneOtpRepository.GetLatestUnusedAsync(accountId);
+            if (otpRecord == null) throw new InvalidOperationException("OTP not found.");
+            if (otpRecord.ExpiresAt < DateTimeOffset.UtcNow) throw new InvalidOperationException("OTP expired.");
+
+            var isValid = BCrypt.Net.BCrypt.Verify(otpInput, otpRecord.OtpHash);
+            if (!isValid) throw new InvalidOperationException("Invalid OTP.");
+
+            account.PhoneVerified = true;
+            account.UpdatedAt = DateTimeOffset.UtcNow;
+            otpRecord.UsedAt = DateTimeOffset.UtcNow;
+
+            await _accountRepository.SaveChangesAsync();
         }
     }
 }
