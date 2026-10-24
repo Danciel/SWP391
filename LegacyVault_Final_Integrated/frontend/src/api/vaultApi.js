@@ -6,8 +6,13 @@ const TYPE_NAMES = Object.fromEntries(Object.entries(TYPE_CODES).map(([name, cod
 const mapAsset = a => ({ ...a, type: TYPE_NAMES[a.assetType] || a.assetType, accountType: a.provider || "" });
 const mapDms = d => d ? ({ ...d, checkInDays: d.checkInIntervalDays, reminderDays: d.reminderBeforeDays, maxMissed: d.maxMissedCheckIns, missedCount: d.missedCheckIns, lastCheckIn: d.lastCheckInAt }) : null;
 const mapAssetExecutors = w => {
-  if (Array.isArray(w.assetExecutors)) return w.assetExecutors.map(x => ({ willAssetId: x.willAssetId, id: x.executorAccountId, name: x.executorName, status: x.status }));
-  return w.executor ? (w.assets || []).map(a => ({ willAssetId: a.willAssetId, id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status })) : [];
+  const perAsset = Array.isArray(w.assetExecutors) ? w.assetExecutors : [];
+  return (w.assets || []).map(a => {
+    const x = perAsset.find(p => p.willAssetId === a.willAssetId);
+    if (x) return { willAssetId: a.willAssetId, id: x.executorAccountId, name: x.executorName, status: x.status };
+    if (w.executor) return { willAssetId: a.willAssetId, id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status };
+    return null;
+  }).filter(Boolean);
 };
 const mapWill = w => ({ ...w, name: w.title || "", assets: (w.assets || []).map(a => ({ assetId: a.assetId, willAssetId: a.willAssetId, assetName: a.assetName, assetType: a.assetType, beneficiary: (w.assignments || []).find(x => x.willAssetId === a.willAssetId) ? (w.beneficiaries || []).find(b => b.id === (w.assignments || []).find(x => x.willAssetId === a.willAssetId)?.beneficiaryDesignationId) : null })), beneficiaries: w.beneficiaries || [], assignments: w.assignments || [], executor: w.executor ? { id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status, } : null, dms: mapDms(w.dms), assetExecutors: mapAssetExecutors(w), payment: null });
 export const getExecutors = async () => (await r("/executors")).map(e => ({ ...e, id: e.accountId, name: e.fullName, specialization: e.bio || "", rating: e.rating || 0, experienceYears: e.experienceYears || 0, completedCases: e.completedCases || 0, feeAmount: e.serviceFee, feeCurrency: e.currency }));
@@ -51,6 +56,9 @@ export async function saveWillDraft(userId, id, patch = {}) {
       const only = [...ids][0];
       if (only !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: only });
     } else {
+
+      const primary = picks[0]?.executorId;
+      if (primary && primary !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: primary });
       for (const p of picks) await assignAssetExecutor(id, p.willAssetId, p.executorId);
     }
   }
