@@ -14,7 +14,7 @@ namespace LegacyVault.Features.WillManagement.Controllers
 
         public ExecutorsController(IWillService willService)
         {
-            _willService = willService;
+            _willService = willService; 
         }
 
         [HttpGet]
