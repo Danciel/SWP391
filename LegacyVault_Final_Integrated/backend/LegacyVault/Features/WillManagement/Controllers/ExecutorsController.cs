@@ -18,6 +18,7 @@ namespace LegacyVault.Features.WillManagement.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetVerified()
         {
             return Ok(

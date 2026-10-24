@@ -34,6 +34,7 @@ namespace LegacyVault.Features.WillManagement.Controllers
             => Ok(await _service.GetPricingReferenceAsync());
 
         [HttpGet("{accountId:guid}")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get(Guid accountId)
         {
             try { return Ok(await _service.GetProfileAsync(accountId)); }
