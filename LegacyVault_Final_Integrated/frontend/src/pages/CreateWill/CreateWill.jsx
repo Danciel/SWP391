@@ -13,7 +13,7 @@ import {
   getExecutors,
   getWills,
 } from "../../api/vaultApi";
-import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms } from "../../utils/willHelpers";
+import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, executorForAsset, uniqueExecutors, allAssetsHaveExecutor, formatFee, totalExecutorFees } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
@@ -153,6 +153,7 @@ export default function CreateWill() {
             will={will}
             assets={assets}
             profile={profile}
+            executors={executors}
             userId={user?.id}
             onBack={goBack}
             onSubmitted={() => navigate(`/dashboard/my-wills/${will.id}`, {replace:true})}
@@ -587,9 +588,19 @@ function BeneficiaryModal({ onClose, onAssign }) {
 }
 
 function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
-  const [selectedId, setSelectedId] = useState(will.executor?.id || null);
+  const willAssets = will.assets || [];
+  const [picks, setPicks] = useState(() => {
+    const init = {};
+    willAssets.forEach((a) => {
+      const e = executorForAsset(will, a.willAssetId);
+      if (e) init[a.willAssetId] = e.id;
+    });
+    return init;
+  });
   const [saving, setSaving] = useState(false);
-  const selected = executors.find((e) => e.id === selectedId);
+  const allPicked = willAssets.length > 0 && willAssets.every((a) => picks[a.willAssetId]);
+  const distinctPicked = new Set(Object.values(picks).filter(Boolean)).size;
+  const setForAll = (executorId) => setPicks(Object.fromEntries(willAssets.map((a) => [a.willAssetId, executorId])));
   const [error,setError]=useState("");
   const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
 
@@ -609,7 +620,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
 
   async function handleNext() {
     setSaving(true);
-    try { await onSave({ executor: selected }); setError(""); onNext(); }
+    try { await onSave({ assetExecutors: willAssets.map((a) => ({ willAssetId: a.willAssetId, executorId: picks[a.willAssetId] })) }); setError(""); onNext(); }
     catch(err) { setError(err.message || "Could not assign executor"); }
     finally { setSaving(false); }
   }
@@ -629,6 +640,9 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
               <p className={styles.beneficiaryMeta}>
                 ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
               </p>
+              <p className={styles.feeText}>
+                Booking fee: {formatFee(ex) || "Not set by this executor yet"}
+              </p>
             </div>
             <div className={styles.actions} style={{ marginTop: 0 }}>
               <button
@@ -640,10 +654,11 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
                 {review.id === ex.id ? "Hide reviews" : "View reviews"}
               </button>
               <button
-                className={selectedId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
-                onClick={() => setSelectedId(ex.id)}
+                className={willAssets.length > 0 && willAssets.every((a) => picks[a.willAssetId] === ex.id) ? styles.primaryBtn : styles.secondaryBtn}
+                disabled={willAssets.length === 0}
+                onClick={() => setForAll(ex.id)}
               >
-                {selectedId === ex.id ? "Selected" : "Select"}
+                {willAssets.length > 0 && willAssets.every((a) => picks[a.willAssetId] === ex.id) ? "Selected for all assets" : "Use for all assets"}
               </button>
             </div>
           </div>
@@ -663,11 +678,35 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
         ))}
       </div>
 
+      <h3 className={styles.stepHeading}>Executor for each asset</h3>
+      {willAssets.length === 0 && <p className={styles.hint}>Add assets in the previous steps first.</p>}
+      {willAssets.map((a) => (
+        <div key={a.willAssetId} className={styles.beneficiaryCard}>
+          <h4 className={styles.beneficiaryAssetName}>{a.assetName || "Asset"}</h4>
+          <select
+            className={styles.input}
+            aria-label={`Executor for ${a.assetName || "asset"}`}
+            value={picks[a.willAssetId] || ""}
+            onChange={(e) => setPicks((prev) => ({ ...prev, [a.willAssetId]: e.target.value || undefined }))}
+          >
+            <option value="">Select an executor</option>
+            {executors.map((ex) => (
+              <option key={ex.id} value={ex.id}>{ex.name}{formatFee(ex) ? ` — ${formatFee(ex)}` : ""}</option>
+            ))}
+          </select>
+        </div>
+      ))}
+      {distinctPicked > 1 && (
+        <p className={styles.hint}>
+          Different executors per asset need backend support that is not available yet. Saving will report an error until it is added; one executor for all assets works now.
+        </p>
+      )}
+
       <div className={styles.actions}>
         <button className={styles.secondaryBtn} onClick={onBack}>
           ← Back
         </button>
-        <button className={styles.primaryBtn} disabled={!selected || saving} onClick={handleNext}>
+        <button className={styles.primaryBtn} disabled={!allPicked || saving} onClick={handleNext}>
           Next →
         </button>
       </div>
@@ -746,7 +785,7 @@ function DmsStep({ will, onSave, onNext, onBack }) {
   );
 }
 
-function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
+function ReviewStep({ will, assets, profile, executors = [], userId, onBack, onSubmitted }) {
   const [showPayment, setShowPayment] = useState(false);
   const payBackdrop = useBackdropClose(() => setShowPayment(false));
   const [submitting, setSubmitting] = useState(false);
@@ -755,6 +794,8 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
   function assetName(assetId) {
     return assets.find((a) => a.id === assetId)?.name || "Asset";
   }
+
+  const chosenExecutors = uniqueExecutors(will).map((x) => executors.find((e) => e.id === x.id) || x);
 
   async function handleConfirmSubmit() {
     setSubmitting(true);
@@ -782,9 +823,20 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
 
       <div className={styles.reviewBlock}>
         <p className={styles.reviewLabel}>Executor</p>
-        <p className={styles.reviewLine}>
-          {will.executor?.name || "—"}
-        </p>
+        {(will.assets || []).map((a) => (
+          <p key={a.willAssetId || a.assetId} className={styles.reviewLine}>
+            {assetName(a.assetId)} → {executorForAsset(will, a.willAssetId)?.name || "—"}
+          </p>
+        ))}
+        {(will.assets || []).length === 0 && <p className={styles.reviewLine}>—</p>}
+        {chosenExecutors.map((ex) => (
+          <p key={ex.id} className={styles.reviewLine}>
+            {ex.name}: {formatFee(ex) || "fee not set"}
+          </p>
+        ))}
+        {totalExecutorFees(chosenExecutors) && (
+          <p className={styles.feeText}>Total booking fee: {totalExecutorFees(chosenExecutors)}</p>
+        )}
       </div>
 
       <div className={styles.reviewBlock}>
@@ -806,7 +858,7 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
         </button>
         <button
           className={styles.primaryBtn}
-          disabled={!isVerified || !will.executor}
+          disabled={!isVerified || !allAssetsHaveExecutor(will)}
           onClick={() => setShowPayment(true)}
         >
           Submit Will
@@ -818,7 +870,7 @@ function ReviewStep({ will, assets, profile, userId, onBack, onSubmitted }) {
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>Confirm Will Submission</h3>
             {submitError && <p className={styles.error} role="alert">{submitError}</p>}
-            <p className={styles.reviewLine}>Executor: {will.executor?.name}</p>
+            <p className={styles.reviewLine}>Executor: {uniqueExecutors(will).map((x) => x.name).join(", ")}</p>
             <p className={styles.hint}>The will will be sent to the assigned Executor for acceptance. Payment integration is not available yet.</p>
             <div className={styles.actions}>
               <button className={styles.secondaryBtn} onClick={() => setShowPayment(false)}>

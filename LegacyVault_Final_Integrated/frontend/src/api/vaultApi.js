@@ -5,8 +5,15 @@ const TYPE_CODES={"Online Account":"ACCOUNT","Crypto Wallet":"DIGITAL_WALLET","B
 const TYPE_NAMES=Object.fromEntries(Object.entries(TYPE_CODES).map(([name,code])=>[code,name]));
 const mapAsset=a=>({...a,type:TYPE_NAMES[a.assetType]||a.assetType,accountType:a.provider||""});
 const mapDms=d=>d?({...d,checkInDays:d.checkInIntervalDays,reminderDays:d.reminderBeforeDays,maxMissed:d.maxMissedCheckIns,missedCount:d.missedCheckIns,lastCheckIn:d.lastCheckInAt}):null;
-const mapWill=w=>({...w,name:w.title||"",assets:(w.assets||[]).map(a=>({assetId:a.assetId,willAssetId:a.willAssetId,assetName:a.assetName,assetType:a.assetType,beneficiary:(w.assignments||[]).find(x=>x.willAssetId===a.willAssetId)?(w.beneficiaries||[]).find(b=>b.id===(w.assignments||[]).find(x=>x.willAssetId===a.willAssetId)?.beneficiaryDesignationId):null})),beneficiaries:w.beneficiaries||[],assignments:w.assignments||[],executor:w.executor?{id:w.executor.executorAccountId,name:w.executor.executorName,status:w.executor.status,}:null,dms:mapDms(w.dms),payment:null});
-export const getExecutors=async()=> (await r("/executors")).map(e=>({...e,id:e.accountId,name:e.fullName,specialization:e.bio||"",rating:e.rating||0,experienceYears:e.experienceYears||0,completedCases:e.completedCases||0}));
+// LV-19: executor per asset. Proposed backend field: GET /wills/{id} -> assetExecutors:[{willAssetId,executorAccountId,executorName,status}].
+// Until the backend returns it, the single will-level executor covers every asset.
+const mapAssetExecutors=w=>{
+ if(Array.isArray(w.assetExecutors)) return w.assetExecutors.map(x=>({willAssetId:x.willAssetId,id:x.executorAccountId,name:x.executorName,status:x.status}));
+ return w.executor?(w.assets||[]).map(a=>({willAssetId:a.willAssetId,id:w.executor.executorAccountId,name:w.executor.executorName,status:w.executor.status})):[];
+};
+export const assignAssetExecutor=unsupported("Executor per asset"); // proposed: POST /wills/{id}/assets/{willAssetId}/executor {executorAccountId}
+const mapWill=w=>({...w,name:w.title||"",assets:(w.assets||[]).map(a=>({assetId:a.assetId,willAssetId:a.willAssetId,assetName:a.assetName,assetType:a.assetType,beneficiary:(w.assignments||[]).find(x=>x.willAssetId===a.willAssetId)?(w.beneficiaries||[]).find(b=>b.id===(w.assignments||[]).find(x=>x.willAssetId===a.willAssetId)?.beneficiaryDesignationId):null})),beneficiaries:w.beneficiaries||[],assignments:w.assignments||[],executor:w.executor?{id:w.executor.executorAccountId,name:w.executor.executorName,status:w.executor.status,}:null,dms:mapDms(w.dms),assetExecutors:mapAssetExecutors(w),payment:null});
+export const getExecutors=async()=> (await r("/executors")).map(e=>({...e,id:e.accountId,name:e.fullName,specialization:e.bio||"",feeAmount:e.feeAmount??null,feeCurrency:e.feeCurrency||"",rating:e.rating||0,experienceYears:e.experienceYears||0,completedCases:e.completedCases||0}));
 export const getProfile=async()=>{const u=await r("/accounts/me");return {...u,phone:u.phoneNumber||"",identityNumber:null,faceVerified:null};};
 export const sendPhoneOtp=unsupported("Phone OTP");
 export const verifyPhoneOtp=unsupported("Phone OTP");
@@ -39,6 +46,18 @@ export async function saveWillDraft(userId,id,patch={}) {
   if(patch.name!==undefined||patch.description!==undefined){await r(`/wills/${id}`,"PUT",{title:patch.name??before.name,description:patch.description??before.description});}
   if(patch.assets){let assigned=new Set(before.assets.map(x=>x.assetId));for(const item of patch.assets){if(!assigned.has(item.assetId)){await r(`/wills/${id}/assets`,"POST",{assetId:item.assetId}); assigned.add(item.assetId);}} if(before.assets.some(a=>!patch.assets.some(x=>x.assetId===a.assetId))) throw Error("Removing a will asset is not implemented by backend yet.");}
   if(patch.executor?.id && patch.executor.id!==before.executor?.id) await r(`/wills/${id}/executor`,"POST",{executorAccountId:patch.executor.id});
+  if(patch.assetExecutors){
+    const picks=patch.assetExecutors.filter(x=>x.executorId);
+    const ids=new Set(picks.map(x=>x.executorId));
+    if(ids.size===1 && picks.length===before.assets.length){
+      // One executor for every asset: the existing will-level endpoint already supports this.
+      const only=[...ids][0];
+      if(only!==before.executor?.id) await r(`/wills/${id}/executor`,"POST",{executorAccountId:only});
+    } else {
+      // Different executors per asset: needs the new backend endpoint (stub throws 501 until it exists).
+      for(const p of picks) await assignAssetExecutor(id,p.willAssetId,p.executorId);
+    }
+  }
   if(patch.dms) await r(`/wills/${id}/dms`,"PUT",{enabled:true,checkInIntervalDays:patch.dms.checkInDays,reminderBeforeDays:patch.dms.reminderDays,maxMissedCheckIns:patch.dms.maxMissed});
   return getWill(userId,id);
 }

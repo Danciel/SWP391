@@ -75,3 +75,48 @@ export function validateDms({ checkInDays, reminderDays, maxMissed }) {
   if (!Number.isInteger(maxMissed) || maxMissed < 1 || maxMissed > 100) return "Maximum missed check-ins must be between 1 and 100.";
   return "";
 }
+
+// ---- Executor per asset (LV-19) ----
+// will.assetExecutors = [{ willAssetId, id, name, status }] (see mapAssetExecutors in vaultApi.js).
+export function executorForAsset(will, willAssetId) {
+  return (will?.assetExecutors || []).find((x) => x.willAssetId === willAssetId) || null;
+}
+
+export function uniqueExecutors(will) {
+  const map = new Map();
+  (will?.assetExecutors || []).forEach((x) => {
+    if (!map.has(x.id)) map.set(x.id, { id: x.id, name: x.name, status: x.status });
+  });
+  if (map.size === 0 && will?.executor) map.set(will.executor.id, will.executor);
+  return [...map.values()];
+}
+
+export function allAssetsHaveExecutor(will) {
+  const assets = will?.assets || [];
+  return assets.length > 0 && assets.every((a) => executorForAsset(will, a.willAssetId));
+}
+
+// ---- Executor fee (LV-21) ----
+// executor.feeAmount / executor.feeCurrency come from GET /executors once the backend exposes them; null means "not set".
+export function formatFee(executor) {
+  const amount = executor?.feeAmount;
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return null;
+  const n = Number(amount);
+  const currency = executor.feeCurrency;
+  try {
+    return currency
+      ? new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(n)
+      : n.toLocaleString();
+  } catch {
+    return `${n.toLocaleString()} ${currency || ""}`.trim();
+  }
+}
+
+// Total for the distinct executors chosen. Returns null if any fee is unknown or currencies differ.
+export function totalExecutorFees(executorList) {
+  if (!executorList.length) return null;
+  if (executorList.some((e) => e.feeAmount === null || e.feeAmount === undefined)) return null;
+  const currencies = new Set(executorList.map((e) => e.feeCurrency || ""));
+  if (currencies.size > 1) return null;
+  return formatFee({ feeAmount: executorList.reduce((sum, e) => sum + Number(e.feeAmount), 0), feeCurrency: [...currencies][0] });
+}
