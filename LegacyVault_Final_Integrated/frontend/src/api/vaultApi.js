@@ -18,6 +18,8 @@ export const verifyIdentityNumber = unsupported("National ID verification");
 export const verifyFace = unsupported("Face verification");
 export const getAssets = async () => (await r("/assets")).map(mapAsset);
 export const getAssetSecret = async (id) => (await r(`/assets/${id}/secret`)).secretData || {};
+export const assignAssetExecutor = async (willId, willAssetId, executorAccountId) => {
+return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });};
 export const deleteAsset = async (id) => r(`/asset-maintenance/${id}`, "DELETE");
 const assetBody = (a, editing = false) => {
   const assetType = TYPE_CODES[a.type] || a.type;
