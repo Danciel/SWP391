@@ -898,6 +898,24 @@ namespace LegacyVault.Features.WillManagement.Services
                     "Select an executor before submitting.");
             }
 
+            // A per-asset specialist must still be eligible at submit time.
+            foreach (var specialistId in will.WillAssets
+                .Where(x => x.ExecutorAccountId.HasValue)
+                .Select(x => x.ExecutorAccountId!.Value)
+                .Distinct())
+            {
+                var specialist = await _willRepository
+                    .GetExecutorProfileAsync(specialistId);
+
+                if (specialist == null ||
+                    specialist.IsSuspended ||
+                    !specialist.IsVerified)
+                {
+                    throw new InvalidOperationException(
+                        "An executor chosen for an asset is no longer available. Select another one.");
+                }
+            }
+
             if (will.DmsConfiguration == null)
             {
                 throw new InvalidOperationException(
@@ -961,6 +979,93 @@ namespace LegacyVault.Features.WillManagement.Services
             }
 
             return will;
+        }
+
+        public async Task<AssetExecutorItemResponse>
+            AssignAssetExecutorAsync(
+                Guid willId,
+                Guid willAssetId,
+                AssignAssetExecutorRequest request)
+        {
+            var ownerId =
+                _currentUserService.GetRequiredAccountId();
+
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            EnsureDraft(will);
+
+            var willAsset = will.WillAssets
+                .FirstOrDefault(x => x.Id == willAssetId)
+                ?? throw new KeyNotFoundException(
+                    "Asset not found in this will.");
+
+            if (request.ExecutorAccountId == ownerId)
+            {
+                throw new InvalidOperationException(
+                    "Owner cannot be the executor of their own will.");
+            }
+
+            var profile =
+                await _willRepository
+                    .GetExecutorProfileAsync(
+                        request.ExecutorAccountId);
+
+            if (profile == null ||
+                profile.IsSuspended ||
+                !profile.IsVerified ||
+                profile.Account == null ||
+                !string.Equals(
+                    profile.Account.Role,
+                    "EXECUTOR",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Selected account is not a verified executor.");
+            }
+
+            willAsset.ExecutorAccountId = profile.AccountId;
+            willAsset.ExecutorAccount = profile.Account;
+            will.UpdatedAt = DateTimeOffset.UtcNow;
+
+            Audit("WILL_ASSET_EXECUTOR_SET", will.Id,
+                new { willAssetId, executorAccountId = profile.AccountId });
+            await _willRepository.SaveChangesAsync();
+
+            return new AssetExecutorItemResponse
+            {
+                WillAssetId = willAsset.Id,
+                ExecutorAccountId = profile.AccountId,
+                ExecutorName = profile.Account.FullName,
+                Status = "ASSIGNED"
+            };
+        }
+
+        public async Task ClearAssetExecutorAsync(
+            Guid willId,
+            Guid willAssetId)
+        {
+            var will =
+                await GetOwnedWillRequiredAsync(
+                    willId,
+                    includeDetails: true);
+
+            EnsureDraft(will);
+
+            var willAsset = will.WillAssets
+                .FirstOrDefault(x => x.Id == willAssetId)
+                ?? throw new KeyNotFoundException(
+                    "Asset not found in this will.");
+
+            willAsset.ExecutorAccountId = null;
+            willAsset.ExecutorAccount = null;
+            will.UpdatedAt = DateTimeOffset.UtcNow;
+
+            Audit("WILL_ASSET_EXECUTOR_CLEARED", will.Id,
+                new { willAssetId });
+            await _willRepository.SaveChangesAsync();
         }
 
         // AD09: who did what to which will. Metadata only, no secrets.
@@ -1084,6 +1189,18 @@ namespace LegacyVault.Features.WillManagement.Services
                                 x.Asset?.AssetType
                                 ?? string.Empty
                         })
+                    .ToList(),
+
+                AssetExecutors = will.WillAssets
+                    .Where(x => x.ExecutorAccountId.HasValue)
+                    .Select(x => new AssetExecutorItemResponse
+                    {
+                        WillAssetId = x.Id,
+                        ExecutorAccountId = x.ExecutorAccountId!.Value,
+                        ExecutorName = x.ExecutorAccount?.FullName
+                            ?? string.Empty,
+                        Status = "ASSIGNED"
+                    })
                     .ToList(),
 
                 Beneficiaries = will.Beneficiaries

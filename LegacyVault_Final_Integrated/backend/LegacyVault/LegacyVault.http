@@ -382,3 +382,16 @@ Accept: application/json
 GET {{LegacyVault_HostAddress}}/api/admin/audit-logs?pageSize=50
 Authorization: Bearer {{token}}
 Accept: application/json
+
+### Executor per asset (optional specialist, DRAFT only)
+POST {{LegacyVault_HostAddress}}/api/wills/{{willId}}/assets/PASTE_WILL_ASSET_ID_HERE/executor
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "executorAccountId": "PASTE_EXECUTOR_ACCOUNT_ID_HERE"
+}
+
+### Back to the Will executor for this asset
+DELETE {{LegacyVault_HostAddress}}/api/wills/{{willId}}/assets/PASTE_WILL_ASSET_ID_HERE/executor
+Authorization: Bearer {{token}}
