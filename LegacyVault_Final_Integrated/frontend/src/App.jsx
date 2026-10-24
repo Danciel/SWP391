@@ -19,6 +19,10 @@ import ExecutorDashboard from "./pages/ExecutorDashboard/ExecutorDashboard";
 import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifierDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import FaceRecognitionTestPage from "./pages/FaceRecognitionTestPage/FaceRecognitionTestPage";
+import IdpRegister from "./pages/IdpRegister/IdpRegister";
+import IdpProfile from "./pages/IdpProfile/IdpProfile";
+import IdpProfileLookup from "./pages/IdpProfileLookup/IdpProfileLookup";
+import IdpFaceEnroll from "./pages/IdpFaceEnroll/IdpFaceEnroll";
 
 const ROLE_HOME = {
   OWNER: "assets",
@@ -43,6 +47,24 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+
+          <Route
+            path="/idp-register"
+            element={<IdpRegister />}
+          />
+
+          <Route
+            path="/idp-profile/:id"
+            element={<IdpProfile />}
+          />
+
+          <Route
+            path="/idp-profile-lookup"
+            element={<IdpProfileLookup />}
+          />
+
+          <Route path="/idp-face-enroll/:id" element={<IdpFaceEnroll />} />
+
           <Route
             path="/dashboard"
             element={

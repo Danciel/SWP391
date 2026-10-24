@@ -1,0 +1,95 @@
+
+.face-enroll-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f2f5f9;
+}
+
+.face-enroll-card {
+  width: 100%;
+  max-width: 620px;
+  padding: 32px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 8%);
+}
+
+.face-enroll-card h1 {
+  margin: 0 0 8px;
+  color: #172b4d;
+  font-size: 28px;
+}
+
+.face-enroll-description {
+  margin-bottom: 20px;
+  color: #64748b;
+}
+
+.face-enroll-id {
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-size: 14px;
+}
+
+.face-enroll-video,
+.face-enroll-preview {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #111827;
+}
+
+.face-enroll-error {
+  color: #dc2626;
+}
+
+.face-enroll-success {
+  color: #15803d;
+}
+
+.face-enroll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.face-enroll-actions button {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  background: #1677ff;
+  cursor: pointer;
+}
+
+.face-enroll-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.face-enroll-actions .face-enroll-secondary {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.face-enroll-card > a {
+  color: #1677ff;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .face-enroll-card {
+    padding: 20px;
+  }
+}
