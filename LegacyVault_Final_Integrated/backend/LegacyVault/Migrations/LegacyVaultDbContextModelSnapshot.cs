@@ -235,6 +235,46 @@ namespace LegacyVault.Migrations
                     b.ToTable("AssetVerifications", (string)null);
                 });
 
+            modelBuilder.Entity("LegacyVault.Models.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ActorAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ActorAccountId", "CreatedAt");
+
+                    b.HasIndex("EntityType", "EntityId", "CreatedAt");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("LegacyVault.Models.BeneficiaryDesignation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -480,6 +520,9 @@ namespace LegacyVault.Migrations
                     b.Property<int>("ExperienceYears")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsSuspended")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
 
@@ -495,6 +538,16 @@ namespace LegacyVault.Migrations
 
                     b.Property<string>("Specialty")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SuspendedByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -539,33 +592,6 @@ namespace LegacyVault.Migrations
                         .IsUnique();
 
                     b.ToTable("ExecutorReviews", (string)null);
-                });
-
-            modelBuilder.Entity("LegacyVault.Models.Face", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EmbeddingJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("IdpUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IdpUserId")
-                        .IsUnique();
-
-                    b.ToTable("Faces", "public");
                 });
 
             modelBuilder.Entity("LegacyVault.Models.HandoverCase", b =>
@@ -631,48 +657,6 @@ namespace LegacyVault.Migrations
                         .IsUnique();
 
                     b.ToTable("HandoverItems", (string)null);
-                });
-
-            modelBuilder.Entity("LegacyVault.Models.IdpUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Guid?>("FaceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("IdentityStatus")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.ToTable("IdpUsers", "public");
                 });
 
             modelBuilder.Entity("LegacyVault.Models.LegalCase", b =>
@@ -760,6 +744,89 @@ namespace LegacyVault.Migrations
                         .IsUnique();
 
                     b.ToTable("MockExternalAccounts", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.PaymentDispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RaisedByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ResolutionAction")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("WillId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WillId")
+                        .IsUnique();
+
+                    b.HasIndex("RaisedByAccountId", "CreatedAt");
+
+                    b.ToTable("PaymentDisputes", (string)null);
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.PhoneOtp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OtpHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("PhoneOtps", (string)null);
                 });
 
             modelBuilder.Entity("LegacyVault.Models.ServicePayment", b =>
@@ -850,6 +917,10 @@ namespace LegacyVault.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Note")
                         .HasColumnType("text");
 
@@ -863,6 +934,10 @@ namespace LegacyVault.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId", "CreatedAt");
+
+                    b.HasIndex("AccountId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
                     b.ToTable("WalletTransactions", (string)null);
                 });
@@ -1075,17 +1150,6 @@ namespace LegacyVault.Migrations
                     b.Navigation("OwnerAccount");
                 });
 
-            modelBuilder.Entity("LegacyVault.Models.Face", b =>
-                {
-                    b.HasOne("LegacyVault.Models.IdpUser", "IdpUser")
-                        .WithOne()
-                        .HasForeignKey("LegacyVault.Models.Face", "IdpUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("IdpUser");
-                });
-
             modelBuilder.Entity("LegacyVault.Models.HandoverCase", b =>
                 {
                     b.HasOne("LegacyVault.Models.Will", "Will")
@@ -1135,13 +1199,35 @@ namespace LegacyVault.Migrations
                     b.Navigation("Will");
                 });
 
-            modelBuilder.Entity("LegacyVault.Models.ServicePayment", b =>
+            modelBuilder.Entity("LegacyVault.Models.PaymentDispute", b =>
                 {
                     b.HasOne("LegacyVault.Models.Will", null)
                         .WithMany()
                         .HasForeignKey("WillId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.PhoneOtp", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("LegacyVault.Models.ServicePayment", b =>
+                {
+                    b.HasOne("LegacyVault.Models.Will", "Will")
+                        .WithMany()
+                        .HasForeignKey("WillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Will");
                 });
 
             modelBuilder.Entity("LegacyVault.Models.Will", b =>

@@ -51,25 +51,23 @@ builder.Services.AddDbContext<LegacyVaultDbContext>(options =>
 // EXISTING IDENTITY / AUTH
 // =========================
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<IAccountService, AccountsService>();
 builder.Services.AddScoped<IEmailOtpRepository, EmailOtpRepository>();
 
+// Account & Auth Services
+builder.Services.AddScoped<IAccountService, AccountsService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailOtpService, EmailOtpService>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
-
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<ISmsSender, MockSmsSender>();
-//builder.Services.AddScoped<ISmsSender, TwilioSmsSender>();
-//builder.Services.AddScoped<ISmsSender, TextbeltSmsSender>();
-builder.Services.AddScoped<IPhoneOtpRepository, PhoneOtpRepository>();
+// Phone OTP & SMS Sender
 builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
+builder.Services.AddScoped<IPhoneOtpRepository, PhoneOtpRepository>();
+builder.Services.AddScoped<ISmsSender, MockSmsSender>();
 
-// FACE RECOGNITION
-// IdpUser CRUD (FaceId managed by a separate service)
+// IDP Integration 
 builder.Services.AddHttpClient<IIdpIntegrationService, IdpIntegrationService>();
+
 
 // =========================
 // SHARED CURRENT USER
@@ -101,9 +99,16 @@ builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Services.HandoverService>();
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
-builder.Services.AddSingleton<
+// D05: LifeStatus comes from the separate MockIdpApi over HTTP
+// (search by email -> query by id). Override with config "Idp:BaseUrl".
+builder.Services.AddHttpClient<
     LegacyVault.Features.WillManagement.Contracts.ILifeStatusClient,
-    LegacyVault.Features.WillManagement.Services.NullLifeStatusClient>();
+    LegacyVault.Features.WillManagement.Services.IdpLifeStatusClient>(client =>
+{
+    var baseUrl = builder.Configuration["Idp:BaseUrl"] ?? "http://localhost:5100";
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 builder.Services.AddHostedService<
     LegacyVault.Features.WillManagement.Services.DmsMissedCycleWorker>();
 
