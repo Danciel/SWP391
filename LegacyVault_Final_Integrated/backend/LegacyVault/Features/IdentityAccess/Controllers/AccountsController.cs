@@ -133,46 +133,26 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
             return Ok(response);
         }
 
-
-        //LINK IDP
+        //LINK_IDP
         [HttpPost("link-idp")]
-        [Authorize] // Any logged-in user can link their account
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> LinkIdpAccount(
-            [FromForm] LinkIdpAccountRequest request,
-            CancellationToken cancellationToken)
+        public async Task<IActionResult> LinkIdp([FromForm] string externalIdentityId, IFormFile faceImage)
         {
-            if (!TryGetCurrentAccountId(out var accountId))
-                return Unauthorized(new { message = "Invalid token." });
+            if (faceImage == null || faceImage.Length == 0)
+                return BadRequest(new { message = "Face image is required." });
 
-            var account = await _accountRepository.GetByIdAsync(accountId);
-            if (account == null)
-                return NotFound(new { message = "Account not found." });
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new { message = "User not authenticated." });
 
-            if (!Guid.TryParse(request.ExternalIdentityId, out var idpUserId))
-                return BadRequest(new { message = "Invalid Identity Code format." });
+            using var stream = faceImage.OpenReadStream();
 
-            // 1. Verify the face with the Mock IDP
-            using var stream = request.FaceImage.OpenReadStream();
-            var isFaceMatched = await _idpIntegrationService.VerifyFaceAsync(idpUserId, stream, cancellationToken);
+            // This will now work because it exists on the interface
+            var success = await _idpIntegrationService.LinkIdpUserAsync(userId, externalIdentityId, stream);
 
-            if (!isFaceMatched)
-            {
-                return BadRequest(new { message = "Face verification failed. Identity not linked." });
-            }
+            if (!success)
+                return BadRequest(new { message = "Face verification failed or user not found." });
 
-            // 2. Success! Update the LegacyVault Account
-            account.ExternalIdentityId = idpUserId.ToString();
-            account.IdentityStatus = "VERIFIED"; // Mark as verified
-            account.UpdatedAt = DateTimeOffset.UtcNow;
-
-            await _accountRepository.UpdateAsync(account, cancellationToken);
-
-            return Ok(new
-            {
-                message = "Identity verified and linked successfully.",
-                identityStatus = account.IdentityStatus
-            });
+            return Ok(new { message = "Identity linked successfully." });
         }
 
         // =========================

@@ -1,9 +1,11 @@
-import {getOwnerDashboardData,checkInDms,cancelDeathHandover,requestImmediateHandover} from "./vaultApi";
-export const getOwnerDashboard=getOwnerDashboardData;
-export const confirmStillActive=({userId,willId})=>checkInDms(userId,willId);
-export const cancelHandover=({userId,willId})=>cancelDeathHandover(userId,willId);
-export const requestHandover=({userId,willId})=>requestImmediateHandover(userId,willId);
 
+import { getToken, request } from "./client"; // Use your existing client helper
+import { getOwnerDashboardData, checkInDms, cancelDeathHandover, requestImmediateHandover } from "./vaultApi";
+
+export const getOwnerDashboard = getOwnerDashboardData;
+export const confirmStillActive = ({userId, willId}) => checkInDms(userId, willId);
+export const cancelHandover = ({userId, willId}) => cancelDeathHandover(userId, willId);
+export const requestHandover = ({userId, willId}) => requestImmediateHandover(userId, willId);
 
 export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     if (!externalIdentityId) throw new Error("External Identity ID is required");
@@ -16,20 +18,21 @@ export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     const headers = {};
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
-    // NOTE: Do not set Content-Type manually for FormData
 
-    const url = `${BASE_URL}/accounts/link-idp`; // Hits LegacyVault API
+    // DO NOT set Content-Type header here. The browser will do it automatically.
+
+    // Use a relative URL so the Vite Proxy handles the backend routing
+    const url = `/api/accounts/link-idp`;
 
     try {
         const res = await fetch(url, { method: "POST", headers, body: form });
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
-            throw new ApiError(data?.message || "Link IDP failed", res.status, data);
+            throw new Error(data?.message || data?.title || `Error ${res.status}`);
         }
         return data;
     } catch (err) {
-        if (err instanceof ApiError) throw err;
-        throw new ApiError(`Could not reach the server at ${BASE_URL}`, 0, null);
+        throw new Error(err.message || "Could not reach the server.");
     }
 };
