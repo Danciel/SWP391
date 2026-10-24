@@ -696,11 +696,6 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
           </select>
         </div>
       ))}
-      {distinctPicked > 1 && (
-        <p className={styles.hint}>
-          Different executors per asset need backend support that is not available yet. Saving will report an error until it is added; one executor for all assets works now.
-        </p>
-      )}
 
       <div className={styles.actions}>
         <button className={styles.secondaryBtn} onClick={onBack}>
