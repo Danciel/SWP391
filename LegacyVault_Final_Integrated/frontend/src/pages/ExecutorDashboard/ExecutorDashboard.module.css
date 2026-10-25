@@ -320,3 +320,74 @@
 .hiddenFileInput {
   display: none;
 }
+
+
+/* DMS Trigger card */
+.triggerCardItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.triggerInfo {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.triggerInfo strong {
+  display: block;
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+}
+
+.triggerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.triggerSubmitBtn {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 9px;
+  background: #5145e5;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.triggerSubmitBtn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.triggerSubmitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .triggerCardItem {
+    align-items: stretch;
+  }
+
+  .triggerActions {
+    justify-content: flex-start;
+  }
+
+  .triggerSubmitBtn {
+    white-space: normal;
+  }
+}
+
