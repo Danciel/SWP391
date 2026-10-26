@@ -103,20 +103,16 @@ export const changeWillExecutor = (userId, id, executor) => saveWillDraft(userId
 export const updateWillDms = (userId, id, dms) => saveWillDraft(userId, id, { dms });
 export const checkInDms = async (userId, id) => { await r(`/wills/${id}/dms/check-in`, "POST"); return getWill(userId, id) };
 export const cancelDeathHandover = unsupported("Cancel death handover");
-<<<<<<< Updated upstream
-export const requestImmediateHandover = async (userId, id) => { await r(`/handover/${id}/immediate`, "POST"); return getWill(userId, id); };
-export const getHandover = (willId) => r(`/handover/${willId}`);
-=======
-
 export const requestImmediateHandover = async (userId, willId) => {
   if (!willId) {
-    throw new Error("Missing Will ID.");
+    throw new Error("Missing will ID.");
   }
 
-  return r(`/handover/${willId}/immediate`, "POST");
+  await r(`/handover/${willId}/immediate`, "POST");
+  return getWill(userId, willId);
 };
 
->>>>>>> Stashed changes
+export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
 export const getInheritedWills = async () => [];
