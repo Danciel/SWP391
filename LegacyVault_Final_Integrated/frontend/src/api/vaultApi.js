@@ -17,6 +17,36 @@ const mapAssetExecutors = w => {
 const mapWill = w => ({ ...w, name: w.title || "", assets: (w.assets || []).map(a => ({ assetId: a.assetId, willAssetId: a.willAssetId, assetName: a.assetName, assetType: a.assetType, beneficiary: (w.assignments || []).find(x => x.willAssetId === a.willAssetId) ? (w.beneficiaries || []).find(b => b.id === (w.assignments || []).find(x => x.willAssetId === a.willAssetId)?.beneficiaryDesignationId) : null })), beneficiaries: w.beneficiaries || [], assignments: w.assignments || [], executor: w.executor ? { id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status, } : null, dms: mapDms(w.dms), assetExecutors: mapAssetExecutors(w), payment: null });
 export const getExecutors = async () => (await r("/executors")).map(e => ({ ...e, id: e.accountId, name: e.fullName, specialization: e.bio || "", rating: e.rating || 0, experienceYears: e.experienceYears || 0, completedCases: e.completedCases || 0, feeAmount: e.serviceFee, feeCurrency: e.currency }));
 export const getProfile = async () => { const u = await r("/accounts/me"); return { ...u, phone: u.phoneNumber || "", identityNumber: null, faceVerified: null }; };
+export const getExecutorProfile = async (accountId) => {
+  if (!accountId) {
+    throw new Error("Missing Executor account ID.");
+  }
+
+  return r(`/executors/${accountId}`);
+};
+
+export const updateMyExecutorProfile = async ({
+  bio,
+  specialty,
+  experienceYears,
+}) => {
+  return r("/executors/me/profile", "PUT", {
+    bio,
+    specialty,
+    experienceYears: Number(experienceYears),
+  });
+};
+
+export const updateMyExecutorPricing = async ({
+  serviceFee,
+  currency = "VND",
+}) => {
+  return r("/executors/me/pricing", "PUT", {
+    serviceFee: Number(serviceFee),
+    currency,
+  });
+};
+
 export const sendPhoneOtp = unsupported("Phone OTP");
 export const verifyPhoneOtp = unsupported("Phone OTP");
 export const verifyIdentityNumber = unsupported("National ID verification");
@@ -24,7 +54,8 @@ export const verifyFace = unsupported("Face verification");
 export const getAssets = async () => (await r("/assets")).map(mapAsset);
 export const getAssetSecret = async (id) => (await r(`/assets/${id}/secret`)).secretData || {};
 export const assignAssetExecutor = async (willId, willAssetId, executorAccountId) => {
-return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });};
+  return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });
+};
 export const deleteAsset = async (id) => r(`/asset-maintenance/${id}`, "DELETE");
 const assetBody = (a, editing = false) => {
   const assetType = TYPE_CODES[a.type] || a.type;
@@ -72,8 +103,20 @@ export const changeWillExecutor = (userId, id, executor) => saveWillDraft(userId
 export const updateWillDms = (userId, id, dms) => saveWillDraft(userId, id, { dms });
 export const checkInDms = async (userId, id) => { await r(`/wills/${id}/dms/check-in`, "POST"); return getWill(userId, id) };
 export const cancelDeathHandover = unsupported("Cancel death handover");
+<<<<<<< Updated upstream
 export const requestImmediateHandover = async (userId, id) => { await r(`/handover/${id}/immediate`, "POST"); return getWill(userId, id); };
 export const getHandover = (willId) => r(`/handover/${willId}`);
+=======
+
+export const requestImmediateHandover = async (userId, willId) => {
+  if (!willId) {
+    throw new Error("Missing Will ID.");
+  }
+
+  return r(`/handover/${willId}/immediate`, "POST");
+};
+
+>>>>>>> Stashed changes
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
 export const getInheritedWills = async () => [];

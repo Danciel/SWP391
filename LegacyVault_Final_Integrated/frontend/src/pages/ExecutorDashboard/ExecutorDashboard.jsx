@@ -5,10 +5,10 @@ import {
   openExecutorCase,
   submitExecutorLegalDocuments,
   verifyCaseProfile,
-  getExecutorFee,
-  setExecutorFee,
   respondToHandoverRequest,
 } from "../../api/executorApi";
+import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import { getStoredUser } from "../../api/client";
 import styles from "./ExecutorDashboard.module.css";
 
 const STATUS_LABEL = {
@@ -70,10 +70,28 @@ export default function ExecutorDashboard() {
     setIsLoading(true);
     setError("");
     try {
-      const [result, feeResult] = await Promise.all([getExecutorDashboard(), getExecutorFee()]);
+      const result = await getExecutorDashboard();
       setData(result);
-      setFee(feeResult);
-      setFeeInput(String(feeResult.fee));
+
+      const user = getStoredUser();
+
+      if (user?.id) {
+        const profile = await getExecutorProfile(user.id);
+
+        const currentFee = {
+          fee: profile.serviceFee ?? null,
+          currency: profile.currency || "VND",
+          updatedAt: profile.updatedAt || null,
+        };
+
+        setFee(currentFee);
+        setFeeInput(
+          currentFee.fee != null ? String(currentFee.fee) : ""
+        );
+      } else {
+        setFee({ fee: null, currency: "VND", updatedAt: null });
+        setFeeInput("");
+      }
     } catch (err) {
       setError(err.message || "Could not load executor data");
     } finally {
@@ -89,12 +107,33 @@ export default function ExecutorDashboard() {
     setExpandedId((prev) => (prev === id ? null : id));
   }
 
+
   async function handleSaveFee() {
+    const amount = Number(feeInput);
+
+    if (feeInput.trim() === "" || !Number.isFinite(amount) || amount < 0) {
+      setError("Service fee must be a valid non-negative number.");
+      return;
+    }
+
     setSavingFee(true);
+    setError("");
+
     try {
-      const updated = await setExecutorFee({ fee: feeInput });
-      setFee(updated);
-      setFeeInput(String(updated.fee));
+      const updated = await updateMyExecutorPricing({
+        serviceFee: amount,
+        currency: fee?.currency || "VND",
+      });
+
+      const updatedFee = {
+        ...fee,
+        fee: updated.serviceFee ?? amount,
+        currency: updated.currency || fee?.currency || "VND",
+        updatedAt: updated.updatedAt || new Date().toISOString(),
+      };
+
+      setFee(updatedFee);
+      setFeeInput(String(updatedFee.fee));
       setEditingFee(false);
       showToast("Service fee updated");
     } catch (err) {
