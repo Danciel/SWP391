@@ -1,3 +1,47 @@
+/* LegacyVault design tokens.
+   Palette comes from the logo: a brass vault door on deep green.
+   Vault green = actions and identity. Brass = things that are held or locked. */
+:root {
+  --paper: #f2f4f1;
+  --paper-2: #e8eee9;
+  --surface: #ffffff;
+
+  --ink: #1b2a27;
+  --ink-2: #33433f;
+  --muted: #5a6963;
+  --faint: #8a9892;
+
+  --line: #dbe2de;
+  --line-strong: #c3cdc8;
+
+  --vault: #1f5c4d;
+  --vault-hover: #174a3e;
+  --vault-deep: #153b33;
+  --vault-soft: #e2efe9;
+  --vault-line: #9cc4b6;
+
+  --brass: #8f6320;
+  --brass-bright: #c9a24a;
+  --brass-soft: #f6ecd6;
+  --brass-line: #e3cc93;
+
+  --ok: #2a7a56;
+  --ok-soft: #e3f1ea;
+  --ok-line: #b6d9c6;
+
+  --bad: #b23a2b;
+  --bad-soft: #fbeae6;
+  --bad-line: #efc3bb;
+
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow-pop: 0 12px 32px rgba(21, 59, 51, 0.16);
+
+  --font-body: "Be Vietnam Pro", "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,11 +55,47 @@ body,
 }
 
 body {
-  font-family: "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #111827;
-  background: #f8fafc;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
 }
 
-button {
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+h4 {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+button,
+input,
+select,
+textarea {
   font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vault);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--vault-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

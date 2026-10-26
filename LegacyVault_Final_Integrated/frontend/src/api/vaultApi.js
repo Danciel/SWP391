@@ -1,6 +1,6 @@
 import { request } from "./client";
 import { unsupported } from "./unsupported";
-const r = (path, method = "GET", body) => request(path, { method, body });
+const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
 const TYPE_NAMES = Object.fromEntries(Object.entries(TYPE_CODES).map(([name, code]) => [code, name]));
 const mapAsset = a => ({ ...a, type: TYPE_NAMES[a.assetType] || a.assetType, accountType: a.provider || "" });
@@ -47,19 +47,18 @@ export async function saveWillDraft(userId, id, patch = {}) {
   if (!id) { if (!patch.name?.trim()) throw Error("Will name is required before creating a draft."); const created = await r("/wills", "POST", { title: patch.name.trim(), description: patch.description || "" }); return getWill(userId, created.id); }
   const before = await getWill(userId, id);
   if (patch.name !== undefined || patch.description !== undefined) { await r(`/wills/${id}`, "PUT", { title: patch.name ?? before.name, description: patch.description ?? before.description }); }
-  if (patch.assets) { let assigned = new Set(before.assets.map(x => x.assetId)); for (const item of patch.assets) { if (!assigned.has(item.assetId)) { await r(`/wills/${id}/assets`, "POST", { assetId: item.assetId }); assigned.add(item.assetId); } } if (before.assets.some(a => !patch.assets.some(x => x.assetId === a.assetId))) throw Error("Removing a will asset is not implemented by backend yet."); }
+  if (patch.assets) { let assigned = new Set(before.assets.map(x => x.assetId)); for (const item of patch.assets) { if (!assigned.has(item.assetId)) { await r(`/wills/${id}/assets`, "POST", { assetId: item.assetId }); assigned.add(item.assetId); } } for (const a of before.assets) { if (!patch.assets.some(x => x.assetId === a.assetId)) await r(`/wills/${id}/assets/${a.willAssetId}`, "DELETE"); } }
   if (patch.executor?.id && patch.executor.id !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: patch.executor.id });
-  if (patch.assetExecutors) {
-    const picks = patch.assetExecutors.filter(x => x.executorId);
-    const ids = new Set(picks.map(x => x.executorId));
-    if (ids.size === 1 && picks.length === before.assets.length) {
-      const only = [...ids][0];
-      if (only !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: only });
-    } else {
-
-      const primary = picks[0]?.executorId;
-      if (primary && primary !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: primary });
-      for (const p of picks) await assignAssetExecutor(id, p.willAssetId, p.executorId);
+  if (patch.mainExecutorId !== undefined) {
+    // One main executor accepts the will, is paid and hands everything over.
+    if (patch.mainExecutorId && patch.mainExecutorId !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: patch.mainExecutorId });
+    // Specialists are optional per-asset suggestions that need no acceptance.
+    const wanted = new Map((patch.specialists || []).map(x => [x.willAssetId, x.executorId]));
+    for (const a of before.assets) {
+      const current = (before.assetExecutors || []).find(x => x.willAssetId === a.willAssetId)?.id;
+      const want = wanted.get(a.willAssetId);
+      if (want && want !== patch.mainExecutorId) { if (want !== current || current === before.executor?.id) await assignAssetExecutor(id, a.willAssetId, want); }
+      else if (current) await r(`/wills/${id}/assets/${a.willAssetId}/executor`, "DELETE");
     }
   }
   if (patch.dms) await r(`/wills/${id}/dms`, "PUT", { enabled: true, checkInIntervalDays: patch.dms.checkInDays, reminderBeforeDays: patch.dms.reminderDays, maxMissedCheckIns: patch.dms.maxMissed });
@@ -73,7 +72,8 @@ export const changeWillExecutor = (userId, id, executor) => saveWillDraft(userId
 export const updateWillDms = (userId, id, dms) => saveWillDraft(userId, id, { dms });
 export const checkInDms = async (userId, id) => { await r(`/wills/${id}/dms/check-in`, "POST"); return getWill(userId, id) };
 export const cancelDeathHandover = unsupported("Cancel death handover");
-export const requestImmediateHandover = unsupported("Immediate handover");
+export const requestImmediateHandover = async (userId, id) => { await r(`/handover/${id}/immediate`, "POST"); return getWill(userId, id); };
+export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
 export const getInheritedWills = async () => [];
@@ -81,3 +81,9 @@ export const getInheritedWill = unsupported("Inherited will details");
 export const issueClaimKey = unsupported("Claim key");
 export const confirmClaim = unsupported("Confirm claim");
 export async function getOwnerDashboardData() { const [wills, assets] = await Promise.all([getWills(), getAssets()]); const main = wills.find(w => w.status === "ACTIVE") || wills[0]; const detail = main ? await getWill(null, main.id) : null; return { vaultStatus: detail?.status || "LOCKED", deadManSwitch: detail?.dms ? { enabled: detail.dms.enabled, willId: detail.id, checkInCycleDays: detail.dms.checkInDays, lastCheckIn: detail.dms.lastCheckIn, nextCheckInDue: detail.dms.nextCheckInAt, missedCount: detail.dms.missedCount, maxMissed: detail.dms.maxMissed, caseOpen: false } : { enabled: false }, assets: assets.map(a => ({ ...a, beneficiary: null })), executors: detail?.executor ? [{ id: detail.executor.id, name: detail.executor.name, status: detail.executor.status }] : [], beneficiaries: (detail?.beneficiaries || []).map(b => ({ id: b.id, name: b.fullName, assetsAssigned: (detail.assignments || []).filter(a => a.beneficiaryDesignationId === b.id).length })), recentActivity: [] }; }
+
+// ---- Owner: notifications, wallet, executor review ----
+export const getDmsAlerts = () => r("/dms/alerts");
+export const getWallet = () => r("/wallet");
+export const topUpWallet = (amount) => r("/wallet/topup", "POST", { amount: Number(amount) }, { "Idempotency-Key": crypto.randomUUID() });
+export const createExecutorReview = (executorAccountId, { willId, rating, comment }) => r(`/executors/${executorAccountId}/reviews`, "POST", { willId, rating: Number(rating), comment: comment || null });

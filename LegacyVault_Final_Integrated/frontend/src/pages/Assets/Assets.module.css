@@ -3,14 +3,14 @@
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 4px;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 14px;
   margin: 0 0 18px;
 }
@@ -19,7 +19,7 @@
   padding: 9px 16px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -28,11 +28,11 @@
 }
 
 .addBtn:hover {
-  background: #4338ca;
+  background: var(--vault-hover);
 }
 
 .muted {
-  color: #9ca3af;
+  color: var(--faint);
   font-size: 14px;
 }
 
@@ -46,7 +46,7 @@
   background: #fff;
   border-radius: 12px;
   padding: 16px 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -55,26 +55,26 @@
 .assetName {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 4px;
 }
 
 .assetType {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0;
 }
 
 .assetDesc {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--faint);
   margin: 4px 0 0;
 }
 
 .securedTag {
   font-size: 12px;
   font-weight: 700;
-  color: #a16207;
+  color: var(--brass);
   white-space: nowrap;
 }
 
@@ -102,8 +102,8 @@
 
 .modalTitle {
   font-size: 17px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 16px;
 }
 
@@ -111,14 +111,14 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
   margin: 0 0 6px;
 }
 
 .input {
   width: 100%;
   padding: 9px 11px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 14px;
@@ -129,7 +129,7 @@
 .textarea {
   width: 100%;
   padding: 9px 11px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 14px;
@@ -141,17 +141,17 @@
 
 .fileBtn {
   padding: 8px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #f9fafb;
-  color: #374151;
+  background: var(--paper);
+  color: var(--ink-2);
   font-size: 13px;
   cursor: pointer;
   margin-bottom: 16px;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--bad);
   font-size: 13px;
   margin: 0 0 12px;
 }
@@ -166,7 +166,7 @@
   padding: 9px 18px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -174,16 +174,16 @@
 }
 
 .primaryBtn:disabled {
-  background: #a5b4fc;
+  background: var(--vault-line);
   cursor: not-allowed;
 }
 
 .secondaryBtn {
   padding: 9px 18px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -201,17 +201,17 @@
 
 .toggleBtn {
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .toggleBtn:hover {
-  background: #f3f4f6;
+  background: var(--paper-2);
 }
 
 .fileRow {
@@ -228,9 +228,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .fileMeta {
-  color: #6b7280;
+  color: var(--muted);
 }

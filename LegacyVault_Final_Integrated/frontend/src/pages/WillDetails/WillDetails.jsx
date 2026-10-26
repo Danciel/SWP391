@@ -8,9 +8,11 @@ import {
   cancelDeathHandover,
   requestImmediateHandover,
   getExecutors,
+  getHandover,
+  createExecutorReview,
 } from "../../api/vaultApi";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
-import { dmsMessage, dmsState, fmtDate } from "../../utils/willHelpers";
+import { dmsMessage, dmsState, fmtDate, specialistFor } from "../../utils/willHelpers";
 import { useBackdropClose } from "../../utils/useBackdropClose";
 import styles from "./WillDetails.module.css";
 
@@ -35,6 +37,8 @@ export default function WillDetails() {
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInError, setCheckInError] = useState("");
   const [checkInDone, setCheckInDone] = useState("");
+  const [handover, setHandover] = useState(null);
+  const [review, setReview] = useState({ rating: 5, comment: "", busy: false, error: "", done: false });
   const handoverBackdrop = useBackdropClose(() => {
     if (!handoverBusy) setConfirmingHandover(false);
   });
@@ -51,10 +55,26 @@ export default function WillDetails() {
       setWill(willData);
       setAssets(assetsData);
       getExecutors().then(setExecutors).catch(() => setExecutors([]));
+      if (willData.status !== "DRAFT") loadHandover();
     } catch (err) {
       setLoadError(err.message || "Could not load will details");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function loadHandover() {
+    getHandover(id).then(setHandover).catch(() => setHandover(null));
+  }
+
+  async function handleSubmitReview(e) {
+    e.preventDefault();
+    setReview((r) => ({ ...r, busy: true, error: "" }));
+    try {
+      await createExecutorReview(will.executor.id, { willId: will.id, rating: review.rating, comment: review.comment });
+      setReview((r) => ({ ...r, busy: false, done: true }));
+    } catch (err) {
+      setReview((r) => ({ ...r, busy: false, error: err.message || "Could not submit review" }));
     }
   }
 
@@ -119,6 +139,7 @@ export default function WillDetails() {
       const updated = await requestImmediateHandover(user?.id, will.id);
       setWill(updated);
       setConfirmingHandover(false);
+      loadHandover();
     } catch (err) {
       setHandoverError(err.message || "Could not request immediate handover");
     } finally {
@@ -251,6 +272,11 @@ export default function WillDetails() {
                       ? `${will.executor.name} · ${EXECUTOR_STATUS_LABEL[will.executor.status] || will.executor.status}`
                       : "No executor assigned."}
                   </p>
+                  {specialistFor(will, entry.willAssetId) && (
+                    <p className={styles.itemMeta}>
+                      Suggested specialist: {specialistFor(will, entry.willAssetId).name} (recommendation only, does not accept or get paid)
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -307,6 +333,54 @@ export default function WillDetails() {
           <p className={styles.itemMeta}>No executor assigned.</p>
         )}
       </section>
+
+      {/* Handover progress */}
+      {handover && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Handover</h2>
+          <Row label="Type" value={handover.type} />
+          <Row label="Status" value={String(handover.status).replaceAll("_", " ")} />
+          <Row label="Started" value={fmtDate(handover.startedAt, true)} />
+          <Row label="Progress" value={`${handover.deliveredItems} / ${handover.totalItems} delivered`} />
+          {(handover.items || []).map((it) => (
+            <div key={it.id} className={styles.assetRow}>
+              <div>
+                <div className={styles.itemTitle}>{it.assetName} → {it.beneficiaryName}{it.relationship ? ` (${it.relationship})` : ""}</div>
+                <div className={styles.itemMeta}>
+                  {it.status}{it.deliveredAt ? ` · ${fmtDate(it.deliveredAt, true)}` : ""}
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Executor review (backend allows it only after HANDED_OVER) */}
+      {will.status === "HANDED_OVER" && will.executor && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Review your executor</h2>
+          {review.done ? (
+            <p role="status" className={styles.successText}>Thanks, your review was saved.</p>
+          ) : (
+            <form className={styles.editForm} onSubmit={handleSubmitReview}>
+              <label className={styles.label}>
+                Rating
+                <select className={styles.input} value={review.rating} onChange={(e) => setReview((r) => ({ ...r, rating: Number(e.target.value) }))}>
+                  {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{"⭐".repeat(n)}</option>)}
+                </select>
+              </label>
+              <label className={styles.label}>
+                Comment
+                <textarea className={styles.textarea} maxLength={1000} value={review.comment} onChange={(e) => setReview((r) => ({ ...r, comment: e.target.value }))} />
+              </label>
+              {review.error && <p role="alert" className={styles.errorText}>{review.error}</p>}
+              <div className={styles.actions}>
+                <button className={styles.primaryBtn} disabled={review.busy}>{review.busy ? "Saving..." : "Submit Review"}</button>
+              </div>
+            </form>
+          )}
+        </section>
+      )}
 
       {/* DMS */}
       <section className={styles.section}>

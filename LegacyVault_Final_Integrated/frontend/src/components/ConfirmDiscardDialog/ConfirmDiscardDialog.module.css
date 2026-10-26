@@ -20,16 +20,16 @@
 
 .title {
   margin: 0 0 8px;
-  font-size: 17px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .message {
   margin: 0 0 18px;
   font-size: 14px;
   line-height: 1.5;
-  color: #4b5563;
+  color: var(--muted);
 }
 
 .actions {
@@ -42,7 +42,7 @@
   padding: 9px 16px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -51,15 +51,15 @@
 
 .discardBtn {
   padding: 9px 16px;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--bad-line);
   border-radius: 8px;
   background: #fff;
-  color: #dc2626;
+  color: var(--bad);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
 }
 
 .discardBtn:hover {
-  background: #fef2f2;
+  background: var(--bad-soft);
 }

@@ -9,7 +9,7 @@
 .label {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .inputWrapper {
@@ -21,7 +21,7 @@
 .input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 15px;
   outline: none;
@@ -40,20 +40,20 @@
   font-size: 16px;
   line-height: 1;
   padding: 4px;
-  color: #6b7280;
+  color: var(--muted);
 }
 
 .toggleBtn:hover {
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .input:focus {
-  border-color: #4f46e5;
+  border-color: var(--vault);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .inputError {
-  border-color: #dc2626;
+  border-color: var(--bad);
 }
 
 .inputError:focus {
@@ -61,7 +61,7 @@
 }
 
 .error {
-  color: #dc2626;
+  color: var(--bad);
   font-size: 13px;
   margin: 0;
 }

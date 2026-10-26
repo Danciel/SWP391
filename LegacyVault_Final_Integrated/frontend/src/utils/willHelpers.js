@@ -91,6 +91,12 @@ export function uniqueExecutors(will) {
   return [...map.values()];
 }
 
+// A specialist is an optional per-asset suggestion: any asset executor who is not the main executor.
+export function specialistFor(will, willAssetId) {
+  const e = executorForAsset(will, willAssetId);
+  return e && e.id !== will?.executor?.id ? e : null;
+}
+
 export function allAssetsHaveExecutor(will) {
   const assets = will?.assets || [];
   return assets.length > 0 && assets.every((a) => executorForAsset(will, a.willAssetId));

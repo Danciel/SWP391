@@ -14,6 +14,7 @@ import CreateWill from "./pages/CreateWill/CreateWill";
 import MyWills from "./pages/MyWills/MyWills";
 import WillDetails from "./pages/WillDetails/WillDetails";
 import ViewWill from "./pages/ViewWill/ViewWill";
+import Wallet from "./pages/Wallet/Wallet";
 import InheritedWillDetails from "./pages/InheritedWillDetails/InheritedWillDetails";
 import ExecutorDashboard from "./pages/ExecutorDashboard/ExecutorDashboard";
 import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifierDashboard";
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="create-will" element={<CreateWill />} />
             <Route path="my-wills" element={<MyWills />} />
             <Route path="my-wills/:id" element={<WillDetails />} />
+            <Route path="wallet" element={<Wallet />} />
             <Route path="view-will" element={<ViewWill />} />
             <Route path="view-will/:id" element={<InheritedWillDetails />} />
             <Route path="executor" element={<ExecutorDashboard />} />

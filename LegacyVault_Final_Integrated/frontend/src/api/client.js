@@ -26,9 +26,9 @@ export function setStoredUser(user) {
   else localStorage.removeItem(USER_KEY);
 }
 
-export async function request(path, { method = "GET", body, auth = true } = {}) {
+export async function request(path, { method = "GET", body, auth = true, headers: extraHeaders } = {}) {
   const isFormData = body instanceof FormData;
-  const headers = {};
+  const headers = { ...(extraHeaders || {}) };
 
   // JSON chỉ được khai báo Content-Type khi không gửi FormData.
   if (!isFormData) {
@@ -73,7 +73,8 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
   }
 
   if (!res.ok) {
-    const message = data?.message || `Error ${res.status}`;
+    const validation = data?.errors ? Object.values(data.errors).flat()[0] : null;
+    const message = data?.message || validation || data?.title || `Error ${res.status}`;
     throw new ApiError(message, res.status, data);
   }
 
