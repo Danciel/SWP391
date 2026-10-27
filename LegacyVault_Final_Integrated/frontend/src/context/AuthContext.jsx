@@ -6,9 +6,10 @@ import {
   logout as logoutApi,
   verifyOtp as verifyOtpApi,
   resendOtp as resendOtpApi,
-  requestPasswordReset as requestPasswordResetApi,
-  resetPassword as resetPasswordApi,
+  // requestPasswordReset as requestPasswordResetApi,
+  // resetPassword as resetPasswordApi,
 } from "../api/authApi";
+import { requestPasswordReset, resetPassword } from "../api/resetPasswordApi";
 
 const AuthContext = createContext(null);
 

@@ -315,5 +315,71 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
             await _accountRepository.SaveChangesAsync();
         }
+
+        // Add these methods to AuthService class
+
+        public async Task RequestPasswordResetAsync(string email)
+        {
+            var normalizedEmail = email.Trim().ToLower();
+
+            // 1. Find account
+            var account = await _accountRepository.GetByEmailAsync(normalizedEmail);
+
+            // Note: For security reasons, it's best practice to return success even if the email
+            // doesn't exist to prevent email enumeration. However, for a school project,
+            // throwing an exception is easier to debug.
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account not found.");
+            }
+
+            // 2. Generate OTP and save hash
+            var otp = await _emailOtpService.GenerateAndSaveOtpAsync(account.Id);
+
+            // 3. Send OTP email
+            await _emailSender.SendOtpAsync(account.Email, otp);
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            var normalizedEmail = request.Email.Trim().ToLower();
+
+            // 1. Find account
+            var account = await _accountRepository.GetByEmailAsync(normalizedEmail);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account not found.");
+            }
+
+            // 2. Get latest unused OTP
+            var emailOtp = await _emailOtpRepository.GetLatestUnusedAsync(account.Id);
+            if (emailOtp == null)
+            {
+                throw new InvalidOperationException("No active OTP found for this account. Please request a new one.");
+            }
+
+            // 3. Check expiration
+            if (emailOtp.ExpiresAt < DateTimeOffset.UtcNow)
+            {
+                throw new InvalidOperationException("OTP has expired. Please request a new one.");
+            }
+
+            // 4. Verify OTP
+            var isValid = BCrypt.Net.BCrypt.Verify(request.Otp, emailOtp.OtpHash);
+            if (!isValid)
+            {
+                throw new InvalidOperationException("Invalid OTP.");
+            }
+
+            // 5. Update password hash
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            account.UpdatedAt = DateTimeOffset.UtcNow;
+
+            // 6. Mark OTP as used
+            emailOtp.UsedAt = DateTimeOffset.UtcNow;
+
+            // 7. Save changes (saves both Account and EmailOtp)
+            await _accountRepository.SaveChangesAsync();
+        }
     }
 }

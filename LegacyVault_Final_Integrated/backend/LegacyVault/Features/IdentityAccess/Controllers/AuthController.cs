@@ -110,7 +110,7 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
                 });
             }
         }
-// ==========================================
+        // ==========================================
         // PHONE OTP ENDPOINTS
         // ==========================================
 
@@ -145,6 +145,36 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
 
                 await _authService.VerifyPhoneOtpAsync(accountId, request.Otp);
                 return Ok(new { message = "Phone verified successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            try
+            {
+                await _authService.RequestPasswordResetAsync(request.Email);
+
+                return Ok(new { message = "If an account with that email exists, an OTP has been sent." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            try
+            {
+                await _authService.ResetPasswordAsync(request);
+
+                return Ok(new { message = "Password has been reset successfully. You can now log in." });
             }
             catch (InvalidOperationException ex)
             {
