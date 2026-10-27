@@ -34,6 +34,10 @@ namespace LegacyVault.Features.WillManagement.Services
                 .Where(x => x.ExecutorAccountId == me && x.Status == "HELD")
                 .SumAsync(x => (decimal?)x.Amount) ?? 0m;
 
+            var executorDepositHeld = await _db.ExecutorDeposits.AsNoTracking()
+                .Where(x => x.ExecutorAccountId == me && x.Status == "HELD")
+                .SumAsync(x => (decimal?)x.Amount) ?? 0m;
+
             var txs = await _db.WalletTransactions
                 .AsNoTracking()
                 .Where(x => x.AccountId == me)
@@ -63,6 +67,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 Balance = balance,
                 HeldAmount = held,
                 PendingIncoming = incoming,
+                ExecutorDepositHeld = executorDepositHeld,
                 Currency = wallet.Currency,
                 Transactions = txs
             };
@@ -109,6 +114,51 @@ namespace LegacyVault.Features.WillManagement.Services
             }
 
             return await GetMineAsync();
+        }
+
+        public async Task HoldExecutorDepositAsync(Guid willId, Guid executorAccountId, decimal serviceFee, string currency)
+        {
+            // This is an advance paid from the Owner's held service fee, not a deposit
+            // deducted from the Executor. It is credited only after the Executor accepts.
+            if (executorAccountId == Guid.Empty || willId == Guid.Empty)
+                return;
+
+            var existing = await _db.ExecutorDeposits.FirstOrDefaultAsync(x => x.WillId == willId);
+            if (existing != null) return;
+
+            var amount = Math.Round(serviceFee * 0.20m, 2, MidpointRounding.AwayFromZero);
+            if (amount <= 0m) return;
+
+            await GetOrCreateAsync(executorAccountId);
+            await using var tx = await _db.Database.BeginTransactionAsync();
+
+            // Re-check within the transaction so an accepted assignment retry won't credit twice.
+            if (await _db.ExecutorDeposits.AnyAsync(x => x.WillId == willId))
+            {
+                await tx.RollbackAsync();
+                return;
+            }
+
+            var rows = await _db.Wallets.Where(x => x.AccountId == executorAccountId)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Balance, x => x.Balance + amount)
+                    .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow));
+            if (rows == 0) throw new InvalidOperationException("Executor wallet was not found.");
+
+            var balance = await _db.Wallets.AsNoTracking().Where(x => x.AccountId == executorAccountId)
+                .Select(x => x.Balance).FirstAsync();
+            var now = DateTimeOffset.UtcNow;
+            _db.ExecutorDeposits.Add(new ExecutorDeposit { Id = Guid.NewGuid(), WillId = willId,
+                ExecutorAccountId = executorAccountId, Amount = amount, Currency = currency, Status = "HELD", HeldAt = now });
+            _db.WalletTransactions.Add(new WalletTransaction { Id = Guid.NewGuid(), AccountId = executorAccountId,
+                Type = "ADVANCE_IN", Amount = amount, BalanceAfter = balance, WillId = willId,
+                Note = $"20% service-fee advance for Will {willId}", CreatedAt = now });
+            var profile = await _db.ExecutorProfiles.FirstOrDefaultAsync(x => x.AccountId == executorAccountId);
+            if (profile != null) profile.TotalHeldDeposit += amount;
+            _db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), ActorAccountId = executorAccountId,
+                Action = "EXECUTOR_ADVANCE_CREDITED", EntityType = "ExecutorDeposit", EntityId = willId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new { amount, currency, serviceFee, percent = 20 }), CreatedAt = now });
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
         }
 
         public async Task HoldFeeAsync(

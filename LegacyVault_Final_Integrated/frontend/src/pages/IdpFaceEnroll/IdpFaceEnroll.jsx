@@ -201,7 +201,7 @@ export default function IdpFaceEnroll() {
           )}
         </div>
 
-        <Link to={`/idp-profile/${encodeURIComponent(id)}`}>
+        <Link to={`/idp/profile/${encodeURIComponent(id)}`}>
           Quay lại hồ sơ định danh
         </Link>
       </section>

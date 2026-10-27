@@ -18,6 +18,9 @@ namespace LegacyVault.Models
         // Executor's current advertised fee for handling one whole Will.
         public decimal ServiceFee { get; set; } = 0m;
 
+        // Aggregate of all per-Will executor deposits currently held.
+        public decimal TotalHeldDeposit { get; set; } = 0m;
+
         public string Currency { get; set; } = "VND";
 
         public bool IsVerified { get; set; }

@@ -13,7 +13,10 @@ const NAV_ITEMS_BY_ROLE = {
     { to: "/dashboard/my-wills", label: "My Wills" },
     { to: "/dashboard/wallet", label: "Wallet" },
   ],
-  EXECUTOR: [{ to: "/dashboard/executor", label: "Executor Dashboard" }],
+  EXECUTOR: [
+    { to: "/dashboard/executor", label: "Executor Dashboard" },
+    { to: "/dashboard/wallet", label: "Wallet" },
+  ],
   LEGAL_VERIFIER: [{ to: "/dashboard/verifier", label: "Legal Cases" }],
   ADMIN: [{ to: "/dashboard/admin", label: "Admin Dashboard" }],
 };
@@ -31,7 +34,7 @@ export default function AppLayout() {
   useEffect(() => {
     if (user?.role !== "OWNER" && user?.role !== "USER") return undefined;
     let alive = true;
-    const load = () => getDmsAlerts().then((rows) => alive && setAlerts(rows || [])).catch(() => {});
+    const load = () => getDmsAlerts().then((rows) => alive && setAlerts(rows || [])).catch(() => { });
     load();
     const t = setInterval(load, 60000);
     return () => { alive = false; clearInterval(t); };
@@ -96,7 +99,7 @@ export default function AppLayout() {
                   Profile
                 </NavLink>
                 <NavLink
-                  to="/dashboard/profile"
+                  to="/dashboard/security"
                   className={styles.dropdownItem}
                   onClick={() => setMenuOpen(false)}
                 >

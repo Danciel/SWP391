@@ -20,6 +20,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Asset OAuth callback tickets and provider HTTP requests.
 builder.Services.AddMemoryCache();
+
+
+builder.Services.AddDataProtection();
+
+builder.Services.AddSingleton<
+    LegacyVault.Shared.Security.OwnerPinGrantService>();
+
+
+
 builder.Services.AddHttpClient("asset-oauth");
 builder.Services.AddOpenApi();
 
@@ -64,6 +73,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailOtpService, EmailOtpService>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Audit Management (admin audit-log API)
+builder.Services.AddScoped<LegacyVault.Features.AuditManagement.Contracts.IAuditRepository, LegacyVault.Features.AuditManagement.Repositories.AuditRepository>();
+builder.Services.AddScoped<LegacyVault.Features.AuditManagement.Contracts.IAuditService, LegacyVault.Features.AuditManagement.Services.AuditService>();
 
 // Phone OTP & SMS Sender
 builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();

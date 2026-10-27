@@ -9,6 +9,7 @@ import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import AppLayout from "./pages/Layout/AppLayout";
 import Assets from "./pages/Assets/Assets";
 import Profile from "./pages/Profile/Profile";
+import Security from "./pages/Security/Security";
 import VerifyIdentity from "./pages/VerifyIdentity/VerifyIdentity";
 import CreateWill from "./pages/CreateWill/CreateWill";
 import MyWills from "./pages/MyWills/MyWills";
@@ -69,6 +70,7 @@ export default function App() {
             <Route index element={<DashboardIndex />} />
             <Route path="assets" element={<Assets />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="security" element={<Security />} />
             <Route path="verify-identity" element={<VerifyIdentity />} />
             <Route path="create-will" element={<CreateWill />} />
             <Route path="my-wills" element={<MyWills />} />

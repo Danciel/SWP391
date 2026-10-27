@@ -3,6 +3,7 @@ using LegacyVault.Features.WillManagement.DTOs;
 using LegacyVault.Features.WillManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LegacyVault.Shared.Security;
 
 namespace LegacyVault.Features.WillManagement.Controllers
 {
@@ -11,12 +12,21 @@ namespace LegacyVault.Features.WillManagement.Controllers
     [Authorize]
     public class WillsController : ControllerBase
     {
-        private readonly IWillService _willService;
 
-        public WillsController(IWillService willService)
+        private readonly IWillService _willService;
+        private readonly ICurrentUserService _currentUser;
+        private readonly OwnerPinGrantService _pinGrantService;
+
+        public WillsController(
+            IWillService willService,
+            ICurrentUserService currentUser,
+            OwnerPinGrantService pinGrantService)
         {
             _willService = willService;
+            _currentUser = currentUser;
+            _pinGrantService = pinGrantService;
         }
+
 
         [HttpPost]
         public async Task<IActionResult> Create(
@@ -37,20 +47,79 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 await _willService.GetMineAsync());
         }
 
+
+
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             try
             {
-                return Ok(
-                    await _willService.GetByIdAsync(id));
+                // B1. Lay danh sach Will cua Owner
+                var myWills = await _willService.GetMineAsync();
+
+                // B2. Tim Will duoc yeu cau
+                var summary = myWills.FirstOrDefault(
+                    w => w.Id == id
+                );
+
+                if (summary == null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Will not found."
+                    });
+                }
+
+                // B3. Draft duoc doc de Create Will hoat dong
+                bool isDraft = string.Equals(
+                    summary.Status,
+                    "DRAFT",
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+                // B4. Will khong phai Draft phai xac minh PIN
+                if (!isDraft)
+                {
+                    Guid ownerId =
+                        _currentUser.GetRequiredAccountId();
+
+                    string grant = Request.Headers[
+                        "X-Owner-Pin-Grant"
+                    ].ToString();
+
+                    bool allowed =
+                        _pinGrantService.IsValidGrant(
+                            grant,
+                            ownerId,
+                            OwnerPinScopes.WillDetail,
+                            id
+                        );
+
+                    if (!allowed)
+                    {
+                        return StatusCode(423, new
+                        {
+                            message =
+                                "Please verify your 6-digit security PIN."
+                        });
+                    }
+                }
+
+                // B5. Chi tra chi tiet sau khi du dieu kien
+                var detail = await _willService.GetByIdAsync(id);
+
+                return Ok(detail);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(
-                    new { message = ex.Message });
+                return NotFound(new
+                {
+                    message = ex.Message
+                });
             }
         }
+
+
 
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(

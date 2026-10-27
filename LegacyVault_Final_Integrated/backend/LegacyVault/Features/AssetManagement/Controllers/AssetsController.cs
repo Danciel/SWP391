@@ -2,6 +2,7 @@ using LegacyVault.Features.AssetManagement.Contracts;
 using LegacyVault.Features.AssetManagement.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LegacyVault.Shared.Security;
 
 namespace LegacyVault.Features.AssetManagement.Controllers
 {
@@ -60,6 +61,7 @@ namespace LegacyVault.Features.AssetManagement.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [RequireOwnerPin(OwnerPinScopes.AssetSecret)]
         public async Task<IActionResult> Update(
             Guid id,
             [FromBody] UpdateAssetRequest request)
@@ -101,7 +103,9 @@ namespace LegacyVault.Features.AssetManagement.Controllers
         // Demo/authorized reveal endpoint.
         // Normal list/detail responses never contain secret data.
         [HttpGet("{id:guid}/secret")]
+        [RequireOwnerPin(OwnerPinScopes.AssetSecret)]
         public async Task<IActionResult> RevealSecret(Guid id)
+
         {
             try
             {

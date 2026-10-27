@@ -12,7 +12,7 @@ export default function IdpProfileLookup() {
     const value = id.trim();
 
     if (value) {
-      navigate(`/idp-profile/${encodeURIComponent(value)}`);
+      navigate(`/idp/profile/${encodeURIComponent(value)}`);
     }
   };
 
@@ -51,7 +51,7 @@ export default function IdpProfileLookup() {
 
         <p className="idp-lookup-footer">
           Chưa có hồ sơ?{" "}
-          <Link to="/idp-register">Đăng ký hồ sơ mới</Link>
+          <Link to="/idp/register">Đăng ký hồ sơ mới</Link>
         </p>
       </section>
     </main>
