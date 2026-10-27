@@ -1,0 +1,393 @@
+.page {
+  min-height: 100%;
+  padding: 0;
+}
+
+.header {
+  max-width: 1100px;
+  margin: 0 auto 24px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.info {
+  max-width: 1100px;
+  margin: 0 auto;
+  color: var(--muted);
+}
+
+.errorBox {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.toast {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok-line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+}
+
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-2);
+  border-radius: 10px;
+}
+
+.itemRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.actionRow {
+  display: flex;
+  gap: 6px;
+}
+
+.metaText {
+  color: var(--faint);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.mutedText {
+  color: var(--faint);
+  font-size: 14px;
+  margin: 0;
+}
+
+.primaryBtn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover {
+  background: var(--vault-hover);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.secondaryBtn:hover {
+  background: var(--paper-2);
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.listItemColumn {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-2);
+  border-radius: 10px;
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  color: var(--vault);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.detailPanel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.detailRow span:first-child {
+  color: var(--muted);
+}
+
+.assetDetailCard {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feeInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.feeAmount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.deadlineOverdue {
+  color: var(--bad);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.PENDING,
+.AWAITING_CASE,
+.OPEN,
+.SUBMITTED_FOR_REVIEW {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.ACCEPTED,
+.ACTIVE,
+.CASE_OPENED,
+.APPROVED,
+.CONFIRMED {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.DECLINED,
+.REJECTED {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 26px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modalTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.uploadArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-top: 14px;
+  padding: 28px 16px;
+  border: 2px dashed var(--line-strong);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  background: var(--paper);
+}
+
+.uploadArea:hover {
+  background: var(--paper-2);
+  border-color: var(--vault-line);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+
+/* DMS Trigger card */
+.triggerCardItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border: 1px solid var(--paper-2);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.triggerInfo {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.triggerInfo strong {
+  display: block;
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+}
+
+.triggerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.triggerSubmitBtn {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 9px;
+  background: var(--vault);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.triggerSubmitBtn:hover:not(:disabled) {
+  background: var(--vault-hover);
+}
+
+.triggerSubmitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .triggerCardItem {
+    align-items: stretch;
+  }
+
+  .triggerActions {
+    justify-content: flex-start;
+  }
+
+  .triggerSubmitBtn {
+    white-space: normal;
+  }
+}
+

@@ -1,6 +1,0 @@
-{
-  "username": "pwnodigit{{runId}}",
-  "email": "pwnodigit{{runId}}@test.local",
-  "password": "Abcdefgh",
-  "role": "BENEFICIARY"
-}

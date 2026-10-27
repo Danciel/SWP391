@@ -1,6 +1,0 @@
-{
-  "username": "evil{{runId}}",
-  "email": "evil{{runId}}@test.local",
-  "password": "Passw0rd1",
-  "role": "ADMIN"
-}

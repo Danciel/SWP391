@@ -1,8 +1,0 @@
-{
-  "username": "alice{{runId}}",
-  "email": "alice{{runId}}@test.local",
-  "phone": "+84901{{runId}}",
-  "password": "Passw0rd1",
-  "role": "OWNER",
-  "fullName": "Alice Nguyen"
-}

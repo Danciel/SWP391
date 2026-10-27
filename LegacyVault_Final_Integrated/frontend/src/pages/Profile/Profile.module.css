@@ -1,0 +1,178 @@
+.page {
+  max-width: 560px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px;
+  border: 1px solid var(--line);
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 20px;
+}
+
+.subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--paper-2);
+}
+
+.label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.value {
+  font-size: 14px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verifiedTag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ok);
+}
+
+.unverifiedTag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bad);
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}
+
+.statusBlock {
+  margin-bottom: 12px;
+}
+
+.statusOk {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.statusWarn {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--brass-soft);
+  color: var(--brass);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.helpText {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.primaryBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primaryBtn:hover {
+  background: var(--vault-hover);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+
+/* Executor professional profile form */
+.executorForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.executorForm label {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.executorForm input,
+.executorForm textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+}
+
+.executorForm textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.executorForm input:focus,
+.executorForm textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgb(79 70 229 / 12%);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.secondaryBtn {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.secondaryBtn:disabled,
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

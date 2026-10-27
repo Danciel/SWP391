@@ -1,0 +1,316 @@
+.page {
+  min-height: 100%;
+}
+
+.header {
+  max-width: 1100px;
+  margin: 0 auto 24px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.info {
+  max-width: 1100px;
+  margin: 0 auto;
+  color: var(--muted);
+}
+
+.errorBox {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.toast {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok-line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+}
+
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th {
+  text-align: left;
+  color: var(--faint);
+  font-size: 12px;
+  text-transform: none;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--paper-2);
+  color: var(--ink-2);
+}
+
+.actionCell {
+  text-align: right;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-2);
+  border-radius: 10px;
+}
+
+.metaText {
+  color: var(--faint);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.mutedText {
+  color: var(--faint);
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.flagReasonText {
+  color: var(--brass);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.roleSelect {
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: #fff;
+  cursor: pointer;
+}
+
+.roleSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.amount {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.primaryBtn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover {
+  background: var(--vault-hover);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dangerBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--bad-line);
+  border-radius: 8px;
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dangerBtn:hover {
+  background: var(--bad-soft);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ACTIVE,
+.APPROVED {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.SUSPENDED,
+.REJECTED {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.AWAITING_DOCUMENTS,
+.PENDING_REVIEW {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.paginationActions {
+  display: flex;
+  gap: 8px;
+}
+
+
+.accountsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.accountsHeader .cardTitle {
+  margin-bottom: 0;
+}
+
+
+.createForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.formCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .createForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.searchGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchGroup .searchInput {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,4 +1,0 @@
-{
-  "identifier": "alice{{runId}}@test.local",
-  "password": "Passw0rd1"
-}

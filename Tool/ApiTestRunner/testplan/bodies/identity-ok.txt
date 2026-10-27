@@ -1,5 +1,0 @@
-{
-  "fullName": "Alice Nguyen",
-  "documentNumber": "ABC123456",
-  "dateOfBirth": "1990-05-01"
-}

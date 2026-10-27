@@ -1,0 +1,128 @@
+
+.idp-register-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f3f5f9;
+}
+
+.idp-register-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 460px;
+  padding: 28px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.idp-register-title {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.idp-register-description {
+  margin: 0 0 24px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.idp-register-field {
+  margin-bottom: 18px;
+}
+
+.idp-register-field label {
+  display: block;
+  margin-bottom: 7px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.idp-register-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.idp-register-field input::placeholder {
+  color: #9ca3af;
+}
+
+.idp-register-field input:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.idp-register-error {
+  margin: 12px 0;
+  color: #dc2626;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.idp-register-submit {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #1677ff;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.idp-register-submit:hover:not(:disabled) {
+  background: #0958d9;
+}
+
+.idp-register-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.idp-register-footer {
+  margin: 22px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+}
+
+.idp-register-footer a {
+  color: #1677ff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.idp-register-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .idp-register-page {
+    padding: 16px;
+  }
+
+  .idp-register-card {
+    padding: 22px;
+  }
+
+  .idp-register-title {
+    font-size: 23px;
+  }
+}

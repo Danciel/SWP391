@@ -1,4 +1,0 @@
-{
-  "identifier": "alice{{runId}}",
-  "password": "Passw0rd1"
-}

@@ -1,0 +1,261 @@
+.page {
+  max-width: 760px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 18px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.filter {
+  padding: 6px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filterActive {
+  padding: 6px 14px;
+  border: 1px solid var(--vault);
+  border-radius: 999px;
+  background: var(--vault);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--faint);
+  font-size: 14px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.willCard {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+}
+
+.willHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.willName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ACTIVE {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.DRAFT {
+  background: var(--paper-2);
+  color: var(--muted);
+}
+
+.PENDING_EXECUTOR_ACCEPTANCE {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.NEEDS_EXECUTOR {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.PENDING_VERIFICATION {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.metaGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.viewBtn {
+  display: inline-block;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: var(--vault-soft);
+  color: var(--vault);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.viewBtn:hover {
+  background: var(--vault-soft);
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
+.handoverBtn {
+  display: inline-block;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--vault);
+  background: #fff;
+  color: var(--vault);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.handoverBtn:hover {
+  background: var(--vault-soft);
+}
+
+.deleteBtn {
+  display: inline-block;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--bad-line);
+  background: #fff;
+  color: var(--bad);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background: var(--bad-soft);
+}
+
+.dangerBtn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bad);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dangerBtn:disabled {
+  background: var(--bad-line);
+  cursor: not-allowed;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 26px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modalTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.modalMeta {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.errorText {
+  color: var(--bad);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.primaryBtn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  background: var(--vault-line);
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  padding: 9px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}

@@ -1,4 +1,0 @@
-{
-  "identifier": "admin",
-  "password": "Admin@12345"
-}

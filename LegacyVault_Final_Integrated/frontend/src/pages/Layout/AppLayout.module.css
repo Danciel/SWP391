@@ -1,0 +1,203 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+/* The logo artwork has a white background, so the top bar stays light. */
+.topbar {
+  height: 64px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.brandName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--vault-deep);
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  transition: background 0.15s;
+}
+
+.iconBtn:hover {
+  background: var(--paper-2);
+}
+
+.userMenu {
+  position: relative;
+}
+
+.userBtn {
+  border: 1px solid transparent;
+  background: transparent;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.userBtn:hover {
+  background: var(--paper-2);
+  border-color: var(--line);
+}
+
+.caret {
+  color: var(--faint);
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  min-width: 180px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.dropdownItem:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* The one bold move: a deep green rail with a brass marker on the current page. */
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--vault-deep);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  position: relative;
+  padding: 11px 14px 11px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: #bcd3cb;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.navItem:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.navItemActive {
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.navItemActive::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--brass-bright);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 32px 40px 56px;
+  max-width: 1120px;
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    width: 76px;
+    padding: 18px 8px;
+  }
+  .navItem {
+    font-size: 0;
+    padding: 12px;
+    text-align: center;
+  }
+  .navItem::first-letter {
+    font-size: 15px;
+  }
+  .navItemActive::before {
+    left: 2px;
+  }
+  .content {
+    padding: 22px 18px 40px;
+  }
+  .brandName {
+    font-size: 19px;
+  }
+}

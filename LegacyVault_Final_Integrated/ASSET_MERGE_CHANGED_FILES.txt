@@ -1,0 +1,11 @@
+backend/LegacyVault/Features/AssetManagement/Controllers/AssetConnectionsController.cs
+backend/LegacyVault/Features/AssetManagement/Controllers/AssetMaintenanceController.cs
+backend/LegacyVault/Features/AssetManagement/Controllers/DocumentController.cs
+backend/LegacyVault/Features/AssetManagement/Controllers/ValidatedAssetsController.cs
+backend/LegacyVault/Features/AssetManagement/DTOs/UpdateAssetRequest.cs
+backend/LegacyVault/Features/AssetManagement/Services/AssetService.cs
+backend/LegacyVault/Program.cs
+frontend/src/api/assetConnectionApi.js
+frontend/src/api/vaultApi.js
+frontend/src/pages/Assets/Assets.jsx
+frontend/src/utils/assetCatalog.js
