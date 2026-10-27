@@ -87,8 +87,18 @@ public class ExecutorInboxController : ControllerBase
         if (!request.Accept) await _wallet.RefundFeeAsync(assignment.WillId);
         assignment.Status=newStatus;
         assignment.RespondedAt=respondedAt;
-        // Executor acceptance activates the will; decline retains pending state for owner reassignment.
-        if(request.Accept) { assignment.Will.Status="ACTIVE"; assignment.Will.ActivatedAt=DateTimeOffset.UtcNow; }
+        // Credit the 20% advance only after the assigned Executor accepts.
+        // Never call the wallet service with Guid.Empty or for a declined assignment.
+        if (request.Accept && assignment.ExecutorAccountId != Guid.Empty)
+        {
+            await _wallet.HoldExecutorDepositAsync(
+                assignment.WillId,
+                assignment.ExecutorAccountId,
+                assignment.ServiceFeeSnapshot,
+                assignment.CurrencySnapshot);
+            assignment.Will.Status = "ACTIVE";
+            assignment.Will.ActivatedAt = DateTimeOffset.UtcNow;
+        }
         assignment.Will.UpdatedAt=DateTimeOffset.UtcNow;
         _db.AuditLogs.Add(new LegacyVault.Models.AuditLog
         {

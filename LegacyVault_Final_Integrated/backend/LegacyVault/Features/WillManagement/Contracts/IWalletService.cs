@@ -16,6 +16,8 @@ namespace LegacyVault.Features.WillManagement.Contracts
             decimal amount,
             string currency);
 
+        Task HoldExecutorDepositAsync(Guid willId, Guid executorAccountId, decimal serviceFee, string currency);
+
         // An OPEN payment dispute blocks release unless the admin is
         // resolving that very dispute (ignoreOpenDispute = true).
         Task ReleaseFeeAsync(Guid willId, bool ignoreOpenDispute = false);

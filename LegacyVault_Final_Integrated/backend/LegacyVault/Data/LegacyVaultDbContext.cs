@@ -59,6 +59,10 @@ namespace LegacyVault.Data
 
         public DbSet<ServicePayment> ServicePayments { get; set; }
 
+        public DbSet<ExecutorDeposit> ExecutorDeposits { get; set; }
+
+        public DbSet<ExecutorCsvSubmission> ExecutorCsvSubmissions { get; set; }
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
@@ -152,6 +156,8 @@ namespace LegacyVault.Data
                 entity.Property(x => x.ServiceFee)
                     .HasPrecision(18, 2)
                     .HasDefaultValue(0m);
+
+                entity.Property(x => x.TotalHeldDeposit).HasPrecision(18, 2).HasDefaultValue(0m);
 
                 entity.Property(x => x.Currency)
                     .HasMaxLength(3)
@@ -578,6 +584,29 @@ namespace LegacyVault.Data
                 entity.Property(x => x.IdempotencyKey).HasMaxLength(100);
                 entity.HasIndex(x => new { x.AccountId, x.IdempotencyKey }).IsUnique()
                     .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            });
+
+            modelBuilder.Entity<ExecutorDeposit>(entity =>
+            {
+                entity.ToTable("ExecutorDeposits");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.WillId).IsUnique();
+                entity.Property(x => x.Amount).HasPrecision(18, 2);
+                entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+                entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+                entity.HasOne<Will>().WithMany().HasForeignKey(x => x.WillId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<Account>().WithMany().HasForeignKey(x => x.ExecutorAccountId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ExecutorCsvSubmission>(entity =>
+            {
+                entity.ToTable("ExecutorCsvSubmissions");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.UploadedAt);
+                entity.Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+                entity.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.FileContent).IsRequired();
+                entity.HasOne<Account>().WithMany().HasForeignKey(x => x.ExecutorAccountId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ServicePayment>(entity =>

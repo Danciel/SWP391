@@ -24,6 +24,7 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public decimal Balance { get; set; }
         public decimal HeldAmount { get; set; }
         public decimal PendingIncoming { get; set; }
+        public decimal ExecutorDepositHeld { get; set; }
         public string Currency { get; set; } = "VND";
         public List<WalletTransactionResponse> Transactions { get; set; } = new();
     }
