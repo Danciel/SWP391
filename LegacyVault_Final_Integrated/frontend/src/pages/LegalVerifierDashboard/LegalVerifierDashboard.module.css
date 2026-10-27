@@ -12,22 +12,22 @@
 }
 
 .title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--muted);
   margin: 6px 0 0;
   font-size: 14px;
 }
 
 .statPill {
   flex-shrink: 0;
-  background: #eef2ff;
-  color: #4338ca;
+  background: var(--vault-soft);
+  color: var(--vault-hover);
   font-weight: 700;
   font-size: 13px;
   padding: 8px 14px;
@@ -37,15 +37,15 @@
 .info {
   max-width: 1000px;
   margin: 0 auto;
-  color: #6b7280;
+  color: var(--muted);
 }
 
 .errorBox {
   max-width: 1000px;
   margin: 0 auto 16px;
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
   border-radius: 8px;
   padding: 10px 14px;
 }
@@ -53,9 +53,9 @@
 .toast {
   max-width: 1000px;
   margin: 0 auto 16px;
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok-line);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
@@ -68,13 +68,13 @@
   background: #fff;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--line);
 }
 
 .cardTitle {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 12px;
 }
 
@@ -93,10 +93,10 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--paper-2);
   border-radius: 10px;
   font-size: 14px;
-  color: #374151;
+  color: var(--ink-2);
 }
 
 .itemMain {
@@ -117,26 +117,26 @@
 }
 
 .metaText {
-  color: #9ca3af;
+  color: var(--faint);
   font-size: 12px;
   margin-top: 2px;
 }
 
 .reasonText {
-  color: #b91c1c;
+  color: var(--bad);
   font-size: 12px;
   margin-top: 4px;
 }
 
 .deadlineOverdue {
-  color: #b91c1c;
+  color: var(--bad);
   font-size: 12px;
   font-weight: 600;
   margin-top: 2px;
 }
 
 .mutedText {
-  color: #9ca3af;
+  color: var(--faint);
   font-size: 14px;
   margin: 0;
 }
@@ -150,7 +150,7 @@
 
 .reasonInput {
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 13px;
   width: 200px;
@@ -160,7 +160,7 @@
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 13px;
@@ -169,7 +169,7 @@
 }
 
 .primaryBtn:hover {
-  background: #4338ca;
+  background: var(--vault-hover);
 }
 
 .primaryBtn:disabled {
@@ -179,10 +179,10 @@
 
 .secondaryBtn {
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -190,15 +190,15 @@
 }
 
 .secondaryBtn:hover {
-  background: #f3f4f6;
+  background: var(--paper-2);
 }
 
 .dangerBtn {
   padding: 6px 12px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--bad-line);
   border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--bad-soft);
+  color: var(--bad);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -206,7 +206,7 @@
 }
 
 .dangerBtn:hover {
-  background: #fee2e2;
+  background: var(--bad-soft);
 }
 
 .dangerBtn:disabled {
@@ -225,22 +225,22 @@
 
 .AWAITING_DOCUMENTS,
 .PENDING_REVIEW {
-  background: #fef9c3;
-  color: #a16207;
+  background: var(--brass-soft);
+  color: var(--brass);
 }
 
 .APPROVED {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .REJECTED {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 .flagText {
-  color: #b45309;
+  color: var(--brass);
   font-size: 12px;
   font-weight: 600;
   margin-top: 4px;
@@ -249,7 +249,7 @@
 .linkBtn {
   border: none;
   background: none;
-  color: #4f46e5;
+  color: var(--vault);
   font-size: 12px;
   font-weight: 600;
   padding: 0;
@@ -264,8 +264,8 @@
 .detailBox {
   margin-top: 8px;
   padding: 10px 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -280,7 +280,7 @@
 }
 
 .detailLabel {
-  color: #9ca3af;
+  color: var(--faint);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -288,13 +288,13 @@
 .willSection {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed #d1d5db;
+  border-top: 1px dashed var(--line-strong);
 }
 
 .willTitle {
   font-weight: 700;
   font-size: 13px;
-  color: #111827;
+  color: var(--ink);
   margin-bottom: 8px;
 }
 
@@ -304,6 +304,6 @@
   gap: 8px;
   margin-top: 12px;
   font-size: 13px;
-  color: #374151;
+  color: var(--ink-2);
   cursor: pointer;
 }

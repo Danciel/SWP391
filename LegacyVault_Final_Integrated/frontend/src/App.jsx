@@ -14,6 +14,7 @@ import CreateWill from "./pages/CreateWill/CreateWill";
 import MyWills from "./pages/MyWills/MyWills";
 import WillDetails from "./pages/WillDetails/WillDetails";
 import ViewWill from "./pages/ViewWill/ViewWill";
+import Wallet from "./pages/Wallet/Wallet";
 import InheritedWillDetails from "./pages/InheritedWillDetails/InheritedWillDetails";
 import ExecutorDashboard from "./pages/ExecutorDashboard/ExecutorDashboard";
 import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifierDashboard";
@@ -23,6 +24,8 @@ import IdpRegister from "./pages/IdpRegister/IdpRegister";
 import IdpProfile from "./pages/IdpProfile/IdpProfile";
 import IdpProfileLookup from "./pages/IdpProfileLookup/IdpProfileLookup";
 import IdpFaceEnroll from "./pages/IdpFaceEnroll/IdpFaceEnroll";
+import IdpAdminDashboard from "./pages/IdpAdminDashboard/IdpAdminDashboard";
+import IdpDashboard from "./pages/IdpDashboard/IdpDashboard";
 
 const ROLE_HOME = {
   OWNER: "assets",
@@ -48,22 +51,12 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          <Route
-            path="/idp-register"
-            element={<IdpRegister />}
-          />
-
-          <Route
-            path="/idp-profile/:id"
-            element={<IdpProfile />}
-          />
-
-          <Route
-            path="/idp-profile-lookup"
-            element={<IdpProfileLookup />}
-          />
-
-          <Route path="/idp-face-enroll/:id" element={<IdpFaceEnroll />} />
+          <Route path="/idp" element={<IdpDashboard />} />
+          <Route path="/idp/register" element={<IdpRegister />} />
+          <Route path="/idp/profile/:id" element={<IdpProfile />}/>
+          <Route path="/idp/profile-lookup" element={<IdpProfileLookup />}/>
+          <Route path="/idp/face-enroll/:id" element={<IdpFaceEnroll />} />
+          <Route path="/idp/admin" element={<IdpAdminDashboard />} />
 
           <Route
             path="/dashboard"
@@ -80,6 +73,7 @@ export default function App() {
             <Route path="create-will" element={<CreateWill />} />
             <Route path="my-wills" element={<MyWills />} />
             <Route path="my-wills/:id" element={<WillDetails />} />
+            <Route path="wallet" element={<Wallet />} />
             <Route path="view-will" element={<ViewWill />} />
             <Route path="view-will/:id" element={<InheritedWillDetails />} />
             <Route path="executor" element={<ExecutorDashboard />} />

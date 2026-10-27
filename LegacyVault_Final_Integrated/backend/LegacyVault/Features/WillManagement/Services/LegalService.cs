@@ -77,7 +77,7 @@ namespace LegacyVault.Features.WillManagement.Services
             }
 
             if (will.Status != "ACTIVE" ||
-                will.DmsConfiguration?.Status != "THRESHOLD_REACHED")
+                will.DmsConfiguration?.Status != "TRIGGERED")
             {
                 throw new InvalidOperationException(
                     "A death certificate can be submitted only after the DMS trigger.");

@@ -26,21 +26,37 @@ export function setStoredUser(user) {
   else localStorage.removeItem(USER_KEY);
 }
 
-export async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
+export async function request(path, { method = "GET", body, auth = true, headers: extraHeaders } = {}) {
+  const isFormData = body instanceof FormData;
+  const headers = { ...(extraHeaders || {}) };
+
+  // JSON chỉ được khai báo Content-Type khi không gửi FormData.
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Giữ nguyên cơ chế xác thực hiện tại.
   if (auth) {
     const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   let res;
+
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        body == null
+          ? undefined
+          : isFormData
+            ? body
+            : JSON.stringify(body),
     });
-  } catch (networkErr) {
+  } catch {
     throw new ApiError(
       `Could not reach the server at ${BASE_URL}. Make sure the backend is running and CORS is configured.`,
       0,
@@ -49,13 +65,16 @@ export async function request(path, { method = "GET", body, auth = true } = {}) 
   }
 
   let data = null;
+
   try {
     data = await res.json();
   } catch {
+    // Response không có JSON.
   }
 
   if (!res.ok) {
-    const message = data?.message || `Error ${res.status}`;
+    const validation = data?.errors ? Object.values(data.errors).flat()[0] : null;
+    const message = data?.message || validation || data?.title || `Error ${res.status}`;
     throw new ApiError(message, res.status, data);
   }
 

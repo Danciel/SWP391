@@ -1,0 +1,80 @@
+.idp-dashboard-page {
+    box-sizing: border-box;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: #f3f5f9;
+}
+
+.idp-dashboard-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 640px;
+    padding: 32px;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.idp-dashboard-title {
+    margin: 0 0 8px;
+    color: #1f2937;
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.idp-dashboard-description {
+    margin: 0 0 32px;
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.idp-dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.idp-dashboard-action {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.idp-dashboard-action:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.08);
+}
+
+.idp-dashboard-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.idp-dashboard-action h3 {
+    margin: 0 0 4px;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.idp-dashboard-action p {
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+/* Add a route for this in App.jsx */
+/* <Route path="/idp" element={<IdpDashboard />} /> */

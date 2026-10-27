@@ -3,76 +3,39 @@
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 4px;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 14px;
   margin: 0 0 18px;
 }
 
-.stepper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 18px;
-  font-size: 13px;
-}
 
-.stepWrap {
-  display: inline-flex;
-  align-items: center;
-}
 
-.step {
-  color: #9ca3af;
-  font-weight: 600;
-  background: none;
-  border: none;
-  padding: 2px 2px;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-}
 
-.step:hover {
-  color: #4f46e5;
-}
 
-.stepActive {
-  color: #4f46e5;
-  font-weight: 700;
-  background: none;
-  border: none;
-  padding: 2px 2px;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-}
 
-.stepDash {
-  color: #d1d5db;
-}
 
 .card {
   background: #fff;
   border-radius: 12px;
   padding: 26px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--line);
 }
 
 .muted {
-  color: #9ca3af;
+  color: var(--faint);
 }
 
 .stepHeading {
   font-size: 17px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 16px;
 }
 
@@ -80,14 +43,14 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--ink-2);
   margin: 0 0 6px;
 }
 
 .input {
   width: 100%;
   padding: 9px 11px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 14px;
@@ -98,7 +61,7 @@
 .textarea {
   width: 100%;
   padding: 9px 11px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 14px;
@@ -110,27 +73,27 @@
 
 .staticValue {
   font-size: 14px;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 14px;
 }
 
 .hint {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0 0 14px;
 }
 
 .infoNote {
   font-size: 13px;
-  color: #4338ca;
-  background: #eef2ff;
+  color: var(--vault-hover);
+  background: var(--vault-soft);
   border-radius: 8px;
   padding: 10px 12px;
   margin: 4px 0 16px;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--bad);
   font-size: 13px;
   margin: 0 0 12px;
 }
@@ -146,7 +109,7 @@
   padding: 9px 20px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -156,20 +119,20 @@
 }
 
 .primaryBtn:hover {
-  background: #4338ca;
+  background: var(--vault-hover);
 }
 
 .primaryBtn:disabled {
-  background: #a5b4fc;
+  background: var(--vault-line);
   cursor: not-allowed;
 }
 
 .secondaryBtn {
   padding: 9px 20px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -178,7 +141,7 @@
 .linkBtn {
   border: none;
   background: none;
-  color: #4f46e5;
+  color: var(--vault);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -188,7 +151,7 @@
 .linkBtnDanger {
   border: none;
   background: none;
-  color: #dc2626;
+  color: var(--bad);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -207,16 +170,16 @@
   align-items: flex-start;
   gap: 10px;
   font-size: 14px;
-  color: #111827;
+  color: var(--ink);
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 
 .checkMeta {
   display: block;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--faint);
   margin-top: 2px;
 }
 
@@ -224,17 +187,17 @@
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
-  color: #059669;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  color: var(--ok);
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-line);
   border-radius: 999px;
   padding: 3px 10px;
   white-space: nowrap;
 }
 
 .warnBox {
-  background: #fef9c3;
-  border: 1px solid #fde68a;
+  background: var(--brass-soft);
+  border: 1px solid var(--brass-line);
   border-radius: 10px;
   padding: 18px;
 }
@@ -243,11 +206,11 @@
   margin: 0 0 6px;
   font-size: 15px;
   font-weight: 700;
-  color: #92400e;
+  color: var(--brass);
 }
 
 .beneficiaryCard {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -257,7 +220,7 @@
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
 }
 
 .beneficiaryInfo {
@@ -266,17 +229,17 @@
 
 .beneficiaryName {
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 2px;
 }
 
 .beneficiaryMeta {
-  color: #6b7280;
+  color: var(--muted);
   margin: 0 0 2px;
 }
 
 .beneficiaryStatus {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 12px;
   margin: 4px 0 8px;
 }
@@ -305,8 +268,8 @@
 
 .modalTitle {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 16px;
 }
 
@@ -319,9 +282,9 @@
 .tab {
   flex: 1;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   background: #fff;
-  color: #6b7280;
+  color: var(--muted);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -331,9 +294,9 @@
 .tabActive {
   flex: 1;
   padding: 8px;
-  border: 1px solid #4f46e5;
-  background: #eef2ff;
-  color: #4f46e5;
+  border: 1px solid var(--vault);
+  background: var(--vault-soft);
+  color: var(--vault);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
@@ -351,7 +314,7 @@
 }
 
 .foundCard {
-  background: #f8fafc;
+  background: var(--paper);
   border-radius: 8px;
   padding: 12px;
   margin-top: 10px;
@@ -365,7 +328,7 @@
 }
 
 .executorCard {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 16px;
   display: flex;
@@ -377,18 +340,18 @@
 .availableTag {
   font-size: 11px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--ok);
 }
 
 .feeText {
   font-size: 13px;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 6px 0 0;
 }
 
 .reviewBlock {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--paper-2);
   padding-bottom: 12px;
   margin-bottom: 12px;
 }
@@ -396,33 +359,32 @@
 .reviewLabel {
   font-size: 12px;
   font-weight: 700;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--faint);
+  text-transform: none;
   margin: 0 0 6px;
 }
 
 .reviewLine {
   font-size: 14px;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 4px;
 }
 
 .reviewWillName {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 16px;
 }
 
 .reviewOk {
-  color: #15803d;
+  color: var(--ok);
   font-weight: 700;
   margin: 0;
 }
 
 .reviewWarn {
-  color: #b91c1c;
+  color: var(--bad);
   font-weight: 700;
   margin: 0;
 }
@@ -431,8 +393,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--ok-soft);
+  color: var(--ok);
   font-size: 22px;
   display: flex;
   align-items: center;
@@ -441,9 +403,115 @@
 }
 
 .demoBox {
-  background: #fffbeb;
-  border: 1px dashed #fbbf24;
+  background: var(--brass-soft);
+  border: 1px dashed var(--brass-line);
   border-radius: 10px;
   padding: 14px;
   margin: 18px 0;
+}
+
+/* Stepper: the wizard really is a sequence, so the numbers carry meaning. */
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  margin-bottom: 22px;
+  counter-reset: willstep;
+}
+
+.stepWrap {
+  display: inline-flex;
+  align-items: center;
+  counter-increment: willstep;
+}
+
+.step,
+.stepActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 6px 4px 2px;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.step {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stepActive {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.step::before,
+.stepActive::before {
+  content: counter(willstep);
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step::before {
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.stepActive::before {
+  background: var(--vault);
+  color: #fff;
+  border: 1.5px solid var(--vault);
+}
+
+.step:hover {
+  color: var(--vault);
+}
+
+.step:hover::before {
+  border-color: var(--vault);
+  color: var(--vault);
+}
+
+.stepDash {
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  margin: 0 6px 0 2px;
+  background: var(--line-strong);
+  font-size: 0;
+}
+
+/* Executor choice: keep the two buttons on one line and give sections room. */
+.executorList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.executorCard {
+  gap: 20px;
+}
+
+.executorCard .actions {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.executorCard .primaryBtn,
+.executorCard .secondaryBtn {
+  white-space: nowrap;
+  padding: 8px 14px;
 }

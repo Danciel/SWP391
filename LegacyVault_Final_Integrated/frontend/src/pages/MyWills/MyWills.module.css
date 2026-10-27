@@ -3,14 +3,14 @@
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 4px;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 14px;
   margin: 0 0 18px;
 }
@@ -23,10 +23,10 @@
 
 .filter {
   padding: 6px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: #fff;
-  color: #6b7280;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -34,9 +34,9 @@
 
 .filterActive {
   padding: 6px 14px;
-  border: 1px solid #4f46e5;
+  border: 1px solid var(--vault);
   border-radius: 999px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -44,7 +44,7 @@
 }
 
 .muted {
-  color: #9ca3af;
+  color: var(--faint);
   font-size: 14px;
 }
 
@@ -58,7 +58,7 @@
   background: #fff;
   border-radius: 12px;
   padding: 18px 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--line);
 }
 
 .willHead {
@@ -70,8 +70,8 @@
 
 .willName {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0;
 }
 
@@ -80,34 +80,34 @@
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--paper-2);
+  color: var(--muted);
   white-space: nowrap;
 }
 
 .ACTIVE {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .DRAFT {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--paper-2);
+  color: var(--muted);
 }
 
 .PENDING_EXECUTOR_ACCEPTANCE {
-  background: #fef9c3;
-  color: #a16207;
+  background: var(--brass-soft);
+  color: var(--brass);
 }
 
 .NEEDS_EXECUTOR {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 .PENDING_VERIFICATION {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 .metaGrid {
@@ -115,7 +115,7 @@
   flex-wrap: wrap;
   gap: 6px 16px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin-bottom: 14px;
 }
 
@@ -123,15 +123,15 @@
   display: inline-block;
   padding: 7px 16px;
   border-radius: 8px;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--vault-soft);
+  color: var(--vault);
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
 }
 
 .viewBtn:hover {
-  background: #e0e7ff;
+  background: var(--vault-soft);
 }
 
 .cardActions {
@@ -143,39 +143,39 @@
   display: inline-block;
   padding: 7px 16px;
   border-radius: 8px;
-  border: 1px solid #4f46e5;
+  border: 1px solid var(--vault);
   background: #fff;
-  color: #4f46e5;
+  color: var(--vault);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
 }
 
 .handoverBtn:hover {
-  background: #eef2ff;
+  background: var(--vault-soft);
 }
 
 .deleteBtn {
   display: inline-block;
   padding: 7px 16px;
   border-radius: 8px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--bad-line);
   background: #fff;
-  color: #dc2626;
+  color: var(--bad);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
 }
 
 .deleteBtn:hover {
-  background: #fef2f2;
+  background: var(--bad-soft);
 }
 
 .dangerBtn {
   padding: 9px 18px;
   border: none;
   border-radius: 8px;
-  background: #dc2626;
+  background: var(--bad);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -183,7 +183,7 @@
 }
 
 .dangerBtn:disabled {
-  background: #fca5a5;
+  background: var(--bad-line);
   cursor: not-allowed;
 }
 
@@ -209,19 +209,19 @@
 
 .modalTitle {
   font-size: 17px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 8px;
 }
 
 .modalMeta {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0;
 }
 
 .errorText {
-  color: #dc2626;
+  color: var(--bad);
   font-size: 13px;
   margin: 8px 0 0;
 }
@@ -237,7 +237,7 @@
   padding: 9px 18px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -245,16 +245,16 @@
 }
 
 .primaryBtn:disabled {
-  background: #a5b4fc;
+  background: var(--vault-line);
   cursor: not-allowed;
 }
 
 .secondaryBtn {
   padding: 9px 18px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;

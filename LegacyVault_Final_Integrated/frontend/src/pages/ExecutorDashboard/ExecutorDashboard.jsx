@@ -5,10 +5,10 @@ import {
   openExecutorCase,
   submitExecutorLegalDocuments,
   verifyCaseProfile,
-  getExecutorFee,
-  setExecutorFee,
   respondToHandoverRequest,
 } from "../../api/executorApi";
+import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import { getStoredUser } from "../../api/client";
 import styles from "./ExecutorDashboard.module.css";
 
 const STATUS_LABEL = {
@@ -63,15 +63,35 @@ export default function ExecutorDashboard() {
   const [savingFee, setSavingFee] = useState(false);
   const [uploadCaseId, setUploadCaseId] = useState(null);
   const [uploadFiles, setUploadFiles] = useState([]);
+  const [uploadWillId, setUploadWillId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
-      const [result, feeResult] = await Promise.all([getExecutorDashboard(), getExecutorFee()]);
+      const result = await getExecutorDashboard();
       setData(result);
-      setFee(feeResult);
-      setFeeInput(String(feeResult.fee));
+
+      const user = getStoredUser();
+
+      if (user?.id) {
+        const profile = await getExecutorProfile(user.id);
+
+        const currentFee = {
+          fee: profile.serviceFee ?? null,
+          currency: profile.currency || "VND",
+          updatedAt: profile.updatedAt || null,
+        };
+
+        setFee(currentFee);
+        setFeeInput(
+          currentFee.fee != null ? String(currentFee.fee) : ""
+        );
+      } else {
+        setFee({ fee: null, currency: "VND", updatedAt: null });
+        setFeeInput("");
+      }
     } catch (err) {
       setError(err.message || "Could not load executor data");
     } finally {
@@ -87,12 +107,33 @@ export default function ExecutorDashboard() {
     setExpandedId((prev) => (prev === id ? null : id));
   }
 
+
   async function handleSaveFee() {
+    const amount = Number(feeInput);
+
+    if (feeInput.trim() === "" || !Number.isFinite(amount) || amount < 0) {
+      setError("Service fee must be a valid non-negative number.");
+      return;
+    }
+
     setSavingFee(true);
+    setError("");
+
     try {
-      const updated = await setExecutorFee({ fee: feeInput });
-      setFee(updated);
-      setFeeInput(String(updated.fee));
+      const updated = await updateMyExecutorPricing({
+        serviceFee: amount,
+        currency: fee?.currency || "VND",
+      });
+
+      const updatedFee = {
+        ...fee,
+        fee: updated.serviceFee ?? amount,
+        currency: updated.currency || fee?.currency || "VND",
+        updatedAt: updated.updatedAt || new Date().toISOString(),
+      };
+
+      setFee(updatedFee);
+      setFeeInput(String(updatedFee.fee));
       setEditingFee(false);
       showToast("Service fee updated");
     } catch (err) {
@@ -190,6 +231,55 @@ export default function ExecutorDashboard() {
       setBusyId(null);
     }
   }
+
+
+  function openLegalDocumentUpload(willId) {
+    setUploadWillId(willId);
+    setUploadFile(null);
+    setError("");
+  }
+
+  function closeLegalDocumentUpload() {
+    setUploadWillId(null);
+    setUploadFile(null);
+  }
+
+  function handleLegalDocumentSelected(event) {
+    const file = event.target.files?.[0] ?? null;
+    setUploadFile(file);
+  }
+
+  async function handleLegalDocumentSubmit() {
+    if (!uploadWillId) {
+      setError("Missing Will ID.");
+      return;
+    }
+
+    if (!uploadFile) {
+      setError("Please select a document.");
+      return;
+    }
+
+    setBusyId(uploadWillId);
+    setError("");
+
+    try {
+      await submitExecutorLegalDocuments({
+        willId: uploadWillId,
+        file: uploadFile,
+      });
+
+      showToast("Legal document submitted successfully.");
+      closeLegalDocumentUpload();
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not submit legal document.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
   const dmsTriggers = data?.dmsTriggers ?? [];
 
   return (
@@ -532,7 +622,7 @@ export default function ExecutorDashboard() {
                 {dmsTriggers.map((trig) => (
                   <li
                     key={trig.assignmentId || trig.id}
-                    className={styles.listItem}
+                    className={styles.triggerCardItem}
                   >
                     <div>
                       <strong>
@@ -558,8 +648,22 @@ export default function ExecutorDashboard() {
                       </div>
                     </div>
 
-                    <div className={styles.itemRight}>
+
+
+                    <div className={styles.triggerActions}>
                       <Badge status={trig.status || "TRIGGERED"} />
+
+                      {Number(trig.missedCheckIns ?? 0) >=
+                        Number(trig.maxMissedCheckIns ?? Infinity) &&
+                        trig.willId && (
+                          <button
+                            className={styles.triggerSubmitBtn}
+                            disabled={busyId === trig.willId}
+                            onClick={() => openLegalDocumentUpload(trig.willId)}
+                          >
+                            Submit Legal Document
+                          </button>
+                        )}
                     </div>
                   </li>
                 ))}
@@ -583,7 +687,7 @@ export default function ExecutorDashboard() {
                         <div>
                           <strong>Case for {c.ownerName}</strong>
                           <div className={styles.metaText}>
-                            Opened {formatDate(c.openedAt)} · {c.documentsSubmitted} document(s) submitted
+                            Will: {c.willTitle || "—"} · Submitted: {formatDate(c.submittedAt)}
                           </div>
                           {c.status === "OPEN" && (
                             <div className={overdue ? styles.deadlineOverdue : styles.metaText}>
@@ -603,24 +707,38 @@ export default function ExecutorDashboard() {
                       {expandedId === c.id && (
                         <div className={styles.detailPanel}>
                           <div className={styles.detailRow}>
-                            <span>Full Name</span>
-                            <span>{c.ownerProfile?.fullName || "—"}</span>
+                            <span>Will ID</span>
+                            <span>{c.willId || "—"}</span>
                           </div>
+
                           <div className={styles.detailRow}>
-                            <span>ID Number</span>
-                            <span>{c.ownerProfile?.idNumber || "—"}</span>
+                            <span>Will Title</span>
+                            <span>{c.willTitle || "—"}</span>
                           </div>
+
                           <div className={styles.detailRow}>
-                            <span>Date of Birth</span>
-                            <span>{c.ownerProfile?.dateOfBirth || "—"}</span>
+                            <span>Owner</span>
+                            <span>{c.ownerName || "—"}</span>
                           </div>
+
                           <div className={styles.detailRow}>
-                            <span>Address</span>
-                            <span>{c.ownerProfile?.address || "—"}</span>
+                            <span>Executor</span>
+                            <span>{c.executorName || "—"}</span>
                           </div>
+
                           <div className={styles.detailRow}>
-                            <span>Profile Verified</span>
-                            <span>{c.profileVerified ? `Yes · ${formatDate(c.profileVerifiedAt)}` : "Not yet"}</span>
+                            <span>Status</span>
+                            <span>{c.status || "—"}</span>
+                          </div>
+
+                          <div className={styles.detailRow}>
+                            <span>Submitted At</span>
+                            <span>{formatDate(c.submittedAt)}</span>
+                          </div>
+
+                          <div className={styles.detailRow}>
+                            <span>Reviewed At</span>
+                            <span>{formatDate(c.reviewedAt)}</span>
                           </div>
                         </div>
                       )}
@@ -682,6 +800,61 @@ export default function ExecutorDashboard() {
           </div>
         </div>
       )}
+
+      {uploadWillId && (
+        <div
+          className={styles.overlay}
+          onClick={closeLegalDocumentUpload}
+        >
+          <div
+            className={styles.modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>
+              Submit Legal Document
+            </h2>
+
+            <p className={styles.metaText}>
+              Choose one PDF, JPG, JPEG, or PNG file. Maximum size: 5 MB.
+            </p>
+
+            <label className={styles.uploadArea}>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className={styles.hiddenFileInput}
+                onChange={handleLegalDocumentSelected}
+              />
+
+              <span>
+                {uploadFile ? uploadFile.name : "Choose a document"}
+              </span>
+            </label>
+
+            <div
+              className={styles.actionRow}
+              style={{ justifyContent: "flex-end", marginTop: 16 }}
+            >
+              <button
+                className={styles.secondaryBtn}
+                disabled={busyId === uploadWillId}
+                onClick={closeLegalDocumentUpload}
+              >
+                Cancel
+              </button>
+
+              <button
+                className={styles.primaryBtn}
+                disabled={!uploadFile || busyId === uploadWillId}
+                onClick={handleLegalDocumentSubmit}
+              >
+                {busyId === uploadWillId ? "Uploading..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

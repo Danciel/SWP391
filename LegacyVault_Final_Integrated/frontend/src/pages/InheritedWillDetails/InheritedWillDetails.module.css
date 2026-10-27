@@ -4,7 +4,7 @@
 
 .backLink {
   display: inline-block;
-  color: #4f46e5;
+  color: var(--vault);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -15,7 +15,7 @@
   background: #fff;
   border-radius: 12px;
   padding: 26px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--line);
 }
 
 .headRow {
@@ -25,21 +25,21 @@
 }
 
 .title {
-  font-size: 19px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 6px;
 }
 
 .claimedTag {
   font-size: 12px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--ok);
 }
 
 .metaLine {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0 0 14px;
 }
 
@@ -57,25 +57,25 @@
 }
 
 .okText {
-  color: #15803d;
+  color: var(--ok);
   font-weight: 700;
 }
 
 .warnText {
-  color: #b91c1c;
+  color: var(--bad);
   font-weight: 700;
 }
 
 .divider {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--line);
   margin: 16px 0;
 }
 
 .sectionTitle {
   font-size: 14px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0 0 12px;
 }
 
@@ -91,44 +91,44 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--paper-2);
 }
 
 .itemTitle {
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 0 0 2px;
 }
 
 .itemMeta {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0 0 8px;
 }
 
 .lockedTag {
   font-size: 12px;
   font-weight: 700;
-  color: #a16207;
+  color: var(--brass);
   white-space: nowrap;
 }
 
 .accessibleTag {
   font-size: 12px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--ok);
   white-space: nowrap;
 }
 
 .hintSmall {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
   margin: 0 0 16px;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--bad);
   font-size: 13px;
   margin: 0 0 12px;
 }
@@ -144,7 +144,7 @@
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  background: #4f46e5;
+  background: var(--vault);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
@@ -154,27 +154,27 @@
 }
 
 .primaryBtn:hover {
-  background: #4338ca;
+  background: var(--vault-hover);
 }
 
 .primaryBtn:disabled {
-  background: #a5b4fc;
+  background: var(--vault-line);
   cursor: not-allowed;
 }
 
 .secondaryBtn {
   padding: 10px 20px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
-  color: #374151;
+  color: var(--ink-2);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
 }
 
 .scanBox {
-  background: #f8fafc;
+  background: var(--paper);
   border-radius: 10px;
   padding: 30px;
   text-align: center;
@@ -184,26 +184,26 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid #9ca3af;
+  border: 2px solid var(--faint);
   margin: 0 auto 12px;
 }
 
 .scanText {
   font-weight: 700;
-  color: #111827;
+  color: var(--ink);
   margin: 0;
 }
 
 .claimKeyBox {
-  background: #f8fafc;
-  border: 1px dashed #a5b4fc;
+  background: var(--paper);
+  border: 1px dashed var(--vault-line);
   border-radius: 8px;
   padding: 14px;
   text-align: center;
   font-family: monospace;
   font-size: 15px;
   font-weight: 700;
-  color: #4f46e5;
+  color: var(--vault);
   margin: 10px 0 14px;
   letter-spacing: 0.05em;
 }
