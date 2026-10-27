@@ -3,9 +3,9 @@ import { getToken, request } from "./client"; // Use your existing client helper
 import { getOwnerDashboardData, checkInDms, cancelDeathHandover, requestImmediateHandover } from "./vaultApi";
 
 export const getOwnerDashboard = getOwnerDashboardData;
-export const confirmStillActive = ({userId, willId}) => checkInDms(userId, willId);
-export const cancelHandover = ({userId, willId}) => cancelDeathHandover(userId, willId);
-export const requestHandover = ({userId, willId}) => requestImmediateHandover(userId, willId);
+export const confirmStillActive = ({ userId, willId }) => checkInDms(userId, willId);
+export const cancelHandover = ({ userId, willId }) => cancelDeathHandover(userId, willId);
+export const requestHandover = ({ userId, willId }) => requestImmediateHandover(userId, willId);
 
 export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     if (!externalIdentityId) throw new Error("External Identity ID is required");
@@ -29,7 +29,14 @@ export const linkIdp = async (externalIdentityId, faceImageBlob) => {
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
-            throw new Error(data?.message || data?.title || `Error ${res.status}`);
+            const error = new Error(
+                data?.message || data?.title || `Error ${res.status}`
+            );
+
+            error.status = res.status;
+            error.data = data;
+
+            throw error;
         }
         return data;
     } catch (err) {

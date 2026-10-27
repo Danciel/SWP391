@@ -187,6 +187,7 @@ export default function VerifyIdentity() {
       setCameraError("Please capture a photo first.");
       return;
     }
+
     if (!idpUserId) {
       setError("Missing IDP User ID. Please go back.");
       return;
@@ -194,13 +195,17 @@ export default function VerifyIdentity() {
 
     setVerifying(true);
     setError("");
+
     try {
       await linkIdp(idpUserId, photoFile);
+
       const profile = await getProfile();
       setFinalProfile(profile);
     } catch (err) {
-      // Change this line to fallback to err.message
-      setError(err instanceof ApiError ? err.message : (err.message || "Face verification failed"));
+      console.error("Face verification error:", err);
+      setError(
+        "Face verification failed. The face may not match the registered profile, or multiple faces may be present in the frame. Please ensure only one person is visible and try again."
+      );
     } finally {
       setVerifying(false);
     }
@@ -211,142 +216,142 @@ export default function VerifyIdentity() {
   }
 
   return (
-      <div className={styles.page}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>Identity Verification</h1>
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Identity Verification</h1>
 
-          <div className={styles.stepper}>
-            {STEPS.map((label, idx) => (
-                <div key={label} className={styles.stepperItem}>
+        <div className={styles.stepper}>
+          {STEPS.map((label, idx) => (
+            <div key={label} className={styles.stepperItem}>
               <span className={idx < stepIndex || finalProfile ? `${styles.dot} ${styles.dotDone}` : idx === stepIndex ? `${styles.dot} ${styles.dotActive}` : styles.dot}>
                 {idx < stepIndex || finalProfile ? "✓" : idx + 1}
               </span>
-                  <span className={styles.stepLabel}>{label}</span>
-                  {idx < STEPS.length - 1 && <span className={styles.stepLine} />}
-                </div>
-            ))}
-          </div>
-
-          {error && <p className={styles.errorBox}>{error}</p>}
-
-          {finalProfile ? (
-              <div className={styles.result}>
-                <div className={styles.resultCheck}>✓</div>
-                <h2 className={styles.resultTitle}>Identity Verified</h2>
-                <p className={styles.resultSubtitle}>Your identity has been successfully verified.</p>
-                <div className={styles.resultRows}>
-                  <div className={styles.resultRow}><span>Full Name</span><strong>{finalProfile.fullName}</strong></div>
-                  <div className={styles.resultRow}><span>Email</span><strong>{finalProfile.email} <em className={styles.matchTag}>✓ Matched</em></strong></div>
-                  <div className={styles.resultRow}><span>Phone</span><strong>{finalProfile.phone} <em className={styles.matchTag}>✓ Matched</em></strong></div>
-                  <div className={styles.resultRow}><span>Face Verification</span><strong><em className={styles.matchTag}>✓ Matched</em></strong></div>
-                  <div className={styles.resultRow}><span>Status</span><strong className={styles.statusVerified}>VERIFIED</strong></div>
-                </div>
-                <button className={styles.primaryBtn} onClick={() => navigate(returnTo)}>Continue</button>
-              </div>
-          ) : stepIndex === 0 ? (
-              <div className={styles.stepBody}>
-                <h3 className={styles.stepHeading}>Verify Phone Number</h3>
-                {!phoneDone ? (
-                    <>
-                      <label className={styles.label}>Phone Number</label>
-                      <input className={styles.input} value={phone} readOnly placeholder="Not registered" />
-                      {!otpSent ? (
-                          <button className={styles.primaryBtn} disabled={busy || !phone} onClick={handleSendOtp}>
-                            {busy ? "Sending..." : "Send OTP"}
-                          </button>
-                      ) : (
-                          <>
-                            <label className={styles.label}>Verification Code</label>
-                            <input className={styles.input} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6-digit code" maxLength={6} />
-                            <button className={styles.primaryBtn} disabled={busy || otp.length < 6} onClick={handleVerifyPhone}>
-                              {busy ? "Verifying..." : "Verify Phone"}
-                            </button>
-                          </>
-                      )}
-                    </>
-                ) : (
-                    <div className={styles.miniResult}>
-                      <p className={styles.miniResultText}>✓ Phone Number Verified — {phone}</p>
-                      <button className={styles.primaryBtn} onClick={() => setStepIndex(1)}>Continue →</button>
-                    </div>
-                )}
-              </div>
-          ) : stepIndex === 1 ? (
-              <div className={styles.stepBody}>
-                <h3 className={styles.stepHeading}>Identity Provider Link</h3>
-                {!identityDone ? (
-                    <>
-                      <p className={styles.hint}>
-                        Enter your IDP User ID (UUID). You can copy this from the database, or use the auto-detect button.
-                      </p>
-
-                      <label className={styles.label}>IDP User ID (UUID)</label>
-                      <input
-                          className={styles.input}
-                          value={idpUserId}
-                          onChange={(e) => setIdpUserId(e.target.value)} // Removed numeric restriction
-                          placeholder="e.g. 530a1905-d658-4424-a08a-85ca5c80..."
-                      />
-
-                      {identityError && <p className={styles.errorBox}>{identityError}</p>}
-
-                      <div className={styles.stepActions} style={{ marginBottom: "1rem" }}>
-                        <button
-                            className={styles.secondaryBtn}
-                            onClick={handleAutoDetectIdp}
-                            disabled={searchingIdp}
-                        >
-                          {searchingIdp ? "Searching..." : "🔍 Auto-detect my ID"}
-                        </button>
-                      </div>
-
-                      <div className={styles.stepActions}>
-                        <button className={styles.secondaryBtn} onClick={() => setStepIndex(0)}>← Back</button>
-                        <button className={styles.primaryBtn} disabled={busy || !idpUserId.trim()} onClick={handleContinueIdentity}>
-                          Continue →
-                        </button>
-                      </div>
-                    </>
-                ) : (
-                    <div className={styles.miniResult}>
-                      <p className={styles.miniResultText}>✓ IDP User ID confirmed</p>
-                      <button className={styles.primaryBtn} onClick={() => setStepIndex(2)}>Continue →</button>
-                    </div>
-                )}
-              </div>
-          ) : (
-              <div className={styles.stepBody}>
-                <h3 className={styles.stepHeading}>Face Verification</h3>
-                {cameraError && <p className={styles.errorBox}>{cameraError}</p>}
-
-                {!preview ? (
-                    <>
-                      <div className={styles.cameraBox} style={{ position: "relative", overflow: "hidden" }}>
-                        <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      </div>
-                      <p className={styles.hint}>Position your face inside the frame.</p>
-                      <button className={styles.primaryBtn} onClick={capturePhoto}>Capture Photo</button>
-                    </>
-                ) : (
-                    <>
-                      <div className={styles.cameraBox} style={{ position: "relative", overflow: "hidden" }}>
-                        <img src={preview} alt="Captured face" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      </div>
-                      {verifying ? (
-                          <div className={styles.scanBox}>
-                            <p className={styles.scanText}>Verifying Identity...</p>
-                          </div>
-                      ) : (
-                          <div className={styles.stepActions}>
-                            <button className={styles.secondaryBtn} onClick={retakePhoto}>Retake</button>
-                            <button className={styles.primaryBtn} onClick={handleVerifyFace}>Verify Face</button>
-                          </div>
-                      )}
-                    </>
-                )}
-              </div>
-          )}
+              <span className={styles.stepLabel}>{label}</span>
+              {idx < STEPS.length - 1 && <span className={styles.stepLine} />}
+            </div>
+          ))}
         </div>
+
+        {error && <p className={styles.errorBox}>{error}</p>}
+
+        {finalProfile ? (
+          <div className={styles.result}>
+            <div className={styles.resultCheck}>✓</div>
+            <h2 className={styles.resultTitle}>Identity Verified</h2>
+            <p className={styles.resultSubtitle}>Your identity has been successfully verified.</p>
+            <div className={styles.resultRows}>
+              <div className={styles.resultRow}><span>Full Name</span><strong>{finalProfile.fullName}</strong></div>
+              <div className={styles.resultRow}><span>Email</span><strong>{finalProfile.email} <em className={styles.matchTag}>✓ Matched</em></strong></div>
+              <div className={styles.resultRow}><span>Phone</span><strong>{finalProfile.phone} <em className={styles.matchTag}>✓ Matched</em></strong></div>
+              <div className={styles.resultRow}><span>Face Verification</span><strong><em className={styles.matchTag}>✓ Matched</em></strong></div>
+              <div className={styles.resultRow}><span>Status</span><strong className={styles.statusVerified}>VERIFIED</strong></div>
+            </div>
+            <button className={styles.primaryBtn} onClick={() => navigate(returnTo)}>Continue</button>
+          </div>
+        ) : stepIndex === 0 ? (
+          <div className={styles.stepBody}>
+            <h3 className={styles.stepHeading}>Verify Phone Number</h3>
+            {!phoneDone ? (
+              <>
+                <label className={styles.label}>Phone Number</label>
+                <input className={styles.input} value={phone} readOnly placeholder="Not registered" />
+                {!otpSent ? (
+                  <button className={styles.primaryBtn} disabled={busy || !phone} onClick={handleSendOtp}>
+                    {busy ? "Sending..." : "Send OTP"}
+                  </button>
+                ) : (
+                  <>
+                    <label className={styles.label}>Verification Code</label>
+                    <input className={styles.input} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6-digit code" maxLength={6} />
+                    <button className={styles.primaryBtn} disabled={busy || otp.length < 6} onClick={handleVerifyPhone}>
+                      {busy ? "Verifying..." : "Verify Phone"}
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className={styles.miniResult}>
+                <p className={styles.miniResultText}>✓ Phone Number Verified — {phone}</p>
+                <button className={styles.primaryBtn} onClick={() => setStepIndex(1)}>Continue →</button>
+              </div>
+            )}
+          </div>
+        ) : stepIndex === 1 ? (
+          <div className={styles.stepBody}>
+            <h3 className={styles.stepHeading}>Identity Provider Link</h3>
+            {!identityDone ? (
+              <>
+                <p className={styles.hint}>
+                  Enter your IDP User ID (UUID). You can copy this from the database, or use the auto-detect button.
+                </p>
+
+                <label className={styles.label}>IDP User ID (UUID)</label>
+                <input
+                  className={styles.input}
+                  value={idpUserId}
+                  onChange={(e) => setIdpUserId(e.target.value)} // Removed numeric restriction
+                  placeholder="e.g. 530a1905-d658-4424-a08a-85ca5c80..."
+                />
+
+                {identityError && <p className={styles.errorBox}>{identityError}</p>}
+
+                <div className={styles.stepActions} style={{ marginBottom: "1rem" }}>
+                  <button
+                    className={styles.secondaryBtn}
+                    onClick={handleAutoDetectIdp}
+                    disabled={searchingIdp}
+                  >
+                    {searchingIdp ? "Searching..." : "🔍 Auto-detect my ID"}
+                  </button>
+                </div>
+
+                <div className={styles.stepActions}>
+                  <button className={styles.secondaryBtn} onClick={() => setStepIndex(0)}>← Back</button>
+                  <button className={styles.primaryBtn} disabled={busy || !idpUserId.trim()} onClick={handleContinueIdentity}>
+                    Continue →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className={styles.miniResult}>
+                <p className={styles.miniResultText}>✓ IDP User ID confirmed</p>
+                <button className={styles.primaryBtn} onClick={() => setStepIndex(2)}>Continue →</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.stepBody}>
+            <h3 className={styles.stepHeading}>Face Verification</h3>
+            {cameraError && <p className={styles.errorBox}>{cameraError}</p>}
+
+            {!preview ? (
+              <>
+                <div className={styles.cameraBox} style={{ position: "relative", overflow: "hidden" }}>
+                  <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <p className={styles.hint}>Position your face inside the frame.</p>
+                <button className={styles.primaryBtn} onClick={capturePhoto}>Capture Photo</button>
+              </>
+            ) : (
+              <>
+                <div className={styles.cameraBox} style={{ position: "relative", overflow: "hidden" }}>
+                  <img src={preview} alt="Captured face" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                {verifying ? (
+                  <div className={styles.scanBox}>
+                    <p className={styles.scanText}>Verifying Identity...</p>
+                  </div>
+                ) : (
+                  <div className={styles.stepActions}>
+                    <button className={styles.secondaryBtn} onClick={retakePhoto}>Retake</button>
+                    <button className={styles.primaryBtn} onClick={handleVerifyFace}>Verify Face</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
+    </div>
   );
 }

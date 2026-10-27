@@ -60,7 +60,7 @@ export default function IdpProfile() {
       <main className="idp-profile-page">
         <section className="idp-profile-card">
           <p className="idp-profile-error" role="alert">{error}</p>
-          <Link className="idp-profile-link" to="/idp-register">
+          <Link className="idp-profile-link" to="/idp/register">
             Đăng ký hồ sơ mới
           </Link>
         </section>
@@ -118,7 +118,7 @@ export default function IdpProfile() {
           Hãy lưu mã định danh để sử dụng trong bước liên kết với LegacyVault.
         </p>
 
-        <Link className="idp-profile-link" to="/idp-register">
+        <Link className="idp-profile-link" to="/idp/register">
           Tạo hồ sơ khác
         </Link>
       </section>

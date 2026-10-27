@@ -51,7 +51,7 @@ export default function IdpRegister() {
         throw new Error("API did not return an identifier (id).");
       }
 
-      navigate(`/idp-profile/${result.id}`);
+      navigate(`/idp/profile/${encodeURIComponent(result.id)}`);
     } catch (err) {
       setError(err.message || "Unable to create an identification profile.");
     } finally {
@@ -129,7 +129,7 @@ export default function IdpRegister() {
 
         <p className="idp-register-footer">
           Đã có mã định danh?{" "}
-          <Link to="/idp-profile-lookup">Tra cứu hồ sơ</Link>
+          <Link to="/idp/profile-lookup">Tra cứu hồ sơ</Link>
         </p>
       </section>
     </main>
