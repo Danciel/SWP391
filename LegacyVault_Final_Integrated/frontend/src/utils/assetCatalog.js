@@ -1,26 +1,20 @@
-export const ACCOUNT_PROVIDERS = ["Binance", "Gmail", "Microsoft", "GitHub", "Dropbox"];
-
-export const ENABLED_ASSET_TYPES = ["Online Account", "Document", "Other"];
-
-export const NOT_VERIFIABLE_TYPES = ["Document", "Other"];
-
-export const isVerifiable = (type) => !NOT_VERIFIABLE_TYPES.includes(type);
+export const ACCOUNT_PROVIDERS = ["GMAIL", "GITHUB"];
+export const ENABLED_ASSET_TYPES = ["Document", "Online Account", "Cloud Storage"];
+export const NOT_VERIFIABLE_TYPES = ["Other", "Crypto Wallet", "Bank Account"];
+export const isVerifiable = type => !NOT_VERIFIABLE_TYPES.includes(type);
 
 export function providerLabel(provider) {
-  if (!provider) return "";
-  return ACCOUNT_PROVIDERS.find((p) => p.toUpperCase() === String(provider).toUpperCase()) || provider;
+  const names = { GMAIL: "Google / Gmail", GITHUB: "GitHub", GOOGLE_DRIVE: "Google Drive", LOCAL_DOCUMENT: "Local Document" };
+  const code = String(provider || "").toUpperCase();
+  return names[code] || provider || "";
 }
 
 export function verificationInfo(asset) {
-  if (!isVerifiable(asset.type)) {
-    return { key: "NA", label: "Not verifiable", hint: "Stored content only — no provider check exists for this type." };
+  const status = String(asset.verificationStatus || "").toUpperCase();
+  if (["PROVIDER_VERIFIED", "FILE_ACCESS_VERIFIED", "INTEGRITY_VERIFIED", "VERIFIED"].includes(status)) {
+    return { key: "VERIFIED", label: "Verified", hint: asset.provider === "GMAIL" || asset.provider === "GITHUB" ? "Account identity verified by OAuth. Handover password is not checked." : "Asset verification completed." };
   }
-  switch (asset.verificationStatus) {
-    case "VERIFIED":
-      return { key: "VERIFIED", label: "Verified (mock provider)", hint: "Credentials matched the demo provider account." };
-    case "FAILED":
-      return { key: "FAILED", label: "Verification failed", hint: "Credentials did not match the demo provider account." };
-    default:
-      return { key: "UNVERIFIED", label: "Not verified yet", hint: "Press Verify to check the credentials." };
-  }
+  if (status === "FAILED" || status === "INTEGRITY_FAILED")
+    return { key: "FAILED", label: "Verification failed", hint: "Verification did not succeed." };
+  return { key: "UNVERIFIED", label: "Not verified yet", hint: "Connect with the provider or verify the document." };
 }

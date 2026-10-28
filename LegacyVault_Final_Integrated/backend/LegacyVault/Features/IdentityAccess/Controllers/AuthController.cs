@@ -152,6 +152,26 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
             }
         }
 
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!Guid.TryParse(accountIdString, out var accountId))
+                    return Unauthorized(new { message = "Invalid token." });
+
+                await _authService.ChangePasswordAsync(accountId, request.CurrentPassword, request.NewPassword);
+
+                return Ok(new { message = "Password changed successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {

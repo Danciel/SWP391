@@ -19,5 +19,7 @@ namespace LegacyVault.Features.IdentityAccess.Contracts
         Task RequestPasswordResetAsync(string email);
 
         Task ResetPasswordAsync(ResetPasswordRequest request);
+
+        Task ChangePasswordAsync(Guid accountId, string currentPassword, string newPassword);
     }
 }

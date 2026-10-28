@@ -21,6 +21,15 @@ namespace LegacyVault.Models
         // Aggregate of all per-Will executor deposits currently held.
         public decimal TotalHeldDeposit { get; set; } = 0m;
 
+        // Evaluation numbers read from the Executor's uploaded CSV.
+        // They are self-reported, so the UI labels them with EvalSource.
+        public int? EvalExperienceYears { get; set; }
+        public decimal? EvalRating { get; set; }
+        public int? EvalTotalCases { get; set; }
+        public int? EvalWonCases { get; set; }
+        public string? EvalSource { get; set; } // "CSV" | null
+        public DateTimeOffset? EvalUpdatedAt { get; set; }
+
         public string Currency { get; set; } = "VND";
 
         public bool IsVerified { get; set; }

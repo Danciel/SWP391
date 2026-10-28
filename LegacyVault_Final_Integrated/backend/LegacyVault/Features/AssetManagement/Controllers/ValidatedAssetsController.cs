@@ -24,6 +24,9 @@ public class ValidatedAssetsController : ControllerBase
         var type = request.AssetType?.Trim().ToUpperInvariant() ?? "";
         if (!LoginTypes.Contains(type) && !WithoutExternalLogin.Contains(type)) return BadRequest(new { message = "Invalid asset type." });
         var provider = (request.Provider ?? type).Trim().ToUpperInvariant();
+        // Real providers must use OAuth; mock password matching must never impersonate provider verification.
+        if (provider is "GMAIL" or "GITHUB" or "GOOGLE_DRIVE")
+            return BadRequest(new { message = "Use provider OAuth to connect this asset." });
         if (type != "ACCOUNT" && provider != type) return BadRequest(new { message = "Provider must match AssetType for this asset category." });
         if (string.IsNullOrWhiteSpace(provider)) return BadRequest(new { message = "Provider is required." });
         var secret = request.SecretData ?? new Dictionary<string, string>();

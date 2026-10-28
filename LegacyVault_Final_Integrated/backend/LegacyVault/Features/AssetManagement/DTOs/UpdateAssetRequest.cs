@@ -17,5 +17,11 @@ namespace LegacyVault.Features.AssetManagement.DTOs
 
         // null => keep current encrypted secret
         public Dictionary<string, string>? SecretData { get; set; }
+
+        // Only for a verified Gmail/GitHub asset; null or empty means preserve existing.
+        [MaxLength(1024)]
+        public string? HandoverPassword { get; set; }
+
+        public bool HandoverConsent { get; set; }
     }
 }

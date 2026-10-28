@@ -10,6 +10,7 @@ import {
   setAccountStatus,
 } from "../../api/adminApi";
 
+import AdminPricingRules from "../../components/AdminPricingRules/AdminPricingRules";
 import styles from "./AdminDashboard.module.css";
 
 const ROLE_LABEL = {
@@ -756,6 +757,8 @@ export default function AdminDashboard() {
               </ul>
             )}
           </section>
+
+          <AdminPricingRules />
 
           <section className={`${styles.card} ${styles.cardWide}`}>
             <h2 className={styles.cardTitle}>Audit Log</h2>

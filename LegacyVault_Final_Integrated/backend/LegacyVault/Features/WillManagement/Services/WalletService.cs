@@ -154,15 +154,6 @@ namespace LegacyVault.Features.WillManagement.Services
                 Note = $"20% service-fee advance for Will {willId}", CreatedAt = now });
             var profile = await _db.ExecutorProfiles.FirstOrDefaultAsync(x => x.AccountId == executorAccountId);
             if (profile != null) profile.TotalHeldDeposit += amount;
-
-            var payment = await _db.ServicePayments
-    .FirstOrDefaultAsync(x => x.WillId == willId && x.Status == "HELD");
-
-if (payment != null)
-{
-    payment.Amount = Math.Max(0m, payment.Amount - amount);
-}
-
             _db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), ActorAccountId = executorAccountId,
                 Action = "EXECUTOR_ADVANCE_CREDITED", EntityType = "ExecutorDeposit", EntityId = willId,
                 Details = System.Text.Json.JsonSerializer.Serialize(new { amount, currency, serviceFee, percent = 20 }), CreatedAt = now });

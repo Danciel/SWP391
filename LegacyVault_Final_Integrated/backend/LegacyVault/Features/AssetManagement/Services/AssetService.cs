@@ -129,52 +129,58 @@ namespace LegacyVault.Features.AssetManagement.Services
                     "Asset not found.");
             }
 
+            // An OAuth-verified identity cannot be replaced by editing account metadata.
+            var requestedType = NormalizeAssetType(request.AssetType);
+            var requestedProvider = string.IsNullOrWhiteSpace(request.Provider)
+                ? null : request.Provider.Trim().ToUpperInvariant();
+            if (!string.Equals(asset.AssetType, requestedType, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(asset.Provider, requestedProvider, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Asset type and provider cannot be changed. Connect a new asset instead.");
+            }
+
             asset.Name = request.Name.Trim();
-            asset.Description =
-                string.IsNullOrWhiteSpace(request.Description)
-                    ? null
-                    : request.Description.Trim();
-            asset.AssetType =
-                NormalizeAssetType(request.AssetType);
-            asset.Provider =
-                string.IsNullOrWhiteSpace(request.Provider)
-                    ? null
-                    : request.Provider.Trim().ToUpperInvariant();
+            asset.Description = string.IsNullOrWhiteSpace(request.Description)
+                ? null : request.Description.Trim();
             asset.UpdatedAt = DateTimeOffset.UtcNow;
 
-            if (request.SecretData != null)
+            bool oauthAccount = asset.AssetType == "ACCOUNT"
+                && (asset.Provider is "GMAIL" or "GITHUB");
+            // Never replace OAuth proof and encrypted secrets with arbitrary JSON via Update.
+            if (request.SecretData != null && oauthAccount)
+                throw new InvalidOperationException("Verified account secrets cannot be replaced directly.");
+
+            if (!string.IsNullOrEmpty(request.HandoverPassword))
+            {
+                if (!oauthAccount)
+                    throw new InvalidOperationException("Password handover applies only to Gmail or GitHub.");
+                if (!request.HandoverConsent)
+                    throw new InvalidOperationException("Confirm your authorization to store the password.");
+
+                var currentSecret = await _assetRepository.GetSecretAsync(assetId, tracking: true);
+                if (currentSecret == null)
+                    throw new InvalidOperationException("Asset secret not found.");
+
+                var existingJson = _encryptionService.Decrypt(assetId, ownerId, currentSecret);
+                var data = JsonSerializer.Deserialize<Dictionary<string, string>>(existingJson)
+                    ?? throw new InvalidOperationException("Stored asset secret is invalid.");
+                data["handoverPassword"] = request.HandoverPassword;
+                data["handoverPasswordVerified"] = "false";
+                var replacement = _encryptionService.Encrypt(assetId, ownerId, JsonSerializer.Serialize(data));
+                CopyEncryptedSecret(replacement, currentSecret);
+                // OAuth verified identity stays unchanged: this password is not OAuth verified.
+            }
+            else if (request.SecretData != null)
             {
                 if (request.SecretData.Count == 0)
-                {
-                    throw new InvalidOperationException(
-                        "SecretData cannot be empty.");
-                }
-
-                var currentSecret =
-                    await _assetRepository.GetSecretAsync(
-                        assetId,
-                        tracking: true);
-
+                    throw new InvalidOperationException("SecretData cannot be empty.");
+                var currentSecret = await _assetRepository.GetSecretAsync(assetId, tracking: true);
                 if (currentSecret == null)
-                {
-                    throw new InvalidOperationException(
-                        "Asset secret not found.");
-                }
-
-                var secretJson =
-                    JsonSerializer.Serialize(request.SecretData);
-
-                var replacement =
-                    _encryptionService.Encrypt(
-                        assetId,
-                        ownerId,
-                        secretJson);
-
-                CopyEncryptedSecret(
-                    replacement,
-                    currentSecret);
-
-                // Secret changed: require verification again.
+                    throw new InvalidOperationException("Asset secret not found.");
+                var replacement = _encryptionService.Encrypt(
+                    assetId, ownerId, JsonSerializer.Serialize(request.SecretData));
+                CopyEncryptedSecret(replacement, currentSecret);
                 asset.VerificationStatus = "UNVERIFIED";
             }
 
@@ -263,6 +269,12 @@ namespace LegacyVault.Features.AssetManagement.Services
             {
                 throw new InvalidOperationException(
                     "Asset provider is required for verification.");
+            }
+
+            if (asset.Provider is "GMAIL" or "GITHUB" or "GOOGLE_DRIVE" or "LOCAL_DOCUMENT")
+            {
+                throw new InvalidOperationException(
+                    "Use provider OAuth or document integrity verification; mock credential verification is disabled.");
             }
 
             var secret =

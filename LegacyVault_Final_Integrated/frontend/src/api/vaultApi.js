@@ -1,3 +1,4 @@
+import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
 import { request } from "./client";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
@@ -52,28 +53,130 @@ export const verifyPhoneOtp = unsupported("Phone OTP");
 export const verifyIdentityNumber = unsupported("National ID verification");
 export const verifyFace = unsupported("Face verification");
 export const getAssets = async () => (await r("/assets")).map(mapAsset);
-export const getAssetSecret = async (id) => (await r(`/assets/${id}/secret`)).secretData || {};
+
+export const getAssetSecret = async (id, pinGrant) => {
+  if (!pinGrant) {
+    throw new Error("Security PIN is required.");
+  }
+
+  const result = await r(
+    `/assets/${id}/secret`,
+    "GET",
+    undefined,
+    {
+      "X-Owner-Pin-Grant": pinGrant
+    }
+  );
+
+  return result.secretData || {};
+};
 export const assignAssetExecutor = async (willId, willAssetId, executorAccountId) => {
   return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });
 };
-export const deleteAsset = async (id) => r(`/asset-maintenance/${id}`, "DELETE");
-const assetBody = (a, editing = false) => {
-  const assetType = TYPE_CODES[a.type] || a.type;
-  const provider = assetType === "ACCOUNT" ? (a.accountType || "GMAIL").toUpperCase() : assetType;
-  const fileSecret = a.file?.data ? { fileName: a.file.name, fileType: a.file.type || "application/octet-stream", fileSize: String(a.file.size || 0), fileData: a.file.data } : {};
-  const secretData = assetType === "DOCUMENT" || assetType === "OTHER" ? { content: a.content || a.description || a.name, ...fileSecret } : { username: a.username || "", password: a.password || "", ...fileSecret };
-  return { name: a.name, assetType, description: a.description || "", provider, secretData: editing && !a.username && !a.password ? null : secretData };
+export const deleteAsset = async (id, pinGrant) => {
+  if (!pinGrant) {
+    throw new Error("Security PIN is required.");
+  }
+  return r(`/asset-maintenance/${id}`, "DELETE", undefined, {
+    "X-Owner-Pin-Grant": pinGrant
+  });
 };
-export const addAsset = async (userId, a) => mapAsset(await r("/assets/validated", "POST", assetBody(a)));
-export const updateAsset = async (userId, id, a) => mapAsset(await r(`/assets/${id}`, "PUT", assetBody(a, true)));
+// New assets use the dedicated real-provider routes. Existing Will/Wallet APIs are unchanged.
+export async function addAsset(userId, form) {
+  let created;
+  if (form.type === "Document") created = await uploadDocumentAsset(form);
+  else if (form.type === "Online Account" || form.type === "Cloud Storage")
+    created = await connectAccountAsset(form);
+  else throw new Error("Unsupported new Asset type. Use an existing legacy asset if required.");
+  const assets = await getAssets();
+  return assets.find(asset => asset.id === created.assetId || asset.id === created.id)
+    || mapAsset(created);
+}
+
+
+export const updateAsset = async (userId, id, form, pinGrant) => {
+  if (!pinGrant) {
+    throw new Error("Please verify your security PIN before editing.");
+  }
+
+  const originalType = TYPE_CODES[form.type] || form.type;
+
+  const provider =
+    originalType === "DOCUMENT"
+      ? (form.accountType || "LOCAL_DOCUMENT")
+      : (
+          form.accountType ||
+          (originalType === "CLOUD_STORAGE" ? "GOOGLE_DRIVE" : "GMAIL")
+        );
+
+  const result = await r(
+    `/assets/${id}`,
+    "PUT",
+    {
+      name: form.name,
+      description: form.description || "",
+      assetType: originalType,
+      provider: String(provider).toUpperCase(),
+      secretData: null,
+      handoverPassword: form.handoverPassword || null,
+      handoverConsent: !!form.handoverConsent
+    },
+    {
+      "X-Owner-Pin-Grant": pinGrant
+    }
+  );
+
+  return mapAsset(result);
+};
+
+export { checkDocumentIntegrity, downloadDocument };
+
+
 export const getWills = async () => {
   const summaries = await r("/wills");
-  return Promise.all(summaries.map(async w => {
-    try { return await getWill(null, w.id) }
-    catch (err) { return { ...w, name: w.title || "", assets: null, beneficiaries: null, detailError: err.message } }
-  }));
+
+  return Promise.all(
+    summaries.map(async (w) => {
+      // Draft van duoc doc chi tiet de Create Will hoat dong
+      if (w.status === "DRAFT") {
+        try {
+          return await getWill(null, w.id);
+        } catch {
+          // Fallback sang summary
+        }
+      }
+
+      // Will da Submit: khong tu dong lay chi tiet
+      return {
+        ...w,
+        name: w.title || "",
+        assets: null,
+        beneficiaries: null,
+        assignments: null,
+        executor: null,
+        dms: null,
+        payment: null
+      };
+    })
+  );
 };
-export const getWill = async (userId, id) => mapWill(await r(`/wills/${id}`));
+
+
+export const getWill = async (userId, id, pinGrant = null) => {
+  const headers = pinGrant
+    ? { "X-Owner-Pin-Grant": pinGrant }
+    : undefined;
+
+  const result = await r(
+    `/wills/${id}`,
+    "GET",
+    undefined,
+    headers
+  );
+
+  return mapWill(result);
+};
+
 export async function saveWillDraft(userId, id, patch = {}) {
   if (!id) { if (!patch.name?.trim()) throw Error("Will name is required before creating a draft."); const created = await r("/wills", "POST", { title: patch.name.trim(), description: patch.description || "" }); return getWill(userId, created.id); }
   const before = await getWill(userId, id);
@@ -101,17 +204,28 @@ export async function updateWillBeneficiary(userId, id, assetId, person) { const
 export const updateWillOverview = (userId, id, patch) => saveWillDraft(userId, id, patch);
 export const changeWillExecutor = (userId, id, executor) => saveWillDraft(userId, id, { executor });
 export const updateWillDms = (userId, id, dms) => saveWillDraft(userId, id, { dms });
-export const checkInDms = async (userId, id) => { await r(`/wills/${id}/dms/check-in`, "POST"); return getWill(userId, id) };
+
+export const checkInDms = async (userId, id, pinGrant = null) => {
+  await r(`/wills/${id}/dms/check-in`, "POST");
+  return getWill(userId, id, pinGrant);
+};
 export const cancelDeathHandover = unsupported("Cancel death handover");
-export const requestImmediateHandover = async (userId, willId) => {
-  if (!willId) {
-    throw new Error("Missing will ID.");
+
+export const requestImmediateHandover = async (
+  userId,
+  id,
+  pinGrant = null
+) => {
+  const result = await r(`/handover/${id}/immediate`, "POST");
+
+  // Khi goi tu Will Detail, da co PIN Grant
+  if (pinGrant) {
+    return getWill(userId, id, pinGrant);
   }
 
-  await r(`/handover/${willId}/immediate`, "POST");
-  return getWill(userId, willId);
+  // Khi goi tu My Wills, khong tu dong doc chi tiet
+  return result;
 };
-
 export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
@@ -121,10 +235,8 @@ export const issueClaimKey = unsupported("Claim key");
 export const confirmClaim = unsupported("Confirm claim");
 export async function getOwnerDashboardData() { const [wills, assets] = await Promise.all([getWills(), getAssets()]); const main = wills.find(w => w.status === "ACTIVE") || wills[0]; const detail = main ? await getWill(null, main.id) : null; return { vaultStatus: detail?.status || "LOCKED", deadManSwitch: detail?.dms ? { enabled: detail.dms.enabled, willId: detail.id, checkInCycleDays: detail.dms.checkInDays, lastCheckIn: detail.dms.lastCheckIn, nextCheckInDue: detail.dms.nextCheckInAt, missedCount: detail.dms.missedCount, maxMissed: detail.dms.maxMissed, caseOpen: false } : { enabled: false }, assets: assets.map(a => ({ ...a, beneficiary: null })), executors: detail?.executor ? [{ id: detail.executor.id, name: detail.executor.name, status: detail.executor.status }] : [], beneficiaries: (detail?.beneficiaries || []).map(b => ({ id: b.id, name: b.fullName, assetsAssigned: (detail.assignments || []).filter(a => a.beneficiaryDesignationId === b.id).length })), recentActivity: [] }; }
 
-
 // ---- Owner: notifications, wallet, executor review ----
 export const getDmsAlerts = () => r("/dms/alerts");
 export const getWallet = () => r("/wallet");
 export const topUpWallet = (amount) => r("/wallet/topup", "POST", { amount: Number(amount) }, { "Idempotency-Key": crypto.randomUUID() });
 export const createExecutorReview = (executorAccountId, { willId, rating, comment }) => r(`/executors/${executorAccountId}/reviews`, "POST", { willId, rating: Number(rating), comment: comment || null });
-

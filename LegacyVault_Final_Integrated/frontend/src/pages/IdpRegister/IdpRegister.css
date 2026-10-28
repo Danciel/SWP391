@@ -62,7 +62,7 @@
 }
 
 .idp-register-field input:focus {
-  border-color: #1677ff;
+  border-color: var(--vault);
   box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
 }
 
@@ -79,7 +79,7 @@
   padding: 12px;
   border: none;
   border-radius: 8px;
-  background: #1677ff;
+  background: var(--vault);
   color: #ffffff;
   font-size: 15px;
   font-weight: 600;
@@ -104,7 +104,7 @@
 }
 
 .idp-register-footer a {
-  color: #1677ff;
+  color: var(--vault);
   font-weight: 600;
   text-decoration: none;
 }

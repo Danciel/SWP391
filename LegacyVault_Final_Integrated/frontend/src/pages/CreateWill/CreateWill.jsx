@@ -18,10 +18,11 @@ import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, executor
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
+import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./CreateWill.module.css";
-import { AssetFields, AssetFileField, EMPTY_FORM, isAssetFormDirty } from "../Assets/Assets";
+import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
-import { useBackdropClose } from "../../utils/useBackdropClose";
+import {useBackdropClose} from "../../utils/useBackdropClose";
 import { validateEmail } from "../../utils/validation";
 
 const STEPS = ["Information", "Assets", "Beneficiaries", "Executor", "DMS", "Review"];
@@ -50,23 +51,23 @@ export default function CreateWill() {
     setLoading(true);
     setLoadError("");
     try {
-      const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
-      setAssets(assetsData);
-      getExecutors().then(setExecutors).catch(console.error);
-      getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
-      setProfile(profileData);
+    const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
+    setAssets(assetsData);
+    getExecutors().then(setExecutors).catch(console.error);
+    getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
+    setProfile(profileData);
 
-      let currentWill;
-      if (willId) {
-        try {
-          currentWill = await getWill(user?.id, willId);
-        } catch (err) {
-          throw new Error(`Could not load this will: ${err.message}`);
-        }
-      } else {
-        currentWill = { id: null, name: "", description: "", assets: [], beneficiaries: [], executor: null, dms: null, status: "DRAFT" };
+    let currentWill;
+    if (willId) {
+      try {
+        currentWill = await getWill(user?.id, willId);
+      } catch (err) {
+        throw new Error(`Could not load this will: ${err.message}`);
       }
-      setWill(currentWill);
+    } else {
+      currentWill = {id:null,name:"",description:"",assets:[],beneficiaries:[],executor:null,dms:null,status:"DRAFT"};
+    }
+    setWill(currentWill);
     } catch (err) {
       setLoadError(err.message || "Could not initialize will");
     } finally {
@@ -76,7 +77,7 @@ export default function CreateWill() {
 
   async function persist(patch) {
     const updated = await saveWillDraft(user?.id, will.id, patch);
-    if (!will.id && updated.id) setParams({ willId: updated.id }, { replace: true });
+    if (!will.id && updated.id) setParams({willId:updated.id},{replace:true});
     setWill(updated);
     return updated;
   }
@@ -157,7 +158,7 @@ export default function CreateWill() {
             executors={executors}
             userId={user?.id}
             onBack={goBack}
-            onSubmitted={() => navigate(`/dashboard/my-wills/${will.id}`, { replace: true })}
+            onSubmitted={() => navigate(`/dashboard/my-wills/${will.id}`, {replace:true})}
           />
         )}
       </div>
@@ -168,20 +169,20 @@ export default function CreateWill() {
 function InfoStep({ will, onSave, onNext, userFullName }) {
   const [name, setName] = useState(will.name || "");
   const [description, setDescription] = useState(will.description || "");
-  const [error, setError] = useState("");
+  const [error,setError]=useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleNext() {
     setSaving(true);
     try { await onSave({ name, description }); setError(""); onNext(); }
-    catch (err) { setError(err.message || "Could not save will"); }
+    catch(err) { setError(err.message || "Could not save will"); }
     finally { setSaving(false); }
   }
 
   async function handleSaveDraft() {
     setSaving(true);
     try { await onSave({ name, description }); setError(""); }
-    catch (err) { setError(err.message || "Could not save will"); }
+    catch(err) { setError(err.message || "Could not save will"); }
     finally { setSaving(false); }
   }
 
@@ -218,7 +219,7 @@ function InfoStep({ will, onSave, onNext, userFullName }) {
 function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNext, onBack }) {
   const [selected, setSelected] = useState(new Set((will.assets || []).map((a) => a.assetId)));
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showDiscard, setShowDiscard] = useState(false);
@@ -232,7 +233,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
   function confirmDiscard() {
     setShowDiscard(false);
     setShowModal(false);
-    setForm({ ...EMPTY_FORM });
+    setForm({...EMPTY_FORM});
     setError("");
   }
 
@@ -272,7 +273,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
       onAssetsChanged(updatedAssets);
       setSelected((prev) => new Set(prev).add(asset.id));
       setShowModal(false);
-      setForm({ ...EMPTY_FORM });
+      setForm({...EMPTY_FORM});
       setError("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not add asset");
@@ -289,7 +290,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
     });
     setSaving(true);
     try { await onSave({ assets: nextAssets }); setError(""); onNext(); }
-    catch (err) { setError(err.message || "Could not save assets"); }
+    catch(err) { setError(err.message || "Could not save assets"); }
     finally { setSaving(false); }
   }
 
@@ -381,10 +382,10 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
   async function handleAssign(assetId, beneficiary) {
     try {
       if (!beneficiary) throw new Error("Removing beneficiaries requires a dedicated backend endpoint.");
-      const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary);
+    const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary);
       onUpdated(updated);
       setActiveAssetId(null);
-    } catch (err) { throw err; }
+    } catch(err) { throw err; }
   }
 
   if (!isVerified) {
@@ -466,9 +467,9 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [found, setFound] = useState(undefined);
   const [relationship, setRelationship] = useState("Daughter");
   const [newForm, setNewForm] = useState({ fullName: "", email: "", phone: "" });
-  const [lookupError, setLookupError] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [assigning, setAssigning] = useState(false);
+  const [lookupError,setLookupError]=useState("");
+  const [searching,setSearching]=useState(false);
+  const [assigning,setAssigning]=useState(false);
   const backdrop = useBackdropClose(onClose);
   const newEmailError = newForm.email ? validateEmail(newForm.email) : "";
 
@@ -477,13 +478,13 @@ function BeneficiaryModal({ onClose, onAssign }) {
     if (!query.trim()) return;
     setSearching(true); setLookupError(""); setFound(undefined);
     try { setFound(await searchBeneficiaryAccount(query.trim())); }
-    catch (err) { if (err.status === 404) setFound(null); else setLookupError(err.message || "Search failed"); }
+    catch(err) { if(err.status===404) setFound(null); else setLookupError(err.message||"Search failed"); }
     finally { setSearching(false); }
   }
   async function assign(person) {
-    setAssigning(true); setLookupError("");
+    setAssigning(true);setLookupError("");
     try { await onAssign(person); }
-    catch (err) { setLookupError(err.message || "Cannot assign beneficiary"); }
+    catch(err) { setLookupError(err.message||"Cannot assign beneficiary"); }
     finally { setAssigning(false); }
   }
 
@@ -600,7 +601,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
     return init;
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error,setError]=useState("");
   const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
 
   async function toggleReviews(executorId) {
@@ -641,51 +642,52 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
       <div className={styles.executorList}>
         {executors.map((ex) => (
           <Fragment key={ex.id}>
-            <div className={styles.executorCard}>
-              <div>
-                <h4 className={styles.beneficiaryName}>{ex.name}</h4>
-                <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
-                <p className={styles.beneficiaryMeta}>
-                  ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
-                </p>
-                <p className={styles.feeText}>
-                  Booking fee: {formatFee(ex) || "Not set by this executor yet"}
-                </p>
-              </div>
-              <div className={styles.actions} style={{ marginTop: 0 }}>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  aria-expanded={review.id === ex.id}
-                  onClick={() => toggleReviews(ex.id)}
-                >
-                  {review.id === ex.id ? "Hide reviews" : "View reviews"}
-                </button>
-                <button
-                  type="button"
-                  className={mainId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
-                  aria-pressed={mainId === ex.id}
-                  onClick={() => {
-                    setMainId(ex.id);
-                    setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([, id]) => id !== ex.id)));
-                  }}
-                >
-                  {mainId === ex.id ? "Main executor" : "Choose as main executor"}
-                </button>
-              </div>
+          <div className={styles.executorCard}>
+            <div>
+              <h4 className={styles.beneficiaryName}>{ex.name}</h4>
+              <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
+              <p className={styles.beneficiaryMeta}>
+                ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
+              </p>
+              <p className={styles.feeText}>
+                Booking fee: {formatFee(ex) || "Not set by this executor yet"}
+              </p>
+              <ExecutorFeeInsight executor={ex} />
             </div>
-            {review.id === ex.id && (
-              <div className={styles.hint} role="status">
-                {review.loading && "Loading reviews..."}
-                {!review.loading && review.message}
-                {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
-                {!review.loading && review.items.map((r) => (
-                  <p key={r.id} className={styles.beneficiaryMeta}>
-                    ⭐ {Number(r.rating || 0).toFixed(1)}{r.ownerName ? ` · ${r.ownerName}` : ""} — {r.comment}
-                  </p>
-                ))}
-              </div>
-            )}
+            <div className={styles.actions} style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                aria-expanded={review.id === ex.id}
+                onClick={() => toggleReviews(ex.id)}
+              >
+                {review.id === ex.id ? "Hide reviews" : "View reviews"}
+              </button>
+              <button
+                type="button"
+                className={mainId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
+                aria-pressed={mainId === ex.id}
+                onClick={() => {
+                  setMainId(ex.id);
+                  setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([, id]) => id !== ex.id)));
+                }}
+              >
+                {mainId === ex.id ? "Main executor" : "Choose as main executor"}
+              </button>
+            </div>
+          </div>
+          {review.id === ex.id && (
+            <div className={styles.hint} role="status">
+              {review.loading && "Loading reviews..."}
+              {!review.loading && review.message}
+              {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
+              {!review.loading && review.items.map((r) => (
+                <p key={r.id} className={styles.beneficiaryMeta}>
+                  ⭐ {Number(r.rating || 0).toFixed(1)}{r.ownerName ? ` · ${r.ownerName}` : ""} — {r.comment}
+                </p>
+              ))}
+            </div>
+          )}
           </Fragment>
         ))}
       </div>
@@ -733,7 +735,7 @@ function DmsStep({ will, onSave, onNext, onBack }) {
   const [customDays, setCustomDays] = useState(String(initialDays));
   const [reminderDays, setReminderDays] = useState(String(will.dms?.reminderDays ?? 3));
   const [maxMissed, setMaxMissed] = useState(String(will.dms?.maxMissed ?? 2));
-  const [error, setError] = useState("");
+  const [error,setError]=useState("");
   const [saving, setSaving] = useState(false);
 
   const checkInDays = intervalChoice === "custom" ? Number(customDays) : Number(intervalChoice);
@@ -744,7 +746,7 @@ function DmsStep({ will, onSave, onNext, onBack }) {
     if (problem) { setError(problem); return; }
     setSaving(true);
     try { await onSave({ dms: { ...will.dms, enabled: true, ...dms } }); setError(""); onNext(); }
-    catch (err) { setError(err.message || "Could not save DMS"); }
+    catch(err) { setError(err.message || "Could not save DMS"); }
     finally { setSaving(false); }
   }
 
@@ -801,7 +803,7 @@ function ReviewStep({ will, assets, profile, executors = [], userId, onBack, onS
   const [showPayment, setShowPayment] = useState(false);
   const payBackdrop = useBackdropClose(() => setShowPayment(false));
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [submitError,setSubmitError]=useState("");
 
   function assetName(assetId) {
     return assets.find((a) => a.id === assetId)?.name || "Asset";
@@ -820,17 +822,9 @@ function ReviewStep({ will, assets, profile, executors = [], userId, onBack, onS
 
   async function handleConfirmSubmit() {
     setSubmitting(true);
-    setSubmitError("");
-
-    try {
-      await submitWill(userId, will.id);
-      setShowPayment(false);
-      onSubmitted();
-    } catch (err) {
-      setSubmitError(err.message || "Will submission failed");
-    } finally {
-      setSubmitting(false);
-    }
+    try { await submitWill(userId, will.id); setSubmitError(""); setShowPayment(false); onSubmitted(); }
+    catch(err) { setSubmitError(err.message || "Will submission failed"); }
+    finally { setSubmitting(false); }
   }
 
   const isVerified = profile.identityStatus === "VERIFIED";
@@ -934,7 +928,7 @@ function ResultScreen({ will }) {
       <p className={styles.reviewWillName}>{will.name}</p>
       <p className={styles.reviewLine}>Status: PENDING EXECUTOR ACCEPTANCE</p>
       <p className={styles.reviewLine}>Executor: {will.executor?.name} — waiting for acceptance</p>
-
+      
       <p className={styles.hint}>
         {will.executor?.name} has been assigned this will and has
         {will.hireRequest?.deadlineAt ? ` until ${new Date(will.hireRequest.deadlineAt).toLocaleDateString("en-US")}` : " time"}

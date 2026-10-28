@@ -64,40 +64,34 @@ export default function Wallet() {
 
       {wallet && (
         <>
-          
-<div className={styles.cards}>
-  <div className={styles.card}>
-    <span className={styles.cardLabel}>Available balance</span>
-    <strong className={styles.cardValue}>
-      {money(wallet.balance, wallet.currency)}
-    </strong>
-  </div>
+          <div className={styles.cards}>
+            <div className={styles.card}>
+              <span className={styles.cardLabel}>Available balance</span>
+              <strong className={styles.cardValue}>
+                {money(wallet.balance, wallet.currency)}
+              </strong>
+            </div>
 
-  {canTopUp && (
-    <div className={`${styles.card} ${styles.cardHeld}`}>
-      <span className={styles.cardLabel}>Held for handover</span>
-      <strong className={styles.cardValue}>
-        {money(wallet.heldAmount, wallet.currency)}
-      </strong>
-      <p className={styles.cardNote}>
-        Locked until the handover is completed.
-      </p>
-    </div>
-  )}
+            <div className={`${styles.card} ${styles.cardHeld}`}>
+              <span className={styles.cardLabel}>Held for handover</span>
+              <strong className={styles.cardValue}>
+                {money(wallet.heldAmount, wallet.currency)}
+              </strong>
+              <p className={styles.cardNote}>
+                Locked until the handover is completed.
+              </p>
+            </div>
 
-  {!canTopUp && (
-    <div className={styles.card}>
-      <span className={styles.cardLabel}>Pending incoming</span>
-      <strong className={styles.cardValue}>
-        {money(wallet.pendingIncoming, wallet.currency)}
-      </strong>
-      <p className={styles.cardNote}>
-        Funds held for you as executor, awaiting release.
-      </p>
-    </div>
-  )}
-</div>
-
+            <div className={styles.card}>
+              <span className={styles.cardLabel}>Pending incoming</span>
+              <strong className={styles.cardValue}>
+                {money(wallet.pendingIncoming, wallet.currency)}
+              </strong>
+              <p className={styles.cardNote}>
+                Funds held for you as executor, awaiting release.
+              </p>
+            </div>
+          </div>
 
           {canTopUp && (
             <>

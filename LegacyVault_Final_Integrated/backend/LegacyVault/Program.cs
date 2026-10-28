@@ -18,6 +18,18 @@ using Microsoft.OpenApi;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+// Asset OAuth callback tickets and provider HTTP requests.
+builder.Services.AddMemoryCache();
+
+
+builder.Services.AddDataProtection();
+
+builder.Services.AddSingleton<
+    LegacyVault.Shared.Security.OwnerPinGrantService>();
+
+
+
+builder.Services.AddHttpClient("asset-oauth");
 builder.Services.AddOpenApi();
 
 // Frontend (Vite) development CORS.
@@ -29,7 +41,9 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:5161",
                 "http://localhost:5173",
-                "http://127.0.0.1:5173")
+                "http://localhost:5174",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -59,6 +73,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailOtpService, EmailOtpService>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Audit Management (admin audit-log API)
+builder.Services.AddScoped<LegacyVault.Features.AuditManagement.Contracts.IAuditRepository, LegacyVault.Features.AuditManagement.Repositories.AuditRepository>();
+builder.Services.AddScoped<LegacyVault.Features.AuditManagement.Contracts.IAuditService, LegacyVault.Features.AuditManagement.Services.AuditService>();
 
 // Phone OTP & SMS Sender
 builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
@@ -91,6 +109,9 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.IExecutorProfileService,
     LegacyVault.Features.WillManagement.Services.ExecutorProfileService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IExecutorPricingService,
+    LegacyVault.Features.WillManagement.Services.ExecutorPricingService>();
 builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.ILegalService,
     LegacyVault.Features.WillManagement.Services.LegalService>();

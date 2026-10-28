@@ -14,6 +14,7 @@ import {
 } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./Register.module.css";
 
 const initialForm = {
@@ -118,7 +119,7 @@ export default function Register() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form
         className={styles.card}
         onSubmit={handleSubmit}
@@ -416,6 +417,6 @@ export default function Register() {
           </section>
         </div>
       )}
-    </div>
+    </AuthShell>
   );
 }

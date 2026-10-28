@@ -381,5 +381,33 @@ namespace LegacyVault.Features.IdentityAccess.Services
             // 7. Save changes (saves both Account and EmailOtp)
             await _accountRepository.SaveChangesAsync();
         }
+
+        public async Task ChangePasswordAsync(Guid accountId, string currentPassword, string newPassword)
+        {
+            var account = await _accountRepository.GetByIdAsync(accountId);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account not found.");
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, account.PasswordHash))
+            {
+                throw new InvalidOperationException("Current password is incorrect.");
+            }
+
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
+            {
+                throw new InvalidOperationException("Password must be at least 8 characters long.");
+            }
+
+            if (BCrypt.Net.BCrypt.Verify(newPassword, account.PasswordHash))
+            {
+                throw new InvalidOperationException("New password must be different from the current password.");
+            }
+
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            account.UpdatedAt = DateTimeOffset.UtcNow;
+            await _accountRepository.SaveChangesAsync();
+        }
     }
 }

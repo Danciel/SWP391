@@ -7,3 +7,7 @@ export const resendOtp=({email,purpose="register"})=>request("/auth/resend-otp",
 import { unsupported } from "./unsupported";
 // export const requestPasswordReset=unsupported("Password reset");
 // export const resetPassword=unsupported("Password reset");
+
+// Đổi mật khẩu khi đang đăng nhập (cần mật khẩu hiện tại)
+export const changePassword = ({ currentPassword, newPassword }) =>
+  request("/auth/change-password", { method: "POST", body: { currentPassword, newPassword } });

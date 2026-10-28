@@ -99,7 +99,7 @@ export default function AppLayout() {
                   Profile
                 </NavLink>
                 <NavLink
-                  to="/dashboard/profile"
+                  to="/dashboard/security"
                   className={styles.dropdownItem}
                   onClick={() => setMenuOpen(false)}
                 >
