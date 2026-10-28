@@ -8,7 +8,16 @@ import {
   getExecutorFee,
   setExecutorFee,
   respondToHandoverRequest,
+  deleteExecutorRequest,
 } from "../../api/executorApi";
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
+=======
+import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import ExecutorPricingCard, { EvaluationCsvActions } from "../../components/ExecutorPricingCard/ExecutorPricingCard";
+import useExecutorPricing from "../../components/ExecutorPricingCard/useExecutorPricing";
+import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
+import { getStoredUser } from "../../api/client";
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
 import styles from "./ExecutorDashboard.module.css";
 
 const STATUS_LABEL = {
@@ -59,6 +68,27 @@ export default function ExecutorDashboard() {
   const [savingFee, setSavingFee] = useState(false);
   const [uploadCaseId, setUploadCaseId] = useState(null);
   const [uploadFiles, setUploadFiles] = useState([]);
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
+=======
+  const [uploadWillId, setUploadWillId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  // Delete a declined request: 1) confirm popup  2) PIN popup
+  const [deleteConfirmReq, setDeleteConfirmReq] = useState(null);
+  const [deletePinReq, setDeletePinReq] = useState(null);
+
+  const pricing = useExecutorPricing({
+    onFeeUpdated: (updated) => {
+      const next = {
+        ...fee,
+        fee: updated.serviceFee,
+        currency: updated.currency || fee?.currency || "VND",
+        updatedAt: updated.updatedAt || new Date().toISOString(),
+      };
+      setFee(next);
+      setFeeInput(String(next.fee));
+    },
+  });
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -129,6 +159,26 @@ export default function ExecutorDashboard() {
     }
   }
 
+  function startDeleteRequest(req) {
+    setError("");
+    setDeleteConfirmReq(req);
+  }
+
+  function continueDeleteToPin() {
+    setDeletePinReq(deleteConfirmReq);
+    setDeleteConfirmReq(null);
+  }
+
+  async function handleDeleteVerified(grant) {
+    const req = deletePinReq;
+    if (!req) return;
+    await deleteExecutorRequest({ requestId: req.id, pinGrant: grant });
+    setDeletePinReq(null);
+    if (expandedId === req.id) setExpandedId(null);
+    showToast("Declined request deleted");
+    await load();
+  }
+
   async function handleOpenCase(triggerId) {
     setBusyId(triggerId);
     try {
@@ -187,6 +237,67 @@ export default function ExecutorDashboard() {
     }
   }
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
+=======
+
+  function openLegalDocumentUpload(willId) {
+    setUploadWillId(willId);
+    setUploadFile(null);
+    setError("");
+  }
+
+  function closeLegalDocumentUpload() {
+    setUploadWillId(null);
+    setUploadFile(null);
+  }
+
+  function handleLegalDocumentSelected(event) {
+    const file = event.target.files?.[0] ?? null;
+    setUploadFile(file);
+  }
+
+  async function handleLegalDocumentSubmit() {
+    if (!uploadWillId) {
+      setError("Missing Will ID.");
+      return;
+    }
+
+    if (!uploadFile) {
+      setError("Please select a document.");
+      return;
+    }
+
+    setBusyId(uploadWillId);
+    setError("");
+
+    try {
+      await submitExecutorLegalDocuments({
+        willId: uploadWillId,
+        file: uploadFile,
+      });
+
+      showToast("Legal document submitted successfully.");
+      closeLegalDocumentUpload();
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not submit legal document.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
+  const dmsTriggers = data?.dmsTriggers ?? [];
+  const stats = data
+    ? [
+        { label: "Pending requests", value: data.requests.filter((r) => r.status === "PENDING").length },
+        { label: "Active wills", value: data.activeWills.length },
+        { label: "Triggers", value: dmsTriggers.length },
+        { label: "Open cases", value: data.cases.filter((c) => c.status === "OPEN").length },
+      ]
+    : [];
+
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -196,6 +307,16 @@ export default function ExecutorDashboard() {
             Manage requests from Owners, active wills, Dead Man's Switch triggers and legal cases.
           </p>
         </div>
+        {stats.length > 0 && !isLoading && (
+          <dl className={styles.stats}>
+            {stats.map((st) => (
+              <div className={styles.stat} key={st.label}>
+                <dd className={styles.statValue}>{st.value}</dd>
+                <dt className={styles.statLabel}>{st.label}</dt>
+              </div>
+            ))}
+          </dl>
+        )}
       </header>
 
       {toast && <div className={styles.toast}>{toast}</div>}
@@ -204,48 +325,55 @@ export default function ExecutorDashboard() {
 
       {data && !isLoading && (
         <div className={styles.grid}>
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>My Service Fee</h2>
-            {editingFee ? (
-              <div>
-                <input
-                  className={styles.feeInput}
-                  type="number"
-                  min="0"
-                  value={feeInput}
-                  onChange={(e) => setFeeInput(e.target.value)}
-                />
-                <div className={styles.actionRow} style={{ marginTop: 10 }}>
-                  <button
-                    className={styles.secondaryBtn}
-                    onClick={() => {
-                      setEditingFee(false);
-                      setFeeInput(String(fee.fee));
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button className={styles.primaryBtn} disabled={savingFee} onClick={handleSaveFee}>
-                    Save
-                  </button>
+          <div className={styles.feeRow}>
+            <section className={`${styles.card} ${styles.feeCard}`}>
+              <h2 className={styles.cardTitle}>My Service Fee</h2>
+              {editingFee ? (
+                <div>
+                  <input
+                    className={styles.feeInput}
+                    type="number"
+                    min="0"
+                    value={feeInput}
+                    onChange={(e) => setFeeInput(e.target.value)}
+                  />
+                  <div className={styles.actionRow} style={{ marginTop: 10 }}>
+                    <button
+                      className={styles.secondaryBtn}
+                      onClick={() => {
+                        setEditingFee(false);
+                        setFeeInput(fee?.fee != null ? String(fee.fee) : "");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button className={styles.primaryBtn} disabled={savingFee} onClick={handleSaveFee}>
+                      Save
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
-                <p className={styles.metaText}>
-                  {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
-                </p>
-                <button className={styles.secondaryBtn} style={{ marginTop: 8 }} onClick={() => setEditingFee(true)}>
-                  Edit Fee
-                </button>
-              </div>
-            )}
-          </section>
+              ) : (
+                <div>
+                  <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
+                  <p className={styles.metaText}>
+                    {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
+                  </p>
+                  <div className={styles.feeActions}>
+                    <button className={styles.secondaryBtn} onClick={() => setEditingFee(true)}>
+                      Edit Fee
+                    </button>
+                    <EvaluationCsvActions pricing={pricing} variant="dark" />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <ExecutorPricingCard pricing={pricing} />
+          </div>
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Requests from Owner ({data.requests.length})
+              Requests from Owner <span className={styles.count}>{data.requests.length}</span>
             </h2>
             {data.requests.length === 0 ? (
               <p className={styles.mutedText}>No pending requests</p>
@@ -317,6 +445,7 @@ export default function ExecutorDashboard() {
                       </div>
                     )}
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
                     {req.status === "PENDING" && (
                       <div className={styles.actionRow} style={{ marginTop: 8 }}>
                         <button
@@ -338,15 +467,49 @@ export default function ExecutorDashboard() {
                       </div>
                     )}
                   </li>
+=======
+                      {req.status === "DECLINED" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.dangerBtn}
+                            onClick={() => startDeleteRequest(req)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+
+                      {req.status === "PENDING" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, true)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className={styles.secondaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, false)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </li>
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
                   );
                 })}
               </ul>
             )}
           </section>
 
-          <section className={`${styles.card} ${styles.cardWide}`}>
+          <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Immediate Handover Requests ({data.handoverRequests.length})
+              Immediate Handover Requests <span className={styles.count}>{data.handoverRequests.length}</span>
             </h2>
             {data.handoverRequests.length === 0 ? (
               <p className={styles.mutedText}>No immediate handover requests</p>
@@ -420,7 +583,7 @@ export default function ExecutorDashboard() {
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
-              Active Wills ({data.activeWills.length})
+              Active Wills <span className={styles.count}>{data.activeWills.length}</span>
             </h2>
             {data.activeWills.length === 0 ? (
               <p className={styles.mutedText}>No active wills yet</p>
@@ -515,7 +678,11 @@ export default function ExecutorDashboard() {
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
               Dead Man's Switch Triggers ({data.dmsTriggers.length})
+=======
+              Dead Man's Switch Triggers <span className={styles.count}>{dmsTriggers.length}</span>
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.jsx
             </h2>
             {data.dmsTriggers.length === 0 ? (
               <p className={styles.mutedText}>No triggers</p>
@@ -548,7 +715,9 @@ export default function ExecutorDashboard() {
           </section>
 
           <section className={`${styles.card} ${styles.cardWide}`}>
-            <h2 className={styles.cardTitle}>Legal Cases ({data.cases.length})</h2>
+            <h2 className={styles.cardTitle}>
+              Legal Cases <span className={styles.count}>{data.cases.length}</span>
+            </h2>
             {data.cases.length === 0 ? (
               <p className={styles.mutedText}>No cases opened yet</p>
             ) : (
@@ -632,6 +801,43 @@ export default function ExecutorDashboard() {
             )}
           </section>
         </div>
+      )}
+
+      {deleteConfirmReq && (
+        <div className={styles.overlay} onClick={() => setDeleteConfirmReq(null)}>
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete declined request"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>Delete this request?</h2>
+            <p className={styles.metaText}>
+              You declined the request from <strong>{deleteConfirmReq.ownerName}</strong>
+              {deleteConfirmReq.willTitle ? ` (${deleteConfirmReq.willTitle})` : ""}.
+              Are you sure you want to delete it? It will be removed from your dashboard and this cannot be undone.
+              You will need to enter your Security PIN to confirm.
+            </p>
+            <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
+              <button className={styles.secondaryBtn} onClick={() => setDeleteConfirmReq(null)}>
+                Cancel
+              </button>
+              <button className={styles.dangerBtnSolid} onClick={continueDeleteToPin}>
+                Yes, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletePinReq && (
+        <SecurityPinModal
+          scope="EXECUTOR_REQUEST_DELETE"
+          resourceId={deletePinReq.id}
+          onVerified={handleDeleteVerified}
+          onClose={() => setDeletePinReq(null)}
+        />
       )}
 
       {uploadCaseId && (

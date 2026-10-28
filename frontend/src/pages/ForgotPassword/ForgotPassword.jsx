@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { validateEmail } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./ForgotPassword.module.css";
 
 export default function ForgotPassword() {
@@ -46,7 +47,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Forgot Password?</h1>
@@ -74,6 +75,6 @@ export default function ForgotPassword() {
           <Link to="/login">← Back to Login</Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

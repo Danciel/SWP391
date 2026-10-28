@@ -1,0 +1,182 @@
+.page {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 28px 28px;
+  border: 1px solid var(--line);
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.sectionText {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.tab,
+.tabActive {
+  padding: 9px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tabActive {
+  color: var(--vault);
+  border-bottom-color: var(--vault);
+}
+
+.tab:focus-visible,
+.tabActive:focus-visible,
+.primaryBtn:focus-visible,
+.secondaryBtn:focus-visible {
+  outline: 2px solid var(--vault);
+  outline-offset: 2px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--vault);
+  box-shadow: 0 0 0 3px rgb(31 92 77 / 14%);
+}
+
+.pinInput {
+  letter-spacing: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.help {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.primaryBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primaryBtn:hover {
+  background: var(--vault-hover);
+}
+
+.secondaryBtn {
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.error,
+.success {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.error {
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  color: var(--bad);
+}
+
+.success {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-line);
+  color: var(--ok);
+}

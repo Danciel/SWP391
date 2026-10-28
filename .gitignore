@@ -21,3 +21,8 @@ appsettings.Local.json
 Thumbs.db
 .vscode/
 .idea/
+<<<<<<< Updated upstream
+=======
+/legacyvault-fe/node_modules
+/Tool/ApiTestRunner/logs
+>>>>>>> Stashed changes

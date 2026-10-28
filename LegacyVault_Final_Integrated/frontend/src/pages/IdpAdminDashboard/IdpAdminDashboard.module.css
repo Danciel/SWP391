@@ -1,0 +1,281 @@
+.page {
+    min-height: 100%;
+    padding: 24px;
+}
+
+.header {
+    max-width: 1100px;
+    margin: 0 auto 24px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.subtitle {
+    color: #6b7280;
+    margin: 6px 0 0;
+    font-size: 14px;
+}
+
+.errorBox {
+    max-width: 1100px;
+    margin: 0 auto 16px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.toast {
+    max-width: 1100px;
+    margin: 0 auto 16px;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cardWide {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.cardTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px;
+}
+
+.tableWrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.table th {
+    text-align: left;
+    color: #9ca3af;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+}
+
+.actionCell {
+    text-align: right;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.mutedText {
+    color: #9ca3af;
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+
+.roleSelect {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #374151;
+    background: #fff;
+    cursor: pointer;
+}
+
+.primaryBtn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--vault);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.primaryBtn:hover {
+    background: var(--vault-hover);
+}
+
+.primaryBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dangerBtn {
+    padding: 8px 12px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dangerBtn:hover {
+    background: #fee2e2;
+}
+
+.dangerBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* Identity Status Specifics */
+.VERIFIED,
+.ALIVE {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.SUSPENDED,
+.DECEASED {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.UNVERIFIED {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+/* Face Enrollment Status */
+.faceEnrolled {
+    color: #15803d;
+    font-weight: 600;
+}
+
+.faceMissing {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.paginationActions {
+    display: flex;
+    gap: 8px;
+}
+
+.accountsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.createForm {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.formField {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.formActions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    grid-column: 1 / -1;
+}
+
+.searchGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.searchInput {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+.searchInput:focus {
+    border-color: var(--vault);
+}
+
+.accountToolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+    .createForm {
+        grid-template-columns: 1fr;
+    }
+    .accountToolbar {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,154 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  background: var(--paper);
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px 48px 24px;
+  color: #fff;
+  background:
+    linear-gradient(160deg, rgba(14, 44, 38, 0.88) 0%, rgba(21, 59, 51, 0.7) 60%, rgba(21, 59, 51, 0.5) 100%),
+    var(--photo) center / cover no-repeat,
+    var(--vault-deep);
+  overflow: hidden;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -80px -80px auto;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 2px solid rgba(201, 162, 74, 0.35);
+  box-shadow: 0 0 0 28px rgba(201, 162, 74, 0.08), 0 0 0 64px rgba(201, 162, 74, 0.05);
+  pointer-events: none;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 520px;
+}
+
+.badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--brass-bright);
+}
+
+.headline {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.12;
+  color: #fff;
+}
+
+.lead {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #d3e4dd;
+}
+
+.features {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.features strong {
+  display: block;
+  font-size: 15px;
+}
+
+.features small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c3d9d0;
+}
+
+.featIcon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(201, 162, 74, 0.2);
+  color: var(--brass-bright);
+}
+
+.credit {
+  position: relative;
+  z-index: 1;
+  margin: 28px 0 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.formSide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  background:
+    radial-gradient(900px 500px at 100% 0%, var(--vault-soft), transparent 60%),
+    radial-gradient(700px 420px at 0% 100%, var(--brass-soft), transparent 60%),
+    var(--paper);
+}
+
+/* Cards inside the auth pages: fill the form side instead of floating. */
+.formSide > form {
+  width: 100%;
+  max-width: 460px !important;
+  padding: 36px 36px 30px !important;
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    padding: 28px 24px 18px;
+  }
+  .features {
+    display: none;
+  }
+}

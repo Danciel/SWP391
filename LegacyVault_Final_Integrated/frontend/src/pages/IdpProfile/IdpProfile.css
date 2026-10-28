@@ -1,0 +1,149 @@
+
+.idp-profile-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(rgba(14, 44, 38, 0.84), rgba(21, 59, 51, 0.8)), var(--photo-vault) center / cover fixed, var(--vault-deep);
+}
+
+.idp-profile-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  padding: 28px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.idp-profile-title {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.idp-profile-description {
+  margin: 0 0 24px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.idp-profile-label {
+  display: block;
+  margin: 20px 0 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.idp-profile-id-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  background: #f3f5f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.idp-profile-id {
+  flex: 1;
+  min-width: 0;
+  color: var(--vault-hover);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.idp-profile-copy-button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.idp-profile-copy-button:hover {
+  background: #e5e7eb;
+}
+
+.idp-profile-details {
+  margin-top: 22px;
+}
+
+.idp-profile-details p {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.idp-profile-details strong {
+  color: #1f2937;
+}
+
+.idp-profile-note {
+  margin: 20px 0;
+  padding: 12px;
+  border-left: 3px solid var(--vault);
+  border-radius: 4px;
+  background: var(--vault-soft);
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.idp-profile-link {
+  display: inline-block;
+  color: var(--vault);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.idp-profile-link:hover {
+  text-decoration: underline;
+}
+
+.idp-profile-error {
+  margin-bottom: 16px;
+  color: #dc2626;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .idp-profile-page {
+    padding: 16px;
+  }
+
+  .idp-profile-card {
+    padding: 20px;
+  }
+
+  .idp-profile-title {
+    font-size: 23px;
+  }
+
+  .idp-profile-id-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .idp-profile-copy-button {
+    width: 100%;
+  }
+}

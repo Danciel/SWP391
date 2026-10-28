@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { validatePassword, validateConfirmPassword, runValidators } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./ResetPassword.module.css";
 
 const initialForm = { newPassword: "", confirmPassword: "" };
@@ -66,7 +67,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Reset Password</h1>
@@ -104,6 +105,6 @@ export default function ResetPassword() {
           {isSubmitting ? "Updating..." : "Update Password"}
         </button>
       </form>
-    </div>
+    </AuthShell>
   );
 }

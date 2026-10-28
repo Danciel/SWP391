@@ -16,8 +16,18 @@ import {
 import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
 import styles from "./CreateWill.module.css";
 import {AssetFields,EMPTY_FORM} from "../Assets/Assets";
+=======
+import { getExecutorReviews } from "../../api/executorApi";
+import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
+import styles from "./CreateWill.module.css";
+import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
+import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
+import {useBackdropClose} from "../../utils/useBackdropClose";
+import { validateEmail } from "../../utils/validation";
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
 
 const STEPS = ["Information", "Assets", "Beneficiaries", "Executor", "DMS", "Review"];
 
@@ -48,7 +58,10 @@ export default function CreateWill() {
     const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
     setAssets(assetsData);
     getExecutors().then(setExecutors).catch(console.error);
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
     // LV-18: assets already used by another will are locked here.
+=======
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
     getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
     setProfile(profileData);
 
@@ -60,7 +73,10 @@ export default function CreateWill() {
         throw new Error(`Could not load this will: ${err.message}`);
       }
     } else {
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
       // Only local draft at first: no request until the user saves Information.
+=======
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
       currentWill = {id:null,name:"",description:"",assets:[],beneficiaries:[],executor:null,dms:null,status:"DRAFT"};
     }
     setWill(currentWill);
@@ -217,6 +233,34 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
   const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
+=======
+  const [showDiscard, setShowDiscard] = useState(false);
+
+  function requestCloseModal() {
+    if (saving) return;
+    if (isAssetFormDirty(form)) setShowDiscard(true);
+    else setShowModal(false);
+  }
+
+  function confirmDiscard() {
+    setShowDiscard(false);
+    setShowModal(false);
+    setForm({...EMPTY_FORM});
+    setError("");
+  }
+
+  const addBackdrop = useBackdropClose(requestCloseModal);
+
+  useEffect(() => {
+    if (!showModal) return undefined;
+    function onKey(e) {
+      if (e.key === "Escape" && !showDiscard) requestCloseModal();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
 
   const attachedIds = new Set((will.assets || []).map((a) => a.assetId));
 
@@ -435,6 +479,11 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [lookupError,setLookupError]=useState("");
   const [searching,setSearching]=useState(false);
   const [assigning,setAssigning]=useState(false);
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
+=======
+  const backdrop = useBackdropClose(onClose);
+  const newEmailError = newForm.email ? validateEmail(newForm.email) : "";
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
 
   function handleQueryChange(value) { setQuery(value); setFound(undefined); setLookupError(""); }
   async function handleSearch() {
@@ -554,8 +603,27 @@ function BeneficiaryModal({ onClose, onAssign }) {
 function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   const [selectedId, setSelectedId] = useState(will.executor?.id || null);
   const [saving, setSaving] = useState(false);
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
   const selected = executors.find((e) => e.id === selectedId);
   const [error,setError]=useState("");
+=======
+  const [error,setError]=useState("");
+  const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
+
+  async function toggleReviews(executorId) {
+    if (review.id === executorId) {
+      setReview({ id: null, loading: false, items: [], message: "" });
+      return;
+    }
+    setReview({ id: executorId, loading: true, items: [], message: "" });
+    try {
+      const items = await getExecutorReviews(executorId);
+      setReview({ id: executorId, loading: false, items: items || [], message: "" });
+    } catch (err) {
+      setReview({ id: executorId, loading: false, items: [], message: "Reviews are not available yet." });
+    }
+  }
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
 
   async function handleNext() {
     setSaving(true);
@@ -571,13 +639,19 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
       {executors.length === 0 && <p className={styles.hint}>No executors available yet.</p>}
       <div className={styles.executorList}>
         {executors.map((ex) => (
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
           <div key={ex.id} className={styles.executorCard}>
+=======
+          <Fragment key={ex.id}>
+          <div className={styles.executorCard}>
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
             <div>
               <h4 className={styles.beneficiaryName}>{ex.name}</h4>
               <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
               <p className={styles.beneficiaryMeta}>
                 ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
               </p>
+<<<<<<< Updated upstream:frontend/src/pages/CreateWill/CreateWill.jsx
             </div>
             <button
               className={selectedId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
@@ -586,6 +660,48 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
               {selectedId === ex.id ? "Selected" : "Select"}
             </button>
           </div>
+=======
+              <p className={styles.feeText}>
+                Booking fee: {formatFee(ex) || "Not set by this executor yet"}
+              </p>
+              <ExecutorFeeInsight executor={ex} />
+            </div>
+            <div className={styles.actions} style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                aria-expanded={review.id === ex.id}
+                onClick={() => toggleReviews(ex.id)}
+              >
+                {review.id === ex.id ? "Hide reviews" : "View reviews"}
+              </button>
+              <button
+                type="button"
+                className={mainId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
+                aria-pressed={mainId === ex.id}
+                onClick={() => {
+                  setMainId(ex.id);
+                  setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([, id]) => id !== ex.id)));
+                }}
+              >
+                {mainId === ex.id ? "Main executor" : "Choose as main executor"}
+              </button>
+            </div>
+          </div>
+          {review.id === ex.id && (
+            <div className={styles.hint} role="status">
+              {review.loading && "Loading reviews..."}
+              {!review.loading && review.message}
+              {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
+              {!review.loading && review.items.map((r) => (
+                <p key={r.id} className={styles.beneficiaryMeta}>
+                  ⭐ {Number(r.rating || 0).toFixed(1)}{r.ownerName ? ` · ${r.ownerName}` : ""} — {r.comment}
+                </p>
+              ))}
+            </div>
+          )}
+          </Fragment>
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/CreateWill/CreateWill.jsx
         ))}
       </div>
 

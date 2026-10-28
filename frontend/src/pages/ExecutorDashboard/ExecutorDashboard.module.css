@@ -1,35 +1,91 @@
+/* Executor Dashboard
+   Uses the app tokens from index.css: vault green for actions, brass for money held.
+   The fee panel is the one deep-green block on the page; everything else stays quiet. */
+
 .page {
   min-height: 100%;
-  padding: 0;
+  padding: 0 0 56px;
 }
 
+/* ---------- Header ---------- */
 .header {
-  max-width: 1100px;
-  margin: 0 auto 24px;
+  max-width: none;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 40px;
+  flex-wrap: wrap;
 }
 
 .title {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   font-size: 24px;
   font-weight: 700;
   color: #111827;
+=======
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--ink);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   margin: 0;
 }
 
 .subtitle {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   color: #6b7280;
   margin: 6px 0 0;
+=======
+  color: var(--muted);
+  margin: 8px 0 0;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   font-size: 14px;
+  max-width: 52ch;
 }
 
+.stats {
+  display: flex;
+  margin: 0;
+  border-left: 1px solid var(--line-strong);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 2px 22px;
+  border-right: 1px solid var(--line-strong);
+}
+
+.stat:last-child {
+  border-right: none;
+}
+
+.statValue {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--vault-deep);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- Messages ---------- */
 .info {
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto;
   color: #6b7280;
 }
 
 .errorBox {
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto 16px;
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   color: #dc2626;
   background: #fef2f2;
   border: 1px solid #fecaca;
@@ -45,23 +101,66 @@
   border: 1px solid #a7f3d0;
   border-radius: 8px;
   padding: 10px 14px;
+=======
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: var(--radius);
+  padding: 11px 16px;
   font-size: 14px;
-  font-weight: 600;
 }
 
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 80;
+  background: var(--vault-deep);
+  color: #fff;
+  border-radius: 999px;
+  padding: 11px 22px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-pop);
+  animation: toastIn 0.22s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- Grid & cards ---------- */
 .grid {
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 
 .card {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   background: #fff;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+=======
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  min-width: 0;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .cardWide {
@@ -69,19 +168,126 @@
 }
 
 .cardTitle {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   font-size: 15px;
   font-weight: 700;
   color: #111827;
   margin: 0 0 12px;
+=======
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 14px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Fee panel ---------- */
+.feeRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.feeCard {
+  background: var(--vault-deep);
+  border-color: var(--vault-deep);
+  color: #fff;
+}
+
+.feeCard .cardTitle {
+  color: #fff;
+  font-size: 16px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.feeCard .feeAmount {
+  color: var(--brass-bright);
+}
+
+.feeCard .metaText {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+}
+
+.feeCard .secondaryBtn {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #fff;
+}
+
+.feeCard .secondaryBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.feeCard .primaryBtn {
+  background: var(--brass-bright);
+  color: var(--vault-deep);
+}
+
+.feeCard .primaryBtn:hover:not(:disabled) {
+  background: #d8b45e;
+}
+
+.feeCard .feeInput {
+  background: #fff;
+  border-color: transparent;
+}
+
+.feeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.feeAmount {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 4px 0 6px;
+}
+
+.feeInput {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: 18px;
+}
+
+/* ---------- Lists ---------- */
 .list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   font-size: 14px;
   color: #374151;
 }
@@ -90,58 +296,119 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid #f1f5f9;
   border-radius: 10px;
+=======
+  gap: 14px;
+}
+
+.listItem strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.listItemColumn {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.listItemColumn:first-child {
+  padding-top: 4px;
+}
+
+.listItemColumn:last-child {
+  padding-bottom: 4px;
+  border-bottom: none;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .itemRight {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
 .actionRow {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .metaText {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   color: #9ca3af;
   font-size: 12px;
   margin-top: 2px;
+=======
+  color: var(--faint);
+  font-size: 12.5px;
+  margin-top: 3px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .mutedText {
   color: #9ca3af;
   font-size: 14px;
   margin: 0;
+  padding: 18px 0 6px;
 }
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .primaryBtn {
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
   background: #4f46e5;
   color: #fff;
+=======
+.deadlineOverdue {
+  color: var(--bad);
+  font-size: 12.5px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   font-weight: 600;
+  margin-top: 3px;
+}
+
+/* ---------- Buttons ---------- */
+.primaryBtn,
+.secondaryBtn,
+.dangerBtn,
+.dangerBtnSolid,
+.triggerSubmitBtn {
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
 }
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .primaryBtn:hover {
   background: #4338ca;
+=======
+.primaryBtn,
+.triggerSubmitBtn {
+  border: 1px solid var(--vault);
+  background: var(--vault);
+  color: #fff;
 }
 
-.primaryBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.primaryBtn:hover:not(:disabled),
+.triggerSubmitBtn:hover:not(:disabled) {
+  background: var(--vault-hover);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .secondaryBtn {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   padding: 6px 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -155,13 +422,46 @@
 
 .secondaryBtn:hover {
   background: #f3f4f6;
+=======
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink-2);
 }
 
-.secondaryBtn:disabled {
-  opacity: 0.6;
+.secondaryBtn:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--faint);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
+}
+
+.dangerBtn {
+  border: 1px solid var(--bad-line);
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.dangerBtn:hover {
+  filter: brightness(0.97);
+}
+
+.dangerBtnSolid {
+  border: 1px solid var(--bad);
+  background: var(--bad);
+  color: #fff;
+}
+
+.dangerBtnSolid:hover {
+  filter: brightness(0.92);
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.triggerSubmitBtn:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .listItemColumn {
   display: flex;
   flex-direction: column;
@@ -170,6 +470,8 @@
   border-radius: 10px;
 }
 
+=======
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .linkBtn {
   border: none;
   background: none;
@@ -177,45 +479,84 @@
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 0;
 }
 
 .linkBtn:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
+/* ---------- Detail panel ---------- */
 .detailPanel {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   margin-top: 10px;
   padding: 10px 12px;
   background: #f9fafb;
   border-radius: 8px;
+=======
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  animation: reveal 0.18s ease-out;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .detailRow {
   display: flex;
   justify-content: space-between;
+  gap: 16px;
   font-size: 13px;
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   color: #374151;
+=======
+  color: var(--ink);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .detailRow span:first-child {
   color: #6b7280;
 }
 
+.detailRow span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .assetDetailCard {
   background: #fff;
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 8px 10px;
+=======
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   margin-top: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .feeInput {
   width: 100%;
   padding: 8px 10px;
@@ -238,13 +579,28 @@
   margin-top: 2px;
 }
 
+=======
+/* ---------- Status badges ---------- */
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .badge {
-  display: inline-block;
-  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px 3px 9px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  background: var(--paper-2);
+  color: var(--muted);
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .PENDING,
@@ -265,15 +621,25 @@
 }
 
 .DECLINED,
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 .REJECTED {
   background: #fee2e2;
   color: #b91c1c;
+=======
+.REJECTED,
+.TRIGGERED,
+.THRESHOLD_REACHED {
+  background: var(--bad-soft);
+  color: var(--bad);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
+/* ---------- Modals ---------- */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(21, 59, 51, 0.45);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -283,18 +649,25 @@
 
 .modal {
   background: #fff;
-  border-radius: 14px;
-  padding: 26px;
+  border-radius: var(--radius-lg);
+  padding: 28px;
   width: 100%;
-  max-width: 420px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  max-width: 440px;
+  box-shadow: var(--shadow-pop);
 }
 
 .modalTitle {
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   font-size: 17px;
   font-weight: 700;
   color: #111827;
   margin: 0 0 8px;
+=======
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 10px;
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .uploadArea {
@@ -302,6 +675,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
   margin-top: 14px;
   padding: 28px 16px;
   border: 2px dashed #d1d5db;
@@ -315,8 +689,115 @@
 .uploadArea:hover {
   background: #f3f4f6;
   border-color: #a5b4fc;
+=======
+  margin-top: 16px;
+  padding: 30px 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  background: var(--paper);
+  overflow-wrap: anywhere;
+}
+
+.uploadArea:hover {
+  background: var(--paper-2);
+  border-color: var(--vault);
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
 }
 
 .hiddenFileInput {
   display: none;
 }
+<<<<<<< Updated upstream:frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
+=======
+
+/* ---------- DMS triggers ---------- */
+.triggerCardItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.triggerCardItem:first-child {
+  padding-top: 4px;
+}
+
+.triggerCardItem:last-child {
+  padding-bottom: 4px;
+  border-bottom: none;
+}
+
+.triggerCardItem strong {
+  color: var(--ink);
+}
+
+.triggerInfo {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.triggerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .grid,
+  .feeRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 28px;
+  }
+
+  .stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-left: none;
+    row-gap: 14px;
+  }
+
+  .stat {
+    padding: 0 16px 0 0;
+    border-right: none;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .listItem {
+    flex-wrap: wrap;
+  }
+
+  .triggerActions {
+    justify-content: flex-start;
+  }
+
+  .triggerSubmitBtn {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .detailPanel {
+    animation: none;
+  }
+}
+>>>>>>> Stashed changes:LegacyVault_Final_Integrated/frontend/src/pages/ExecutorDashboard/ExecutorDashboard.module.css
