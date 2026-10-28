@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { validateEmail, validatePassword, runValidators } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./Login.module.css";
 
 const initialForm = { email: "", password: "" };
@@ -63,7 +64,7 @@ export default function Login() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Sign in to LegacyVault</h1>
@@ -124,6 +125,6 @@ export default function Login() {
           Don't have an account? <Link to="/register">Create account</Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

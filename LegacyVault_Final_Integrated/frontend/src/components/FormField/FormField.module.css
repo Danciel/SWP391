@@ -20,8 +20,9 @@
 
 .input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border: 1px solid var(--line-strong);
+  background: #fbfcfb;
   border-radius: 8px;
   font-size: 15px;
   outline: none;
@@ -49,7 +50,7 @@
 
 .input:focus {
   border-color: var(--vault);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 0 0 3px rgba(31, 92, 77, 0.18);
 }
 
 .inputError {

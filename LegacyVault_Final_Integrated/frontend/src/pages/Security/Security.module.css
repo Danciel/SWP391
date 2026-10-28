@@ -1,5 +1,5 @@
 .page {
-  max-width: 560px;
+  max-width: none;
   display: flex;
   flex-direction: column;
   gap: 20px;

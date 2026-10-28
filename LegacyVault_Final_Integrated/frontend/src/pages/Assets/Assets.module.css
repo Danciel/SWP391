@@ -1,5 +1,5 @@
 .page {
-  max-width: 720px;
+  max-width: none;
 }
 
 .title {
@@ -37,9 +37,11 @@
 }
 
 .list {
-  display: flex;
-  flex-direction: column;
+  
+  
   gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 }
 
 .assetCard {
