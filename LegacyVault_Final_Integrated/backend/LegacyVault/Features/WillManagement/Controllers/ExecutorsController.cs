@@ -11,18 +11,22 @@ namespace LegacyVault.Features.WillManagement.Controllers
     public class ExecutorsController : ControllerBase
     {
         private readonly IWillService _willService;
+        private readonly IExecutorPricingService _pricing;
 
-        public ExecutorsController(IWillService willService)
+        public ExecutorsController(IWillService willService, IExecutorPricingService pricing)
         {
-            _willService = willService; 
+            _willService = willService;
+            _pricing = pricing;
         }
 
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetVerified()
         {
-            return Ok(
-                await _willService.GetExecutorsAsync());
+            var list = await _willService.GetExecutorsAsync();
+            var items = list.ToList();
+            await _pricing.EnrichListAsync(items);
+            return Ok(items);
         }
 
         // Executor updates the advertised fee for handling one whole Will.

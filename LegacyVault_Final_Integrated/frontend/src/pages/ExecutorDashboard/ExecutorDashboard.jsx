@@ -8,6 +8,7 @@ import {
   respondToHandoverRequest,
 } from "../../api/executorApi";
 import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import ExecutorPricingCard from "../../components/ExecutorPricingCard/ExecutorPricingCard";
 import { getStoredUser } from "../../api/client";
 import styles from "./ExecutorDashboard.module.css";
 
@@ -337,6 +338,19 @@ export default function ExecutorDashboard() {
               </div>
             )}
           </section>
+
+          <ExecutorPricingCard
+            onFeeUpdated={(updated) => {
+              const next = {
+                ...fee,
+                fee: updated.serviceFee,
+                currency: updated.currency || fee?.currency || "VND",
+                updatedAt: updated.updatedAt || new Date().toISOString(),
+              };
+              setFee(next);
+              setFeeInput(String(next.fee));
+            }}
+          />
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>

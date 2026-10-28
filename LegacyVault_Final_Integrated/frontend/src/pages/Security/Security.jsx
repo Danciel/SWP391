@@ -273,9 +273,9 @@ function ChangePinForm() {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <Field label="Current PIN" pin value={form.current} onChange={set("current")} placeholder="" />
-      <Field label="New PIN" pin value={form.next} onChange={set("next")} placeholder="" />
-      <Field label="Confirm new PIN" pin value={form.confirm} onChange={set("confirm")} placeholder="" />
+      <Field label="Current PIN" pin value={form.current} onChange={set("current")} placeholder="6 digits" />
+      <Field label="New PIN" pin value={form.next} onChange={set("next")} placeholder="6 digits" />
+      <Field label="Confirm new PIN" pin value={form.confirm} onChange={set("confirm")} placeholder="6 digits" />
       <Notice state={note} />
       <div className={styles.actions}>
         <button className={styles.primaryBtn} disabled={busy}>{busy ? "Saving..." : "Change PIN"}</button>

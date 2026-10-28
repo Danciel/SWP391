@@ -18,6 +18,7 @@ import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, executor
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
+import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./CreateWill.module.css";
 import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
@@ -651,6 +652,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
               <p className={styles.feeText}>
                 Booking fee: {formatFee(ex) || "Not set by this executor yet"}
               </p>
+              <ExecutorFeeInsight executor={ex} />
             </div>
             <div className={styles.actions} style={{ marginTop: 0 }}>
               <button

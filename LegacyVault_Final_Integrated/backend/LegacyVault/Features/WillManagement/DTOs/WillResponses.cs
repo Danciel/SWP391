@@ -103,7 +103,7 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public string Status { get; set; } = string.Empty;
     }
 
-    public class ExecutorListItemResponse
+    public class ExecutorListItemResponse : FeeSuggestionFields
     {
         public Guid AccountId { get; set; }
 

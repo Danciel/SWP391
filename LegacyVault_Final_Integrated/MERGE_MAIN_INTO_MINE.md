@@ -59,3 +59,27 @@ Backend mới:
 Frontend mới: pages/Security/*, securityPinApi.js (changePin, requestPinReset, resetPin),
 authApi.js (changePassword), route "security" trong App.jsx, AppLayout.jsx (link Security).
 Không đổi schema DB.
+
+## Đợt 1: đánh giá Executor bằng CSV + giá đề xuất
+PHẢI chạy: backend/LegacyVault/database/s7_executor_evaluation_pricing.sql
+
+CSV (Executor upload ở dashboard, mẫu tải được ngay trên UI):
+  experience_years,rating,completed_cases,won_cases
+  6,4.5,40,32
+- Tên cột không phân biệt hoa thường, bỏ khoảng trắng/_/-, có vài tên thay thế
+  (years, stars, cases, wins...). Dấu phân cách , ; hoặc tab. Dùng dòng dữ liệu đầu tiên.
+  Cũng nhận dạng key,value (metric,value).
+- Kiểm tra: kinh nghiệm 0-80, sao 0-5, won_cases <= completed_cases. Sai thì trả 400 và không lưu.
+- Số liệu từ CSV do Executor tự khai: Owner thấy nhãn "Self-reported (CSV)". Admin vẫn tải được file gốc.
+
+Công thức (Admin chỉnh được trong AdminDashboard > "Executor pricing rules"):
+  gợi ý = Base + PerYear*năm(max 40) + PerStar*sao + PerCase*case(max 200) + WinBonus*tỉ lệ thắng
+  rồi kẹp trong [Min, Max] và làm tròn. Mặc định: 3.000.000 / 200.000 / 300.000 / 20.000 / 1.000.000, Min 2.000.000, Max 15.000.000.
+  Ví dụ 5 năm, 4.5 sao, 40 case, thắng 32: 6.950.000 VND.
+
+Owner thấy (CreateWill, WillDetails): giá đề xuất, giá Executor đặt, nhãn "▲ x% above / ▼ x% below /
+in line" (trong ±5% là "in line").
+
+API mới: GET /api/executors/me/pricing-suggestion, GET/PUT /api/admin/executor-pricing-rules,
+POST /api/executors/me/personal-csv (nay đọc + áp dụng CSV). GET /api/executors và /api/executors/{id}
+trả thêm suggestedFee, feeDifferencePercent, feePosition, evalRating, totalCases, wonCases, winRatePercent.

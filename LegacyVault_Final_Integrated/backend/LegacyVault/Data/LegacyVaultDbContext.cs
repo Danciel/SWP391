@@ -63,6 +63,8 @@ namespace LegacyVault.Data
 
         public DbSet<ExecutorCsvSubmission> ExecutorCsvSubmissions { get; set; }
 
+        public DbSet<ExecutorPricingRule> ExecutorPricingRules { get; set; }
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
@@ -158,6 +160,9 @@ namespace LegacyVault.Data
                     .HasDefaultValue(0m);
 
                 entity.Property(x => x.TotalHeldDeposit).HasPrecision(18, 2).HasDefaultValue(0m);
+
+                entity.Property(x => x.EvalRating).HasPrecision(3, 2);
+                entity.Property(x => x.EvalSource).HasMaxLength(20);
 
                 entity.Property(x => x.Currency)
                     .HasMaxLength(3)
@@ -584,6 +589,21 @@ namespace LegacyVault.Data
                 entity.Property(x => x.IdempotencyKey).HasMaxLength(100);
                 entity.HasIndex(x => new { x.AccountId, x.IdempotencyKey }).IsUnique()
                     .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            });
+
+            modelBuilder.Entity<ExecutorPricingRule>(entity =>
+            {
+                entity.ToTable("ExecutorPricingRules");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.BaseFee).HasPrecision(18, 2);
+                entity.Property(x => x.PerExperienceYear).HasPrecision(18, 2);
+                entity.Property(x => x.PerStar).HasPrecision(18, 2);
+                entity.Property(x => x.PerCompletedCase).HasPrecision(18, 2);
+                entity.Property(x => x.WinRateBonus).HasPrecision(18, 2);
+                entity.Property(x => x.MinFee).HasPrecision(18, 2);
+                entity.Property(x => x.MaxFee).HasPrecision(18, 2);
+                entity.Property(x => x.RoundTo).HasPrecision(18, 2);
+                entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
             });
 
             modelBuilder.Entity<ExecutorDeposit>(entity =>

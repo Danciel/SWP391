@@ -110,6 +110,9 @@ builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.IExecutorProfileService,
     LegacyVault.Features.WillManagement.Services.ExecutorProfileService>();
 builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IExecutorPricingService,
+    LegacyVault.Features.WillManagement.Services.ExecutorPricingService>();
+builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.ILegalService,
     LegacyVault.Features.WillManagement.Services.LegalService>();
 builder.Services.AddScoped<

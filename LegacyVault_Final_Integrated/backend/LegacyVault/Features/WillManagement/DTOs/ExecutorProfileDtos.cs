@@ -66,7 +66,7 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public decimal? DifferenceFromMedianPercent { get; set; }
     }
 
-    public class ExecutorProfileResponse
+    public class ExecutorProfileResponse : FeeSuggestionFields
     {
         public Guid AccountId { get; set; }
         public string FullName { get; set; } = string.Empty;

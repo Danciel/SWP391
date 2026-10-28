@@ -29,6 +29,7 @@ import {
 } from "../../utils/willHelpers";
 
 import { useBackdropClose } from "../../utils/useBackdropClose";
+import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./WillDetails.module.css";
 
 const EXECUTOR_STATUS_LABEL = {
@@ -900,6 +901,7 @@ export default function WillDetails() {
                     executorProfile.rating || 0
                   ).toFixed(1)}`}
                 />
+                <ExecutorFeeInsight executor={executorProfile} />
               </>
             )}
           </>

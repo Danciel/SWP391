@@ -13,10 +13,28 @@ namespace LegacyVault.Features.WillManagement.Controllers
     public class ExecutorProfileController : ControllerBase
     {
         private readonly IExecutorProfileService _service;
+        private readonly IExecutorPricingService _pricing;
 
-        public ExecutorProfileController(IExecutorProfileService service)
+        public ExecutorProfileController(
+            IExecutorProfileService service,
+            IExecutorPricingService pricing,
+            LegacyVault.Shared.Security.ICurrentUserService currentUser)
         {
             _service = service;
+            _pricing = pricing;
+            _currentUser = currentUser;
+        }
+
+        private readonly LegacyVault.Shared.Security.ICurrentUserService _currentUser;
+
+        // The system's suggested fee and how it was built, for the signed-in Executor.
+        [HttpGet("me/pricing-suggestion")]
+        [Authorize(Roles = "EXECUTOR")]
+        public async Task<IActionResult> MySuggestion()
+        {
+            try { return Ok(await _pricing.GetMineAsync(_currentUser.GetRequiredAccountId())); }
+            catch (InvalidOperationException ex)
+            { return BadRequest(new { message = ex.Message }); }
         }
 
         [HttpPut("me/profile")]
@@ -37,7 +55,12 @@ namespace LegacyVault.Features.WillManagement.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Get(Guid accountId)
         {
-            try { return Ok(await _service.GetProfileAsync(accountId)); }
+            try
+            {
+                var profile = await _service.GetProfileAsync(accountId);
+                await _pricing.EnrichProfileAsync(profile);
+                return Ok(profile);
+            }
             catch (KeyNotFoundException ex)
             { return NotFound(new { message = ex.Message }); }
         }
