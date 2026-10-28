@@ -73,7 +73,14 @@ export const getAssetSecret = async (id, pinGrant) => {
 export const assignAssetExecutor = async (willId, willAssetId, executorAccountId) => {
   return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });
 };
-export const deleteAsset = async (id) => r(`/asset-maintenance/${id}`, "DELETE");
+export const deleteAsset = async (id, pinGrant) => {
+  if (!pinGrant) {
+    throw new Error("Security PIN is required.");
+  }
+  return r(`/asset-maintenance/${id}`, "DELETE", undefined, {
+    "X-Owner-Pin-Grant": pinGrant
+  });
+};
 // New assets use the dedicated real-provider routes. Existing Will/Wallet APIs are unchanged.
 export async function addAsset(userId, form) {
   let created;

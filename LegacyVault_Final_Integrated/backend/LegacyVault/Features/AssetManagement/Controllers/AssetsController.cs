@@ -86,6 +86,7 @@ namespace LegacyVault.Features.AssetManagement.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [RequireOwnerPin(OwnerPinScopes.AssetDelete)]
         public async Task<IActionResult> Delete(Guid id)
         {
             try

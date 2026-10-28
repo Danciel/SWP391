@@ -10,6 +10,8 @@ public static class OwnerPinScopes
 {
     public const string AssetSecret = "ASSET_SECRET";
     public const string WillDetail = "WILL_DETAIL";
+    public const string AssetDelete = "ASSET_DELETE";
+    public const string ExecutorRequestDelete = "EXECUTOR_REQUEST_DELETE";
 }
 
 public sealed class OwnerPinGrantService
@@ -35,7 +37,9 @@ public sealed class OwnerPinGrantService
     private static bool ValidScope(string scope)
     {
         return scope == OwnerPinScopes.AssetSecret
-            || scope == OwnerPinScopes.WillDetail;
+            || scope == OwnerPinScopes.WillDetail
+            || scope == OwnerPinScopes.AssetDelete
+            || scope == OwnerPinScopes.ExecutorRequestDelete;
     }
 
     // B3. Cap grant sau khi xac minh PIN thanh cong

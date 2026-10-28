@@ -549,6 +549,12 @@ export default function Assets() {
   async function handleAssetPinVerified(grant) {
     if (!selectedAsset) return;
 
+    // PIN dung de DELETE ASSET
+    if (pinAction === "delete") {
+      await handleDeleteWithGrant(grant);
+      return;
+    }
+
     // PIN dung de EDIT
     if (pinAction === "edit") {
       ++secretRequest.current;
@@ -623,15 +629,41 @@ export default function Assets() {
   // ==========================================
   // DELETE ASSET
   // ==========================================
-  async function handleDelete() {
+  // Buoc 1: bam "Delete Asset" -> hien popup hoi chac chan
+  function requestDelete() {
+    setDetailError("");
+
+    if (locks.has(selectedAsset.id)) {
+      setDetailError(
+        `This asset is used in will "${locks.get(selectedAsset.id).willName}". ` +
+        "Remove it from the will before deleting."
+      );
+      return;
+    }
+
+    setConfirmDelete(true);
+  }
+
+  // Buoc 2: bam "Yes, continue" -> nhap PIN
+  function continueDeleteToPin() {
+    setConfirmDelete(false);
+    setPinAction("delete");
+    setShowPinModal(true);
+  }
+
+  // Buoc 3: PIN dung -> Backend cap Grant -> xoa Asset
+  async function handleDeleteWithGrant(grant) {
     setDeleting(true);
     setDetailError("");
 
     try {
-      await deleteAsset(selectedAsset.id);
+      await deleteAsset(selectedAsset.id, grant);
       closeDetail();
       await load();
     } catch (err) {
+      // Dong popup PIN va hien loi trong chi tiet Asset
+      setShowPinModal(false);
+      setPinAction(null);
       setDetailError(
         err.message ||
         "Cannot delete this asset. It may be linked to a Will."
@@ -1148,43 +1180,20 @@ export default function Assets() {
                 </p>
               )}
 
-              {confirmDelete && (
-                <p role="alert" className={styles.error}>
-                  Delete this asset permanently? Only assets not
-                  used in any Will can be deleted.
-                </p>
-              )}
-
               <div className={styles.modalActions}>
-                {!confirmDelete ? (
-                  <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    Delete Asset
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    disabled={deleting}
-                    onClick={handleDelete}
-                  >
-                    {deleting
-                      ? "Deleting..."
-                      : "Confirm Delete"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={styles.toggleBtn}
+                  disabled={deleting}
+                  onClick={requestDelete}
+                >
+                  Delete Asset
+                </button>
 
                 <button
                   type="button"
                   className={styles.secondaryBtn}
-                  onClick={
-                    confirmDelete
-                      ? () => setConfirmDelete(false)
-                      : closeDetail
-                  }
+                  onClick={closeDetail}
                 >
                   Close
                 </button>
@@ -1260,10 +1269,51 @@ export default function Assets() {
         </div>
       )}
 
-      {/* ONE SECURITY PIN FOR SHOW AND EDIT */}
+      {/* DELETE ASSET: popup hoi chac chan truoc khi nhap PIN */}
+      {confirmDelete && selectedAsset && (
+        <div
+          className={styles.overlay}
+          style={{ zIndex: 60 }}
+          onClick={() => setConfirmDelete(false)}
+        >
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete asset"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>Delete this asset?</h2>
+            <p className={styles.assetDesc} style={{ marginBottom: 18 }}>
+              Are you sure you want to permanently delete{" "}
+              <strong>{selectedAsset.name}</strong>? This cannot be undone.
+              You will need to enter your Security PIN to confirm.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                style={{ background: "var(--bad)" }}
+                onClick={continueDeleteToPin}
+              >
+                Yes, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ONE SECURITY PIN FOR SHOW, EDIT AND DELETE */}
       {showPinModal && selectedAsset && (
         <SecurityPinModal
-          scope="ASSET_SECRET"
+          scope={pinAction === "delete" ? "ASSET_DELETE" : "ASSET_SECRET"}
           resourceId={selectedAsset.id}
           onVerified={handleAssetPinVerified}
           onClose={() => {

@@ -22,6 +22,10 @@ namespace LegacyVault.Models
         // This assignment is scoped to the entire Will, not an individual asset.
         public string Scope { get; set; } = "WILL";
 
+        // Executor removed this (declined) request from their own dashboard.
+        // The row is kept so the Owner's Will history is not affected.
+        public bool HiddenByExecutor { get; set; }
+
         public Will? Will { get; set; }
 
         public Account? ExecutorAccount { get; set; }

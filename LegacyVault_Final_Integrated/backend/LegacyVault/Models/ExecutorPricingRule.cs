@@ -25,13 +25,13 @@ namespace LegacyVault.Models
         public static ExecutorPricingRule Default() => new()
         {
             Id = Guid.Empty,
-            BaseFee = 3_000_000m,
-            PerExperienceYear = 200_000m,
+            BaseFee = 10_000_000m,
+            PerExperienceYear = 500_000m,
             PerStar = 300_000m,
-            PerCompletedCase = 20_000m,
+            PerCompletedCase = 200_000m,
             WinRateBonus = 1_000_000m,
-            MinFee = 2_000_000m,
-            MaxFee = 15_000_000m,
+            MinFee = 10_000_000m,
+            MaxFee = 30_000_000m,
             RoundTo = 10_000m,
             Currency = "VND",
             UpdatedAt = DateTimeOffset.UtcNow

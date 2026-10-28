@@ -1,15 +1,25 @@
+/* Executor Dashboard
+   Uses the app tokens from index.css: vault green for actions, brass for money held.
+   The fee panel is the one deep-green block on the page; everything else stays quiet. */
+
 .page {
   min-height: 100%;
-  padding: 0;
+  padding: 0 0 56px;
 }
 
+/* ---------- Header ---------- */
 .header {
-  max-width: 1100px;
-  margin: 0 auto 24px;
+  max-width: 1180px;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 40px;
+  flex-wrap: wrap;
 }
 
 .title {
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 600;
   color: var(--ink);
   margin: 0;
@@ -17,51 +27,104 @@
 
 .subtitle {
   color: var(--muted);
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 14px;
+  max-width: 52ch;
 }
 
+.stats {
+  display: flex;
+  margin: 0;
+  border-left: 1px solid var(--line-strong);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 2px 22px;
+  border-right: 1px solid var(--line-strong);
+}
+
+.stat:last-child {
+  border-right: none;
+}
+
+.statValue {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--vault-deep);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- Messages ---------- */
 .info {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   color: var(--muted);
 }
 
 .errorBox {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto 16px;
   color: var(--bad);
   background: var(--bad-soft);
   border: 1px solid var(--bad-line);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  font-size: 14px;
 }
 
 .toast {
-  max-width: 1100px;
-  margin: 0 auto 16px;
-  background: var(--ok-soft);
-  color: var(--ok);
-  border: 1px solid var(--ok-line);
-  border-radius: 8px;
-  padding: 10px 14px;
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 80;
+  background: var(--vault-deep);
+  color: #fff;
+  border-radius: 999px;
+  padding: 11px 22px;
   font-size: 14px;
   font-weight: 600;
+  box-shadow: var(--shadow-pop);
+  animation: toastIn 0.22s ease-out;
 }
 
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- Grid & cards ---------- */
 .grid {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 
 .card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
   border: 1px solid var(--line);
+  min-width: 0;
 }
 
 .cardWide {
@@ -69,19 +132,119 @@
 }
 
 .cardTitle {
-  font-size: 15px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 600;
   color: var(--ink);
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Fee panel ---------- */
+.feeRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.feeCard {
+  background: var(--vault-deep);
+  border-color: var(--vault-deep);
+  color: #fff;
+}
+
+.feeCard .cardTitle {
+  color: #fff;
+  font-size: 16px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.feeCard .feeAmount {
+  color: var(--brass-bright);
+}
+
+.feeCard .metaText {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+}
+
+.feeCard .secondaryBtn {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #fff;
+}
+
+.feeCard .secondaryBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.feeCard .primaryBtn {
+  background: var(--brass-bright);
+  color: var(--vault-deep);
+}
+
+.feeCard .primaryBtn:hover:not(:disabled) {
+  background: #d8b45e;
+}
+
+.feeCard .feeInput {
+  background: #fff;
+  border-color: transparent;
+}
+
+.feeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.feeAmount {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 4px 0 6px;
+}
+
+.feeInput {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: 18px;
+}
+
+/* ---------- Lists ---------- */
 .list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   font-size: 14px;
   color: var(--ink-2);
 }
@@ -90,84 +253,126 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--paper-2);
-  border-radius: 10px;
+  gap: 14px;
+}
+
+.listItem strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.listItemColumn {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.listItemColumn:first-child {
+  padding-top: 4px;
+}
+
+.listItemColumn:last-child {
+  padding-bottom: 4px;
+  border-bottom: none;
 }
 
 .itemRight {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
 .actionRow {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .metaText {
   color: var(--faint);
-  font-size: 12px;
-  margin-top: 2px;
+  font-size: 12.5px;
+  margin-top: 3px;
 }
 
 .mutedText {
   color: var(--faint);
   font-size: 14px;
   margin: 0;
+  padding: 18px 0 6px;
 }
 
-.primaryBtn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--vault);
-  color: #fff;
+.deadlineOverdue {
+  color: var(--bad);
+  font-size: 12.5px;
   font-weight: 600;
+  margin-top: 3px;
+}
+
+/* ---------- Buttons ---------- */
+.primaryBtn,
+.secondaryBtn,
+.dangerBtn,
+.dangerBtnSolid,
+.triggerSubmitBtn {
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
 }
 
-.primaryBtn:hover {
+.primaryBtn,
+.triggerSubmitBtn {
+  border: 1px solid var(--vault);
+  background: var(--vault);
+  color: #fff;
+}
+
+.primaryBtn:hover:not(:disabled),
+.triggerSubmitBtn:hover:not(:disabled) {
   background: var(--vault-hover);
 }
 
-.primaryBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .secondaryBtn {
-  padding: 6px 12px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
   background: #fff;
   color: var(--ink-2);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
-.secondaryBtn:hover {
-  background: var(--paper-2);
+.secondaryBtn:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--faint);
 }
 
-.secondaryBtn:disabled {
-  opacity: 0.6;
+.dangerBtn {
+  border: 1px solid var(--bad-line);
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.dangerBtn:hover {
+  filter: brightness(0.97);
+}
+
+.dangerBtnSolid {
+  border: 1px solid var(--bad);
+  background: var(--bad);
+  color: #fff;
+}
+
+.dangerBtnSolid:hover {
+  filter: brightness(0.92);
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.triggerSubmitBtn:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
-}
-
-.listItemColumn {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 12px;
-  border: 1px solid var(--paper-2);
-  border-radius: 10px;
 }
 
 .linkBtn {
@@ -177,74 +382,86 @@
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 0;
 }
 
 .linkBtn:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
+/* ---------- Detail panel ---------- */
 .detailPanel {
-  margin-top: 10px;
-  padding: 10px 12px;
+  margin-top: 12px;
+  padding: 14px 16px;
   background: var(--paper);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  animation: reveal 0.18s ease-out;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .detailRow {
   display: flex;
   justify-content: space-between;
+  gap: 16px;
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--ink);
 }
 
 .detailRow span:first-child {
   color: var(--muted);
 }
 
+.detailRow span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .assetDetailCard {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: var(--radius);
+  padding: 10px 12px;
   margin-top: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.feeInput {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.feeAmount {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 0;
-}
-
-.deadlineOverdue {
-  color: var(--bad);
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 2px;
-}
-
+/* ---------- Status badges ---------- */
 .badge {
-  display: inline-block;
-  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px 3px 9px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  background: var(--paper-2);
+  color: var(--muted);
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .PENDING,
@@ -265,15 +482,19 @@
 }
 
 .DECLINED,
-.REJECTED {
+.REJECTED,
+.TRIGGERED,
+.THRESHOLD_REACHED {
   background: var(--bad-soft);
   color: var(--bad);
 }
 
+/* ---------- Modals ---------- */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(21, 59, 51, 0.45);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -283,18 +504,18 @@
 
 .modal {
   background: #fff;
-  border-radius: 14px;
-  padding: 26px;
+  border-radius: var(--radius-lg);
+  padding: 28px;
   width: 100%;
-  max-width: 420px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  max-width: 440px;
+  box-shadow: var(--shadow-pop);
 }
 
 .modalTitle {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 600;
   color: var(--ink);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 
 .uploadArea {
@@ -302,48 +523,53 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  margin-top: 14px;
-  padding: 28px 16px;
-  border: 2px dashed var(--line-strong);
-  border-radius: 10px;
+  margin-top: 16px;
+  padding: 30px 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
   color: var(--muted);
   font-size: 13px;
   cursor: pointer;
   background: var(--paper);
+  overflow-wrap: anywhere;
 }
 
 .uploadArea:hover {
   background: var(--paper-2);
-  border-color: var(--vault-line);
+  border-color: var(--vault);
 }
 
 .hiddenFileInput {
   display: none;
 }
 
-
-/* DMS Trigger card */
+/* ---------- DMS triggers ---------- */
 .triggerCardItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 16px;
-  border: 1px solid var(--paper-2);
-  border-radius: 12px;
-  background: #fff;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.triggerCardItem:first-child {
+  padding-top: 4px;
+}
+
+.triggerCardItem:last-child {
+  padding-bottom: 4px;
+  border-bottom: none;
+}
+
+.triggerCardItem strong {
+  color: var(--ink);
 }
 
 .triggerInfo {
   flex: 1 1 180px;
   min-width: 0;
-}
-
-.triggerInfo strong {
-  display: block;
-  margin-bottom: 5px;
-  overflow-wrap: anywhere;
 }
 
 .triggerActions {
@@ -355,31 +581,38 @@
   flex-shrink: 0;
 }
 
-.triggerSubmitBtn {
-  padding: 9px 14px;
-  border: none;
-  border-radius: 9px;
-  background: var(--vault);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.2s ease;
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .grid,
+  .feeRow {
+    grid-template-columns: 1fr;
+  }
 }
 
-.triggerSubmitBtn:hover:not(:disabled) {
-  background: var(--vault-hover);
-}
+@media (max-width: 640px) {
+  .title {
+    font-size: 28px;
+  }
 
-.triggerSubmitBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+  .stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-left: none;
+    row-gap: 14px;
+  }
 
-@media (max-width: 600px) {
-  .triggerCardItem {
-    align-items: stretch;
+  .stat {
+    padding: 0 16px 0 0;
+    border-right: none;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .listItem {
+    flex-wrap: wrap;
   }
 
   .triggerActions {
@@ -391,3 +624,9 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .detailPanel {
+    animation: none;
+  }
+}

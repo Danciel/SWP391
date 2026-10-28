@@ -20,7 +20,7 @@ public class ExecutorInboxController : ControllerBase
     {
         var me=_user.GetRequiredAccountId();
         var assignments=await _db.ExecutorAssignments.AsNoTracking()
-            .Where(x=>x.ExecutorAccountId==me && x.Will!=null && x.Will.Status!="DRAFT")
+            .Where(x=>x.ExecutorAccountId==me && !x.HiddenByExecutor && x.Will!=null && x.Will.Status!="DRAFT")
             .OrderByDescending(x=>x.AssignedAt)
             .Select(x=>new {
                 id=x.Id, willId=x.WillId, willTitle=x.Will!.Title,
@@ -110,6 +110,28 @@ public class ExecutorInboxController : ControllerBase
         });
         await _db.SaveChangesAsync();
         return Ok(new {assignment.Id,assignment.WillId,assignment.Status,willStatus=assignment.Will.Status});
+    }
+    // Executor removes a DECLINED request from their own dashboard (needs a fresh PIN grant).
+    // The row is only hidden, so the Owner's Will / refund history stays intact.
+    [HttpDelete("{id:guid}")]
+    [RequireOwnerPin(OwnerPinScopes.ExecutorRequestDelete)]
+    public async Task<IActionResult> DeleteDeclined(Guid id)
+    {
+        var me=_user.GetRequiredAccountId();
+        var assignment=await _db.ExecutorAssignments.FirstOrDefaultAsync(x=>x.Id==id && x.ExecutorAccountId==me);
+        if (assignment==null) return NotFound(new {message="Executor request not found."});
+        if (assignment.Status!="DECLINED") return BadRequest(new {message="Only declined requests can be deleted."});
+        assignment.HiddenByExecutor=true;
+        _db.AuditLogs.Add(new LegacyVault.Models.AuditLog
+        {
+            Id = Guid.NewGuid(), ActorAccountId = me,
+            Action = "EXECUTOR_REQUEST_DELETED",
+            EntityType = "ExecutorAssignment", EntityId = assignment.Id,
+            Details = System.Text.Json.JsonSerializer.Serialize(new { assignment.WillId }),
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
     public class ExecutorDecision { public bool Accept {get;set;} }
 }

@@ -18,6 +18,7 @@ public sealed class AssetMaintenanceController : ControllerBase
     { _db = db; _currentUser = currentUser; _assetService = assetService; }
 
     [HttpDelete("{id:guid}")]
+    [RequireOwnerPin(OwnerPinScopes.AssetDelete)]
     public async Task<IActionResult> DeleteUnused(Guid id)
     {
         var owner = _currentUser.GetRequiredAccountId();

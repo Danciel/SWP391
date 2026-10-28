@@ -1,17 +1,17 @@
 .card {
-  grid-column: 1 / -1;
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  min-width: 0;
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 600;
   color: var(--ink);
   margin: 0;
 }
@@ -20,31 +20,71 @@
   margin: 0;
   font-size: 13px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 8px 16px;
 }
 
+/* Suggested vs. current fee */
 .summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.summary > div {
+  padding-right: 20px;
+}
+
+.summary > div + div {
+  padding: 0 0 0 20px;
+  border-left: 1px solid var(--line);
 }
 
 .label {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--faint);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .big {
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
   color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* One-line verdict, toned by where the fee sits */
+.position {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ABOVE {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.BELOW {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.AT {
+  background: var(--vault-soft);
+  color: var(--vault);
 }
 
 .parts {
@@ -58,36 +98,38 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--ink-2);
 }
 
 .parts em {
+  display: block;
   font-style: normal;
   color: var(--faint);
   font-size: 12px;
-  margin-left: 6px;
 }
 
 .primaryBtn,
-.secondaryBtn {
-  align-self: flex-start;
-  padding: 9px 16px;
-  border-radius: 8px;
-  font-size: 14px;
+.secondaryBtn,
+.ghostBtn {
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .primaryBtn {
-  border: none;
+  border: 1px solid var(--vault);
   background: var(--vault);
   color: #fff;
-  font-weight: 600;
 }
 
-.primaryBtn:hover {
+.primaryBtn:hover:not(:disabled) {
   background: var(--vault-hover);
 }
 
@@ -97,18 +139,50 @@
   color: var(--ink-2);
 }
 
+.secondaryBtn:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--faint);
+}
+
+/* Buttons on the dark fee panel */
+.ghostBtn {
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: transparent;
+  color: #fff;
+}
+
+.ghostBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .primaryBtn:disabled,
-.secondaryBtn:disabled {
+.secondaryBtn:disabled,
+.ghostBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  color: var(--vault);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .error,
 .success {
   margin: 0;
   padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
 }
 
 .error {
@@ -121,4 +195,17 @@
   background: var(--ok-soft);
   border: 1px solid var(--ok-line);
   color: var(--ok);
+}
+
+@media (max-width: 480px) {
+  .summary {
+    grid-template-columns: 1fr;
+    row-gap: 14px;
+  }
+
+  .summary > div + div {
+    padding: 14px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
 }

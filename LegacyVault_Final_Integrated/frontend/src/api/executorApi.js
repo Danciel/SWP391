@@ -126,6 +126,17 @@ export const respondToExecutorRequest = ({ requestId, accept }) =>
         body: { accept },
     });
 
+// Executor removes a DECLINED request from the dashboard (needs a PIN grant).
+export const deleteExecutorRequest = ({ requestId, pinGrant }) => {
+    if (!pinGrant) {
+        throw new Error("Security PIN is required.");
+    }
+    return request(`/executor-inbox/${requestId}`, {
+        method: "DELETE",
+        headers: { "X-Owner-Pin-Grant": pinGrant },
+    });
+};
+
 // LV-29: list cases belonging to the authenticated Executor.
 export const getExecutorLegalCases = (status) => {
     const query = status

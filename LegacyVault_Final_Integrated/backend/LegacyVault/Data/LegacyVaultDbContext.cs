@@ -438,6 +438,9 @@ namespace LegacyVault.Data
                     .HasDefaultValue("WILL")
                     .IsRequired();
 
+                entity.Property(x => x.HiddenByExecutor)
+                    .HasDefaultValue(false);
+
                 // One Executor assignment per Will (whole-Will scope).
                 entity.HasIndex(x => x.WillId).IsUnique();
 

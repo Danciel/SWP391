@@ -264,7 +264,8 @@ public sealed class OwnerSecurityPinController : ControllerBase
 
         if (request.ResourceId == Guid.Empty ||
             request.Scope is not
-                ("ASSET_SECRET" or "WILL_DETAIL"))
+                ("ASSET_SECRET" or "WILL_DETAIL"
+                    or "ASSET_DELETE" or "EXECUTOR_REQUEST_DELETE"))
         {
             return BadRequest(new
             {
