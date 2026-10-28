@@ -259,3 +259,13 @@
   font-size: 14px;
   cursor: pointer;
 }
+
+.HANDOVER_IN_PROGRESS {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.HANDED_OVER {
+  background: var(--ok-soft);
+  color: var(--ok);
+}

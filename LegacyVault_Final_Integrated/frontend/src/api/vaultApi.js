@@ -211,28 +211,43 @@ export const checkInDms = async (userId, id, pinGrant = null) => {
 };
 export const cancelDeathHandover = unsupported("Cancel death handover");
 
+// Immediate Handover needs a fresh Security PIN grant (scope HANDOVER_START,
+// resource = Will ID). The optional detailGrant is the WILL_DETAIL grant used to
+// re-read the will afterwards.
 export const requestImmediateHandover = async (
   userId,
   id,
-  pinGrant = null
+  handoverGrant,
+  detailGrant = null
 ) => {
-  const result = await r(`/handover/${id}/immediate`, "POST");
-
-  // Khi goi tu Will Detail, da co PIN Grant
-  if (pinGrant) {
-    return getWill(userId, id, pinGrant);
+  if (!handoverGrant) {
+    throw new Error("Security PIN is required.");
   }
 
-  // Khi goi tu My Wills, khong tu dong doc chi tiet
+  const result = await r(
+    `/handover/${id}/immediate`,
+    "POST",
+    undefined,
+    { "X-Owner-Pin-Grant": handoverGrant }
+  );
+
+  // Called from Will Detail: reload the will with its existing PIN grant.
+  if (detailGrant) {
+    return getWill(userId, id, detailGrant);
+  }
+
+  // Called from My Wills: the caller reloads the list itself.
   return result;
 };
 export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
-export const getInheritedWills = async () => [];
-export const getInheritedWill = unsupported("Inherited will details");
-export const issueClaimKey = unsupported("Claim key");
-export const confirmClaim = unsupported("Confirm claim");
+export {
+  getInheritedWills,
+  getInheritedWill,
+  claimInheritedItem,
+  revealInheritedSecret,
+} from "./inheritanceApi";
 export async function getOwnerDashboardData() { const [wills, assets] = await Promise.all([getWills(), getAssets()]); const main = wills.find(w => w.status === "ACTIVE") || wills[0]; const detail = main ? await getWill(null, main.id) : null; return { vaultStatus: detail?.status || "LOCKED", deadManSwitch: detail?.dms ? { enabled: detail.dms.enabled, willId: detail.id, checkInCycleDays: detail.dms.checkInDays, lastCheckIn: detail.dms.lastCheckIn, nextCheckInDue: detail.dms.nextCheckInAt, missedCount: detail.dms.missedCount, maxMissed: detail.dms.maxMissed, caseOpen: false } : { enabled: false }, assets: assets.map(a => ({ ...a, beneficiary: null })), executors: detail?.executor ? [{ id: detail.executor.id, name: detail.executor.name, status: detail.executor.status }] : [], beneficiaries: (detail?.beneficiaries || []).map(b => ({ id: b.id, name: b.fullName, assetsAssigned: (detail.assignments || []).filter(a => a.beneficiaryDesignationId === b.id).length })), recentActivity: [] }; }
 
 // ---- Owner: notifications, wallet, executor review ----

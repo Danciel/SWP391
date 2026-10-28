@@ -40,13 +40,12 @@ export const getExecutorDashboard = async () => {
                 if (!result) return null;
 
                 const status = result.status ?? result.handoverStatus;
-                const willStatus = result.willStatus;
 
-                // Include a handover only when its status confirms it is active.
+                // Show every real handover run (running, paused, finished).
                 if (
                     status !== "IN_PROGRESS" &&
-                    status !== "HANDOVER_IN_PROGRESS" &&
-                    willStatus !== "HANDOVER_IN_PROGRESS"
+                    status !== "PAUSED" &&
+                    status !== "COMPLETED"
                 ) {
                     return null;
                 }
@@ -62,6 +61,8 @@ export const getExecutorDashboard = async () => {
                         will.willTitle ??
                         "Untitled Will",
                     status,
+                    type: result.type ?? "IMMEDIATE",
+                    completedAt: result.completedAt ?? null,
                     requestedAt:
                         result.startedAt ??
                         result.requestedAt ??
@@ -81,6 +82,7 @@ export const getExecutorDashboard = async () => {
                             allocationPercentage:
                                 item.allocationPercentage ?? null,
                             status: item.status ?? "PENDING",
+                            deliveredAt: item.deliveredAt ?? null,
                         }))
                         : [],
                 };
@@ -93,11 +95,6 @@ export const getExecutorDashboard = async () => {
                 return null;
             }
         })
-    );
-
-    console.log(
-        "LV-32 handoverRequests:",
-        handoverResults.filter(Boolean)
     );
 
 
@@ -152,7 +149,7 @@ export const getExecutorLegalCase = (caseId) =>
 
 // LV-29: upload one file.
 // Backend requires multipart/form-data: willId + file.
-export const submitExecutorLegalDocuments = async ({ willId, file }) => {
+export const submitExecutorLegalDocuments = async ({ willId, file, certificateData }) => {
     if (!willId) {
         throw new Error("Missing willId.");
     }
@@ -174,6 +171,11 @@ export const submitExecutorLegalDocuments = async ({ willId, file }) => {
     const formData = new FormData();
     formData.append("willId", willId);
     formData.append("file", file);
+
+    // Optional: what the Executor typed on the death-certificate form.
+    if (certificateData) {
+        formData.append("certificateData", JSON.stringify(certificateData));
+    }
 
     return request("/legal-cases", {
         method: "POST",
@@ -203,9 +205,24 @@ export const getHandoverByWill = (willId) => {
     return request(`/handover/${willId}`);
 };
 
-export const respondToHandoverRequest = unsupported(
-    "Executor handover response"
-);
+// Executor hands one asset-to-beneficiary item over (LV-32/33).
+export const deliverHandoverItem = (itemId) => {
+    if (!itemId) {
+        throw new Error("Missing handover item ID.");
+    }
+
+    return request(`/handover/items/${itemId}/deliver`, { method: "POST" });
+};
+
+// LV-33: after Legal Verify approved the death certificate, the Executor
+// starts the handover (same flow as an immediate handover from here on).
+export const startDeathHandover = (willId) => {
+    if (!willId) {
+        throw new Error("Missing Will ID.");
+    }
+
+    return request(`/handover/${willId}/start`, { method: "POST" });
+};
 
 export const getExecutorDmsTriggers = () =>
     request("/executor-inbox/triggers");

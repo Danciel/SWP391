@@ -207,3 +207,8 @@
   margin: 10px 0 14px;
   letter-spacing: 0.05em;
 }
+
+.secretOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.secretModal { background: #fff; border-radius: 14px; padding: 22px; width: 100%; max-width: 460px; }
+.secretRow { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #eef0f3; }
+.secretValue { font-family: ui-monospace, Menlo, monospace; font-size: 13px; word-break: break-all; }

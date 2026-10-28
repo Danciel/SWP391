@@ -5,12 +5,14 @@ import {
   openExecutorCase,
   submitExecutorLegalDocuments,
   verifyCaseProfile,
-  respondToHandoverRequest,
+  deliverHandoverItem,
+  startDeathHandover,
   deleteExecutorRequest,
 } from "../../api/executorApi";
 import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
 import ExecutorPricingCard, { EvaluationCsvActions } from "../../components/ExecutorPricingCard/ExecutorPricingCard";
 import useExecutorPricing from "../../components/ExecutorPricingCard/useExecutorPricing";
+import DeathCertificateModal from "../../components/DeathCertificate/DeathCertificateModal";
 import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import { getStoredUser } from "../../api/client";
 import styles from "./ExecutorDashboard.module.css";
@@ -31,6 +33,10 @@ const STATUS_LABEL = {
   APPROVED: "Approved",
   REJECTED: "Rejected",
   CONFIRMED: "Confirmed",
+  IN_PROGRESS: "In progress",
+  PAUSED: "Paused",
+  PENDING_REVIEW: "Pending Review",
+  DELIVERED: "Delivered",
 };
 
 function isOverdue(deadlineAt) {
@@ -69,6 +75,7 @@ export default function ExecutorDashboard() {
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploadWillId, setUploadWillId] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
+  const [uploadOwnerName, setUploadOwnerName] = useState("");
   // Delete a declined request: 1) confirm popup  2) PIN popup
   const [deleteConfirmReq, setDeleteConfirmReq] = useState(null);
   const [deletePinReq, setDeletePinReq] = useState(null);
@@ -259,22 +266,45 @@ export default function ExecutorDashboard() {
     }
   }
 
-  async function handleHandoverResponse(requestId, confirm) {
-    setBusyId(requestId);
+  // Executor hands ONE asset to its beneficiary. When the last item is
+  // delivered the backend completes the handover and releases the
+  // remaining fee to this Executor's wallet.
+  async function handleDeliver(itemId) {
+    setBusyId(itemId);
+    setError("");
     try {
-      await respondToHandoverRequest({ requestId, confirm });
-      showToast(confirm ? "Handover confirmed" : "Handover declined");
+      const result = await deliverHandoverItem(itemId);
+      showToast(
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "Asset delivered to the beneficiary"
+      );
       await load();
     } catch (err) {
-      setError(err.message || "Action failed");
+      setError(err.message || "Could not deliver this asset");
     } finally {
       setBusyId(null);
     }
   }
 
+  // After Legal Verify approved the death certificate.
+  async function handleStartHandover(willId) {
+    setBusyId(willId);
+    setError("");
+    try {
+      await startDeathHandover(willId);
+      showToast("Handover started. Deliver each asset to its beneficiary.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not start the handover");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
-  function openLegalDocumentUpload(willId) {
+  function openLegalDocumentUpload(willId, ownerName) {
     setUploadWillId(willId);
+    setUploadOwnerName(ownerName || "");
     setUploadFile(null);
     setError("");
   }
@@ -284,36 +314,22 @@ export default function ExecutorDashboard() {
     setUploadFile(null);
   }
 
-  function handleLegalDocumentSelected(event) {
-    const file = event.target.files?.[0] ?? null;
-    setUploadFile(file);
-  }
-
-  async function handleLegalDocumentSubmit() {
-    if (!uploadWillId) {
-      setError("Missing Will ID.");
-      return;
-    }
-
-    if (!uploadFile) {
-      setError("Please select a document.");
-      return;
-    }
+  // Called by the certificate form / upload dialog. Errors are thrown back
+  // so the dialog can show them.
+  async function handleCertificateSubmit({ file, certificateData }) {
+    if (!uploadWillId) throw new Error("Missing Will ID.");
 
     setBusyId(uploadWillId);
-    setError("");
-
     try {
       await submitExecutorLegalDocuments({
         willId: uploadWillId,
-        file: uploadFile,
+        file,
+        certificateData,
       });
 
-      showToast("Legal document submitted successfully.");
+      showToast("Death certificate sent to Legal Verify.");
       closeLegalDocumentUpload();
       await load();
-    } catch (err) {
-      setError(err.message || "Could not submit legal document.");
     } finally {
       setBusyId(null);
     }
@@ -326,7 +342,7 @@ export default function ExecutorDashboard() {
         { label: "Pending requests", value: data.requests.filter((r) => r.status === "PENDING").length },
         { label: "Active wills", value: data.activeWills.length },
         { label: "Triggers", value: dmsTriggers.length },
-        { label: "Open cases", value: data.cases.filter((c) => c.status === "OPEN").length },
+        { label: "Cases awaiting review", value: data.cases.filter((c) => c.status === "PENDING").length },
       ]
     : [];
 
@@ -515,76 +531,62 @@ export default function ExecutorDashboard() {
             )}
           </section>
 
-          <section className={styles.card}>
+          <section className={`${styles.card} ${styles.cardWide}`}>
             <h2 className={styles.cardTitle}>
-              Immediate Handover Requests <span className={styles.count}>{data.handoverRequests.length}</span>
+              Handovers <span className={styles.count}>{data.handoverRequests.length}</span>
             </h2>
             {data.handoverRequests.length === 0 ? (
-              <p className={styles.mutedText}>No immediate handover requests</p>
+              <p className={styles.mutedText}>No handover has been started yet</p>
             ) : (
               <ul className={styles.list}>
-                {data.handoverRequests.map((hr) => {
-                  const deadline = hr.status === "PENDING" ? formatDeadline(hr.deadlineAt) : null;
-                  return (
-                    <li key={hr.id} className={styles.listItemColumn}>
-                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                        <div>
-                          <strong>{hr.ownerName}</strong>
-                          <div className={styles.metaText}>
-                            {hr.willTitle} · Requested {formatDate(hr.requestedAt)}
-                          </div>
-                          {deadline && (
-                            <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
-                              {deadline.text}
-                            </div>
-                          )}
+                {data.handoverRequests.map((hr) => (
+                  <li key={hr.id} className={styles.listItemColumn}>
+                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                      <div>
+                        <strong>{hr.ownerName}</strong>
+                        <div className={styles.metaText}>
+                          {hr.willTitle} ·{" "}
+                          {hr.type === "DEATH" ? "After death (certificate approved)" : "Immediate (Owner still alive)"} ·
+                          Started {formatDate(hr.requestedAt)}
                         </div>
-                        <div className={styles.itemRight}>
-                          <Badge status={hr.status} />
-                          <button className={styles.linkBtn} onClick={() => toggleExpanded(hr.id)}>
-                            {expandedId === hr.id ? "Hide Details" : "View Details"}
-                          </button>
+                        <div className={styles.metaText}>
+                          {hr.deliveredItems} / {hr.totalItems} assets delivered
                         </div>
                       </div>
+                      <div className={styles.itemRight}>
+                        <Badge status={hr.status} />
+                      </div>
+                    </div>
 
-                      {expandedId === hr.id && (
-                        <div className={styles.detailPanel}>
-                          <p className={styles.metaText}>
-                            The Owner wants to hand these assets over now, while still alive. Confirm only
-                            once you've checked each beneficiary exists and is valid.
-                          </p>
-                          {(hr.assets || []).map((a) => (
-                            <div className={styles.detailRow} key={a.id}>
-                              <span>{a.name} ({a.type})</span>
-                              <span>→ {a.beneficiaryName}</span>
-                            </div>
-                          ))}
-                        </div>
+                    <div className={styles.detailPanel}>
+                      {hr.status === "PAUSED" && (
+                        <p className={styles.metaText}>
+                          This handover is paused while a problem is being reviewed by Admin.
+                        </p>
                       )}
-
-                      {hr.status === "PENDING" && (
-                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                          <button
-                            className={styles.primaryBtn}
-                            disabled={busyId === hr.id || deadline?.overdue}
-                            onClick={() => handleHandoverResponse(hr.id, true)}
-                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            className={styles.secondaryBtn}
-                            disabled={busyId === hr.id || deadline?.overdue}
-                            onClick={() => handleHandoverResponse(hr.id, false)}
-                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                          >
-                            Decline
-                          </button>
+                      {(hr.assets || []).map((a) => (
+                        <div className={styles.detailRow} key={a.id}>
+                          <span>
+                            {a.name} ({a.type}) → {a.beneficiaryName}
+                            {a.relationship ? ` · ${a.relationship}` : ""}
+                            {a.allocationPercentage != null ? ` · ${a.allocationPercentage}%` : ""}
+                          </span>
+                          {a.status === "DELIVERED" ? (
+                            <span>✓ Delivered</span>
+                          ) : (
+                            <button
+                              className={styles.primaryBtn}
+                              disabled={busyId === a.id || hr.status !== "IN_PROGRESS"}
+                              onClick={() => handleDeliver(a.id)}
+                            >
+                              {busyId === a.id ? "Delivering..." : "Deliver"}
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  );
-                })}
+                      ))}
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </section>
@@ -735,7 +737,7 @@ export default function ExecutorDashboard() {
                           <button
                             className={styles.triggerSubmitBtn}
                             disabled={busyId === trig.willId}
-                            onClick={() => openLegalDocumentUpload(trig.willId)}
+                            onClick={() => openLegalDocumentUpload(trig.willId, trig.ownerName)}
                           >
                             Submit Legal Document
                           </button>
@@ -754,11 +756,13 @@ export default function ExecutorDashboard() {
               Legal Cases <span className={styles.count}>{data.cases.length}</span>
             </h2>
             {data.cases.length === 0 ? (
-              <p className={styles.mutedText}>No cases opened yet</p>
+              <p className={styles.mutedText}>No death certificate submitted yet</p>
             ) : (
               <ul className={styles.list}>
                 {data.cases.map((c) => {
-                  const overdue = c.deadlineAt && !c.profileVerified && new Date(c.deadlineAt) < new Date();
+                  const handoverStarted = data.handoverRequests.some(
+                    (h) => h.willId === c.willId && h.type === "DEATH"
+                  );
                   return (
                     <li key={c.id} className={styles.listItemColumn}>
                       <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
@@ -767,80 +771,53 @@ export default function ExecutorDashboard() {
                           <div className={styles.metaText}>
                             Will: {c.willTitle || "—"} · Submitted: {formatDate(c.submittedAt)}
                           </div>
-                          {c.status === "OPEN" && (
-                            <div className={overdue ? styles.deadlineOverdue : styles.metaText}>
-                              {overdue ? "Overdue — " : "Processing deadline: "}
-                              {formatDate(c.deadlineAt)}
-                            </div>
+                          {c.reviewedAt && (
+                            <div className={styles.metaText}>Reviewed: {formatDate(c.reviewedAt)}</div>
+                          )}
+                          {c.status === "REJECTED" && c.reviewNote && (
+                            <div className={styles.deadlineOverdue}>Reason: {c.reviewNote}</div>
                           )}
                         </div>
                         <div className={styles.itemRight}>
                           <Badge status={c.status} />
-                          <button className={styles.linkBtn} onClick={() => toggleExpanded(c.id)}>
-                            {expandedId === c.id ? "Hide Details" : "View Details"}
-                          </button>
                         </div>
                       </div>
 
-                      {expandedId === c.id && (
-                        <div className={styles.detailPanel}>
-                          <div className={styles.detailRow}>
-                            <span>Will ID</span>
-                            <span>{c.willId || "—"}</span>
-                          </div>
+                      {c.status === "PENDING" && (
+                        <p className={styles.metaText} style={{ marginTop: 8 }}>
+                          Waiting for Legal Verify to check the certificate.
+                        </p>
+                      )}
 
-                          <div className={styles.detailRow}>
-                            <span>Will Title</span>
-                            <span>{c.willTitle || "—"}</span>
-                          </div>
-
-                          <div className={styles.detailRow}>
-                            <span>Owner</span>
-                            <span>{c.ownerName || "—"}</span>
-                          </div>
-
-                          <div className={styles.detailRow}>
-                            <span>Executor</span>
-                            <span>{c.executorName || "—"}</span>
-                          </div>
-
-                          <div className={styles.detailRow}>
-                            <span>Status</span>
-                            <span>{c.status || "—"}</span>
-                          </div>
-
-                          <div className={styles.detailRow}>
-                            <span>Submitted At</span>
-                            <span>{formatDate(c.submittedAt)}</span>
-                          </div>
-
-                          <div className={styles.detailRow}>
-                            <span>Reviewed At</span>
-                            <span>{formatDate(c.reviewedAt)}</span>
-                          </div>
+                      {c.status === "APPROVED" && !handoverStarted && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === c.willId}
+                            onClick={() => handleStartHandover(c.willId)}
+                          >
+                            {busyId === c.willId ? "Starting..." : "Start Handover"}
+                          </button>
+                          <span className={styles.metaText}>
+                            Legal Verify approved the certificate. Starting the handover also checks the Owner is DECEASED.
+                          </span>
                         </div>
                       )}
 
-                      {c.status === "OPEN" && (
+                      {c.status === "APPROVED" && handoverStarted && (
+                        <p className={styles.metaText} style={{ marginTop: 8 }}>
+                          Handover started — deliver the assets in the Handovers card above.
+                        </p>
+                      )}
+
+                      {c.status === "REJECTED" && (
                         <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                          {!c.profileVerified ? (
-                            <button
-                              className={styles.primaryBtn}
-                              disabled={busyId === c.id || overdue}
-                              onClick={() => handleVerifyProfile(c.id)}
-                              title={overdue ? "Deadline has passed for verifying this case" : undefined}
-                            >
-                              Verify Owner Profile
-                            </button>
-                          ) : (
-                            <button
-                              className={styles.primaryBtn}
-                              disabled={busyId === c.id}
-                              onClick={() => openUploadPopup(c.id)}
-                            >
-                              Submit Legal Documents
-                            </button>
-                          )}
+                          <button
+                            className={styles.secondaryBtn}
+                            onClick={() => openLegalDocumentUpload(c.willId, c.ownerName)}
+                          >
+                            Submit a new certificate
+                          </button>
                         </div>
                       )}
                     </li>
@@ -917,57 +894,12 @@ export default function ExecutorDashboard() {
       )}
 
       {uploadWillId && (
-        <div
-          className={styles.overlay}
-          onClick={closeLegalDocumentUpload}
-        >
-          <div
-            className={styles.modal}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 className={styles.modalTitle}>
-              Submit Legal Document
-            </h2>
-
-            <p className={styles.metaText}>
-              Choose one PDF, JPG, JPEG, or PNG file. Maximum size: 5 MB.
-            </p>
-
-            <label className={styles.uploadArea}>
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                className={styles.hiddenFileInput}
-                onChange={handleLegalDocumentSelected}
-              />
-
-              <span>
-                {uploadFile ? uploadFile.name : "Choose a document"}
-              </span>
-            </label>
-
-            <div
-              className={styles.actionRow}
-              style={{ justifyContent: "flex-end", marginTop: 16 }}
-            >
-              <button
-                className={styles.secondaryBtn}
-                disabled={busyId === uploadWillId}
-                onClick={closeLegalDocumentUpload}
-              >
-                Cancel
-              </button>
-
-              <button
-                className={styles.primaryBtn}
-                disabled={!uploadFile || busyId === uploadWillId}
-                onClick={handleLegalDocumentSubmit}
-              >
-                {busyId === uploadWillId ? "Uploading..." : "Submit"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeathCertificateModal
+          ownerName={uploadOwnerName}
+          busy={busyId === uploadWillId}
+          onSubmit={handleCertificateSubmit}
+          onClose={closeLegalDocumentUpload}
+        />
       )}
 
     </div>

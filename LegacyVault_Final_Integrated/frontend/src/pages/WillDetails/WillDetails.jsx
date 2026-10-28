@@ -66,6 +66,7 @@ export default function WillDetails() {
   const [confirmingHandover, setConfirmingHandover] =
     useState(false);
   const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverPinOpen, setHandoverPinOpen] = useState(false);
   const [handoverError, setHandoverError] = useState("");
 
   const [checkInBusy, setCheckInBusy] = useState(false);
@@ -314,30 +315,31 @@ export default function WillDetails() {
   // ==========================================
   // IMMEDIATE HANDOVER
   // ==========================================
-  async function handleConfirmImmediateHandover() {
-    setHandoverBusy(true);
+  // Step 1: "Yes, Send to Executor" only opens the PIN dialog.
+  function handleConfirmImmediateHandover() {
     setHandoverError("");
+    setConfirmingHandover(false);
+    setHandoverPinOpen(true);
+  }
+
+  // Step 2: PIN accepted -> backend gives a HANDOVER_START grant for this
+  // will; the handover starts only with that grant. Errors thrown here are
+  // shown inside the PIN dialog.
+  async function handleHandoverPinVerified(grant) {
+    await requestImmediateHandover(user?.id, will.id, grant);
+    setHandoverPinOpen(false);
 
     try {
-      const updated = await requestImmediateHandover(
-        user?.id,
-        will.id,
-        pinGrant
-      );
-
-      setWill(updated);
-      setConfirmingHandover(false);
-
-      loadHandover();
+      setWill(await getWill(user?.id, will.id, pinGrant));
     } catch (err) {
       setHandoverError(
         err?.status === 423
-          ? "PIN access expired while refreshing. Return to My Wills and unlock again. Check handover status before resubmitting."
-          : err.message || "Could not request immediate handover"
+          ? "Handover started. PIN access expired while refreshing: return to My Wills and unlock again."
+          : err.message || "Handover started, but the will could not be refreshed."
       );
-    } finally {
-      setHandoverBusy(false);
     }
+
+    loadHandover();
   }
 
   // ==========================================
@@ -592,11 +594,24 @@ export default function WillDetails() {
               >
                 {handoverBusy
                   ? "Sending..."
-                  : "Yes, Send to Executor"}
+                  : "Yes, Enter PIN"}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {handoverError && !confirmingHandover && (
+        <p className={styles.errorText} role="alert">{handoverError}</p>
+      )}
+
+      {handoverPinOpen && (
+        <SecurityPinModal
+          scope="HANDOVER_START"
+          resourceId={will.id}
+          onVerified={handleHandoverPinVerified}
+          onClose={() => setHandoverPinOpen(false)}
+        />
       )}
 
       {/* OVERVIEW */}

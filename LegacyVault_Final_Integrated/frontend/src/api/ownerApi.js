@@ -5,7 +5,7 @@ import { getOwnerDashboardData, checkInDms, cancelDeathHandover, requestImmediat
 export const getOwnerDashboard = getOwnerDashboardData;
 export const confirmStillActive = ({ userId, willId }) => checkInDms(userId, willId);
 export const cancelHandover = ({ userId, willId }) => cancelDeathHandover(userId, willId);
-export const requestHandover = ({ userId, willId }) => requestImmediateHandover(userId, willId);
+export const requestHandover = ({ userId, willId, pinGrant }) => requestImmediateHandover(userId, willId, pinGrant);
 
 export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     if (!externalIdentityId) throw new Error("External Identity ID is required");

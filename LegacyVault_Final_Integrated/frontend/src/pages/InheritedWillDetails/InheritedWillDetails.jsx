@@ -1,93 +1,89 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 import {
   getInheritedWill,
-  getProfile,
-  verifyFace,
-  issueClaimKey,
-  confirmClaim,
-} from "../../api/vaultApi";
-import { ApiError } from "../../api/client";
+  claimInheritedItem,
+  revealInheritedSecret,
+} from "../../api/inheritanceApi";
+import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
+import FaceCaptureModal from "../../components/FaceCaptureModal/FaceCaptureModal";
 import styles from "./InheritedWillDetails.module.css";
+
+const TYPE_LABEL = { IMMEDIATE: "Immediate handover", DEATH: "Inheritance after death" };
 
 export default function InheritedWillDetails() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const [grant, setGrant] = useState(null);
   const [will, setWill] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [stage, setStage] = useState("view");
-  const [claimKey, setClaimKey] = useState(null);
+  const [pinOpen, setPinOpen] = useState(true);
+  const [faceTargets, setFaceTargets] = useState(null); // item ids to receive
+  const [secret, setSecret] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const pendingRef = useRef(null); // action to run once a fresh PIN grant exists
 
-  useEffect(() => {
-    load();
-  }, [id]);
+  async function loadWill(g) {
+    setWill(await getInheritedWill(id, g));
+  }
 
-  async function load() {
-    setLoading(true);
-    setError("");
+  // Runs after the PIN is accepted (the modal shows any error thrown here).
+  async function handlePinVerified(g) {
+    setGrant(g);
+    const action = pendingRef.current;
+    pendingRef.current = null;
+    if (action) await action(g);
+    else await loadWill(g);
+    setPinOpen(false);
+  }
+
+  // The PIN grant lives a few minutes: when it ran out, ask for the PIN again.
+  function askPinThen(action) {
+    pendingRef.current = action;
+    setPinOpen(true);
+  }
+
+  async function refreshAfterClaim() {
     try {
-      const [w, p] = await Promise.all([getInheritedWill(user?.id, id), getProfile(user?.id, user)]);
-      setWill(w);
-      setProfile(p);
-      setStage("view");
+      await loadWill(grant);
     } catch (err) {
-      setError(err.message || "Inherited will details not available");
-    } finally {
-      setLoading(false);
+      if (err?.status === 423) askPinThen(loadWill);
+      else setError(err.message || "Could not refresh the will.");
     }
   }
 
-  async function handleClaimClick() {
-    setError("");
-    if (profile.identityStatus !== "VERIFIED") {
-      setStage("identityGate");
-      return;
+  // One face scan receives every selected asset.
+  async function handleFaceCaptured(blob) {
+    const ids = faceTargets || [];
+    for (const itemId of ids) {
+      await claimInheritedItem(itemId, blob);
     }
-    setStage("faceScan");
+    setFaceTargets(null);
+    setNotice(
+      ids.length === 1
+        ? "Asset received. You can now view its credentials."
+        : `${ids.length} assets received. You can now view their credentials.`
+    );
+    await refreshAfterClaim();
   }
 
-  function handleStartScan() {
-    setStage("faceVerifying");
-    setBusy(true);
-    setTimeout(async () => {
-      try {
-        const updatedProfile = await verifyFace(user?.id);
-        setProfile(updatedProfile);
-        const key = await issueClaimKey(user?.id, id);
-        setClaimKey(key);
-        setStage("claimKey");
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Face verification failed");
-        setStage("faceScan");
-      } finally {
-        setBusy(false);
-      }
-    }, 1600);
-  }
-
-  async function handleConfirmClaim() {
+  async function handleReveal(item) {
     setError("");
-    setBusy(true);
+    const run = async (g) => {
+      const r = await revealInheritedSecret(id, item.itemId, g);
+      setSecret({ name: item.assetName, data: r.secretData || {} });
+    };
+
     try {
-      const updated = await confirmClaim(user?.id, id, claimKey.code);
-      setWill(updated);
-      setStage("view");
+      await run(grant);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not confirm claim");
-    } finally {
-      setBusy(false);
+      if (err?.status === 423 || !grant) askPinThen(run);
+      else setError(err.message || "Could not open the credentials.");
     }
   }
 
-  if (loading) return <p className={styles.muted}>Loading...</p>;
-  if (error && (!will || !profile)) return <p role="alert" className={styles.muted}>{error}</p>;
-  if (!will || !profile) return <p className={styles.muted}>No inheritance information available.</p>;
-
-  const claimed = will.claimStatus === "CLAIMED";
+  const items = will?.items || [];
+  const ready = items.filter((i) => i.canClaim);
+  const allClaimed = items.length > 0 && items.every((i) => i.claimedAt);
 
   return (
     <div className={styles.page}>
@@ -95,126 +91,137 @@ export default function InheritedWillDetails() {
         ← Back to Inherited Wills
       </Link>
 
-      {stage === "view" && (
+      {!will && (
+        <div className={styles.card}>
+          <h1 className={styles.title}>Inherited will</h1>
+          <p className={styles.hintSmall}>
+            Enter your 6-digit Security PIN to open this will.
+          </p>
+          {error && <p className={styles.error}>{error}</p>}
+          {!pinOpen && (
+            <button className={styles.primaryBtn} onClick={() => setPinOpen(true)}>
+              Enter PIN
+            </button>
+          )}
+        </div>
+      )}
+
+      {will && (
         <div className={styles.card}>
           <div className={styles.headRow}>
-            <h1 className={styles.title}>{will.willName}</h1>
-            {claimed && <span className={styles.claimedTag}>CLAIMED ✓</span>}
+            <h1 className={styles.title}>{will.willTitle}</h1>
+            {allClaimed && <span className={styles.claimedTag}>RECEIVED ✓</span>}
           </div>
-          <p className={styles.metaLine}>From: {will.from}</p>
+          <p className={styles.metaLine}>From: {will.ownerName}</p>
+          {will.description && <p className={styles.metaLine}>{will.description}</p>}
 
-          {!claimed && (
-            <>
-              <div className={styles.statusGrid}>
-                <StatusRow label="Owner Life Status" value="DECEASED" ok />
-                <StatusRow label="Legal Verification" value="APPROVED" ok />
-                <StatusRow label="Your Identity" value={profile.identityStatus.replaceAll("_", " ")} ok={profile.identityStatus === "VERIFIED"} />
-                <StatusRow label="Claim Status" value={will.claimStatus.replaceAll("_", " ")} ok />
-              </div>
-              <hr className={styles.divider} />
-            </>
-          )}
+          <div className={styles.statusGrid}>
+            <StatusRow label="Handover type" value={TYPE_LABEL[will.handoverType] || will.handoverType} ok />
+            <StatusRow label="Handover status" value={will.handoverStatus.replaceAll("_", " ")} ok={will.handoverStatus !== "PAUSED"} />
+            <StatusRow
+              label="Your identity"
+              value={will.faceLinked ? "FACE ENROLLED" : "NOT VERIFIED"}
+              ok={will.faceLinked}
+            />
+          </div>
+          <hr className={styles.divider} />
 
-          <h2 className={styles.sectionTitle}>{claimed ? "Your Inherited Assets" : "Your Assigned Assets"}</h2>
+          <h2 className={styles.sectionTitle}>Your assets</h2>
           <div className={styles.assetList}>
-            {will.assets.map((a) => (
-              <div key={a.id} className={styles.assetRow}>
+            {items.map((a) => (
+              <div key={a.itemId} className={styles.assetRow}>
                 <div>
-                  <p className={styles.itemTitle}>{a.name}</p>
-                  <p className={styles.itemMeta}>Type: {a.type}</p>
+                  <p className={styles.itemTitle}>{a.assetName}</p>
+                  <p className={styles.itemMeta}>
+                    {a.assetType}
+                    {a.provider ? ` · ${a.provider}` : ""} · {a.allocationPercentage}%
+                  </p>
                 </div>
-                {claimed ? (
-                  <span className={styles.accessibleTag}>✓ Accessible</span>
+
+                {a.claimedAt ? (
+                  <button className={styles.secondaryBtn} onClick={() => handleReveal(a)}>
+                    View credentials
+                  </button>
+                ) : a.canClaim ? (
+                  <span className={styles.accessibleTag}>Ready to receive</span>
                 ) : (
-                  <span className={styles.lockedTag}>🔒 Locked</span>
+                  <span className={styles.lockedTag}>⏳ Waiting for the Executor</span>
                 )}
               </div>
             ))}
           </div>
 
-          {!claimed && (
+          {notice && <p className={styles.okText}>{notice}</p>}
+          {error && <p className={styles.error}>{error}</p>}
+
+          {!will.faceLinked && ready.length > 0 && (
+            <p className={styles.hintSmall}>
+              Verify your identity first so your face can be matched.{" "}
+              <Link to={`/dashboard/verify-identity?returnTo=${encodeURIComponent(`/dashboard/view-will/${id}`)}`}>
+                Verify identity
+              </Link>
+            </p>
+          )}
+
+          {ready.length > 0 && (
             <>
               <p className={styles.hintSmall}>
-                Claim this will to access the asset content (actual documents, credentials, and decrypted files stay
-                hidden until then).
+                Your Executor has handed {ready.length === 1 ? "this asset" : "these assets"} over.
+                Scan your face to receive {ready.length === 1 ? "it" : "them"} into your account.
               </p>
-              {error && <p className={styles.error}>{error}</p>}
-              <button className={styles.primaryBtn} onClick={handleClaimClick}>
-                Claim Will
+              <button
+                className={styles.primaryBtn}
+                disabled={!will.faceLinked || will.handoverStatus === "PAUSED"}
+                onClick={() => {
+                  setError("");
+                  setNotice("");
+                  setFaceTargets(ready.map((i) => i.itemId));
+                }}
+              >
+                Scan face to receive {ready.length === 1 ? "asset" : `${ready.length} assets`}
               </button>
             </>
           )}
         </div>
       )}
 
-      {stage === "identityGate" && (
-        <div className={styles.card}>
-          <h2 className={styles.title}>Identity Verification Required</h2>
-          <p className={styles.hintSmall}>You must verify your identity before claiming this will.</p>
-          <p className={styles.itemMeta}>Identity Status: ⚠ NOT VERIFIED</p>
-          <p className={styles.itemMeta}>Verification includes: Phone verification · Identity number · Face verification</p>
-          <div className={styles.actions}>
-            <a
-              className={styles.primaryBtn}
-              href={`/dashboard/verify-identity?returnTo=${encodeURIComponent(`/dashboard/view-will/${id}`)}`}
-            >
-              Verify Identity
-            </a>
-          </div>
-        </div>
+      {pinOpen && (
+        <SecurityPinModal
+          scope="INHERITANCE_VIEW"
+          resourceId={id}
+          onVerified={handlePinVerified}
+          onClose={() => {
+            pendingRef.current = null;
+            setPinOpen(false);
+          }}
+        />
       )}
 
-      {stage === "faceScan" && (
-        <div className={styles.card}>
-          <h2 className={styles.title}>Claim Will</h2>
-          <p className={styles.metaLine}>{will.willName} — From: {will.from}</p>
-          <p className={styles.itemMeta}>Identity Status: ✓ VERIFIED</p>
-          <p className={styles.hintSmall}>Please verify your face before receiving your Claim Key.</p>
-          <button className={styles.primaryBtn} onClick={handleStartScan}>
-            Verify Face
-          </button>
-        </div>
+      {faceTargets && (
+        <FaceCaptureModal
+          title="Scan your face to receive"
+          hint="Look straight at the camera in good light. Your face is matched with the one you enrolled."
+          onCapture={handleFaceCaptured}
+          onClose={() => setFaceTargets(null)}
+        />
       )}
 
-      {stage === "faceVerifying" && (
-        <div className={styles.card}>
-          <h2 className={styles.title}>Face Verification</h2>
-          <div className={styles.scanBox}>
-            <div className={styles.cameraDot} />
-            <p className={styles.scanText}>{busy ? "Matching face..." : "Face Detected"}</p>
-          </div>
-        </div>
-      )}
-
-      {stage === "claimKey" && claimKey && (
-        <div className={styles.card}>
-          <h2 className={styles.title}>Claim Key Issued</h2>
-          <p className={styles.metaLine}>{will.willName}</p>
-          <p className={styles.itemMeta}>Face Verification: ✓ VERIFIED</p>
-          <div className={styles.claimKeyBox}>{claimKey.code}</div>
-          <p className={styles.itemMeta}>Valid Until: {new Date(claimKey.expiresAt).toLocaleString()}</p>
-          <p className={styles.hintSmall}>This Claim Key is valid only for {will.willName}.</p>
-          <button className={styles.primaryBtn} onClick={() => setStage("confirm")}>
-            Continue to Claim
-          </button>
-        </div>
-      )}
-
-      {stage === "confirm" && claimKey && (
-        <div className={styles.card}>
-          <h2 className={styles.title}>Claim Will</h2>
-          <p className={styles.metaLine}>{will.willName} — From: {will.from}</p>
-          <p className={styles.itemMeta}>Identity: ✓ VERIFIED</p>
-          <p className={styles.itemMeta}>Face Verification: ✓ VERIFIED</p>
-          <p className={styles.itemMeta}>Claim Key: {claimKey.code}</p>
-          {error && <p className={styles.error}>{error}</p>}
-          <div className={styles.actions}>
-            <button className={styles.secondaryBtn} onClick={() => setStage("view")}>
-              Cancel
-            </button>
-            <button className={styles.primaryBtn} disabled={busy} onClick={handleConfirmClaim}>
-              {busy ? "Processing..." : "Confirm & Claim Will"}
-            </button>
+      {secret && (
+        <div className={styles.secretOverlay} onClick={() => setSecret(null)}>
+          <div className={styles.secretModal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.sectionTitle}>{secret.name}</h2>
+            {Object.keys(secret.data).length === 0 && (
+              <p className={styles.itemMeta}>No credentials stored for this asset.</p>
+            )}
+            {Object.entries(secret.data).map(([k, v]) => (
+              <div key={k} className={styles.secretRow}>
+                <span className={styles.itemMeta}>{k}</span>
+                <code className={styles.secretValue}>{String(v)}</code>
+              </div>
+            ))}
+            <div className={styles.actions}>
+              <button className={styles.primaryBtn} onClick={() => setSecret(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}

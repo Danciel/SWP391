@@ -5,8 +5,8 @@ import {
   getLegalCaseDetails,
   getLegalCaseCertificate,
   reviewLegalCase,
-  flagSuspectedFraud,
 } from "../../api/verifierApi";
+import { fmtCertDate } from "../../utils/deathCertificate";
 
 import styles from "./LegalVerifierDashboard.module.css";
 
@@ -35,9 +35,8 @@ export default function LegalVerifierDashboard() {
   const [rejectingId, setRejectingId] = useState(null);
   const [reason, setReason] = useState("");
   const [expandedId, setExpandedId] = useState(null);
-  const [flaggingId, setFlaggingId] = useState(null);
-  const [flagReason, setFlagReason] = useState("");
-  const [willVerified, setWillVerified] = useState({});
+  const [checks, setChecks] = useState({});
+  const [certPreview, setCertPreview] = useState({});
   const [caseDetails, setCaseDetails] = useState({});
 
   const load = useCallback(async () => {
@@ -65,7 +64,7 @@ export default function LegalVerifierDashboard() {
   async function handleApprove(caseId) {
     setBusyId(caseId);
     try {
-      await reviewLegalCase({ caseId, approve: true, willVerified: !!willVerified[caseId] });
+      await reviewLegalCase({ caseId, approve: true });
       showToast("Case approved");
       await load();
     } catch (err) {
@@ -123,19 +122,23 @@ export default function LegalVerifierDashboard() {
   }
 
 
-  async function handleFlagFraud(caseId) {
-    setBusyId(caseId);
+  // Loads the uploaded certificate so the verifier reads it right here.
+  async function loadCertificatePreview(caseId) {
     try {
-      await flagSuspectedFraud({ caseId, reason: flagReason });
-      showToast("Case flagged as suspected fraud — sent to Admin");
-      setFlaggingId(null);
-      setFlagReason("");
-      await load();
+      const response = await getLegalCaseCertificate(caseId);
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("The certificate file is empty.");
+      setCertPreview((prev) => ({
+        ...prev,
+        [caseId]: { url: URL.createObjectURL(blob), type: blob.type },
+      }));
     } catch (err) {
-      setError(err.message || "Could not flag case");
-    } finally {
-      setBusyId(null);
+      setCertPreview((prev) => ({ ...prev, [caseId]: { error: err.message } }));
     }
+  }
+
+  function setCheck(caseId, key, value) {
+    setChecks((prev) => ({ ...prev, [caseId]: { ...prev[caseId], [key]: value } }));
   }
 
   async function handleViewCaseDetails(caseId) {
@@ -147,6 +150,7 @@ export default function LegalVerifierDashboard() {
     setExpandedId(caseId);
 
     if (caseDetails[caseId]) return;
+    loadCertificatePreview(caseId);
 
     try {
       const detail = await getLegalCaseDetails(caseId);
@@ -211,11 +215,8 @@ export default function LegalVerifierDashboard() {
                           {formatDate(c.deadlineAt)}
                         </div>
                       )}
-                      {c.flagged && (
-                        <div className={styles.flagText}>⚠ Flagged as suspected fraud{c.flagReason ? `: ${c.flagReason}` : ""}</div>
-                      )}
-                      {c.status === "REJECTED" && c.rejectionReason && (
-                        <div className={styles.reasonText}>Reason: {c.rejectionReason}</div>
+                      {c.status === "REJECTED" && (c.reviewNote || c.rejectionReason) && (
+                        <div className={styles.reasonText}>Reason: {c.reviewNote || c.rejectionReason}</div>
                       )}
                       <button
                         className={styles.linkBtn}
@@ -251,80 +252,134 @@ export default function LegalVerifierDashboard() {
                           </div>
 
 
-                          <div className={styles.willSection}>
-                            <div className={styles.willTitle}>Will Information</div>
+                          {(() => {
+                            const cert = parseCert(detail.certificateData);
+                            const preview = certPreview[c.id];
+                            const nameMatch = cert
+                              ? sameName(cert.deceasedName, detail.ownerName)
+                              : null;
+                            const thresholdOk =
+                              detail.maxMissedCheckIns > 0 &&
+                              detail.missedCheckIns >= detail.maxMissedCheckIns;
+                            const pending = ["PENDING", "PENDING_REVIEW"].includes(c.status);
+                            const mine = checks[c.id] || {};
 
-                            {detail.willTitle ? (
-                              <>
+                            return (
+                              <div className={styles.willSection}>
+                                <div className={styles.willTitle}>1. Read the death certificate</div>
+                                {!preview && <p className={styles.mutedText}>Loading certificate...</p>}
+                                {preview?.error && <p className={styles.errorBox}>{preview.error}</p>}
+                                {preview?.url && (
+                                  preview.type === "application/pdf" ? (
+                                    <iframe
+                                      title="Death certificate"
+                                      src={preview.url}
+                                      style={{ width: "100%", height: 520, border: "1px solid #d1d5db", borderRadius: 8 }}
+                                    />
+                                  ) : (
+                                    <img
+                                      alt="Death certificate"
+                                      src={preview.url}
+                                      style={{ width: "100%", maxWidth: 560, border: "1px solid #d1d5db", borderRadius: 8 }}
+                                    />
+                                  )
+                                )}
+
+                                <div className={styles.willTitle} style={{ marginTop: 14 }}>
+                                  2. Cross-check with the system
+                                </div>
+                                <CheckRow
+                                  ok={thresholdOk}
+                                  label="Dead Man's Switch threshold reached"
+                                  value={`${detail.missedCheckIns ?? 0} / ${detail.maxMissedCheckIns ?? 0} missed check-ins`}
+                                />
+                                <CheckRow
+                                  ok={detail.lifeStatus === "DECEASED"}
+                                  neutral={detail.lifeStatus === "UNKNOWN"}
+                                  label="Life status from the identity provider"
+                                  value={detail.lifeStatus || "UNKNOWN"}
+                                />
+                                {cert ? (
+                                  <>
+                                    <CheckRow
+                                      ok={nameMatch}
+                                      label="Name on certificate vs. Owner account"
+                                      value={`${cert.deceasedName || "—"}  vs  ${detail.ownerName || "—"}`}
+                                    />
+                                    <div className={styles.detailRow}>
+                                      <span className={styles.detailLabel}>Date / place of death</span>
+                                      <span>{fmtCertDate(cert.dateOfDeath)} · {cert.placeOfDeath || "—"}</span>
+                                    </div>
+                                    <div className={styles.detailRow}>
+                                      <span className={styles.detailLabel}>Cause of death</span>
+                                      <span>{cert.causeOfDeath || "—"}</span>
+                                    </div>
+                                    <div className={styles.detailRow}>
+                                      <span className={styles.detailLabel}>Registered by</span>
+                                      <span>
+                                        {cert.issuingAuthority || "—"} · No. {cert.registrationNumber || "—"} ·{" "}
+                                        {cert.registrarName || "—"}
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p className={styles.mutedText}>
+                                    The Executor uploaded a scanned file without form data: compare the name on
+                                    the file with the Owner ({detail.ownerName || "—"}) yourself.
+                                  </p>
+                                )}
                                 <div className={styles.detailRow}>
                                   <span className={styles.detailLabel}>Will</span>
-                                  <span>{detail.willTitle}</span>
-                                </div>
-
-                                <div className={styles.detailRow}>
-                                  <span className={styles.detailLabel}>Will ID</span>
-                                  <span>{detail.willId || "—"}</span>
-                                </div>
-
-                                <div className={styles.detailRow}>
-                                  <span className={styles.detailLabel}>Owner</span>
-                                  <span>{detail.ownerName || c.ownerName || "—"}</span>
-                                </div>
-
-                                <div className={styles.detailRow}>
-                                  <span className={styles.detailLabel}>Executor</span>
-                                  <span>{detail.executorName || c.executorName || "—"}</span>
-                                </div>
-
-                                <div className={styles.detailRow}>
-                                  <span className={styles.detailLabel}>Assets / Beneficiaries</span>
                                   <span>
-                                    Information is not provided by the current Legal Case API.
+                                    {detail.willTitle || "—"} · {detail.assetCount ?? 0} asset(s) ·{" "}
+                                    {detail.beneficiaryCount ?? 0} beneficiary(ies)
                                   </span>
                                 </div>
-                              </>
-                            ) : (
-                              <p className={styles.mutedText}>
-                                Will information is not available for this case.
-                              </p>
-                            )}
 
-                            {["PENDING", "PENDING_REVIEW"].includes(c.status) && (
-                              <label className={styles.verifyCheck}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!willVerified[c.id]}
-                                  disabled={!detail.originalFileName}
-                                  onChange={(e) =>
-                                    setWillVerified((prev) => ({
-                                      ...prev,
-                                      [c.id]: e.target.checked,
-                                    }))
-                                  }
-                                />
-
-                                I have reviewed the death certificate and the available case information.
-                              </label>
-                            )}
-                          </div>
-
+                                {pending && (
+                                  <>
+                                    <div className={styles.willTitle} style={{ marginTop: 14 }}>
+                                      3. Confirm
+                                    </div>
+                                    <label className={styles.verifyCheck}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!!mine.read}
+                                        disabled={!preview?.url}
+                                        onChange={(e) => setCheck(c.id, "read", e.target.checked)}
+                                      />
+                                      I opened and read the death certificate.
+                                    </label>
+                                    <label className={styles.verifyCheck}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!!mine.match}
+                                        onChange={(e) => setCheck(c.id, "match", e.target.checked)}
+                                      />
+                                      The certificate matches the Owner and the Will, and has a valid seal and signature.
+                                    </label>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
 
                     <div className={styles.itemRight}>
                       <Badge status={c.status} />
-                      {["PENDING", "PENDING_REVIEW"].includes(c.status) && rejectingId !== c.id && flaggingId !== c.id && (
+                      {["PENDING", "PENDING_REVIEW"].includes(c.status) && rejectingId !== c.id && (
                         <div className={styles.actionRow}>
 
                           <button
                             className={styles.primaryBtn}
-                            disabled={busyId === c.id || !willVerified[c.id]}
+                            disabled={busyId === c.id || !(checks[c.id]?.read && checks[c.id]?.match)}
                             title={
                               !caseDetails[c.id]?.originalFileName
                                 ? "Open details and load the death certificate first"
-                                : !willVerified[c.id]
-                                  ? "Review the certificate and check the confirmation box first"
+                                : !(checks[c.id]?.read && checks[c.id]?.match)
+                                  ? "Tick both confirmation boxes first"
                                   : ""
                             }
                             onClick={() => handleApprove(c.id)}
@@ -339,17 +394,8 @@ export default function LegalVerifierDashboard() {
                           >
                             Reject
                           </button>
-                          {!willVerified[c.id] && (
-                            <div className={styles.metaText}>Re-verify the will information in “View details” to enable Approve.</div>
-                          )}
-                          {!c.flagged && (
-                            <button
-                              className={styles.secondaryBtn}
-                              disabled={busyId === c.id}
-                              onClick={() => setFlaggingId(c.id)}
-                            >
-                              Flag Suspected Fraud
-                            </button>
+                          {!(checks[c.id]?.read && checks[c.id]?.match) && (
+                            <div className={styles.metaText}>Open “View details”, read the certificate and confirm to enable Approve.</div>
                           )}
                         </div>
                       )}
@@ -381,34 +427,6 @@ export default function LegalVerifierDashboard() {
                           </div>
                         </div>
                       )}
-                      {flaggingId === c.id && (
-                        <div className={styles.rejectForm}>
-                          <input
-                            className={styles.reasonInput}
-                            placeholder="Why is this suspicious?"
-                            value={flagReason}
-                            onChange={(e) => setFlagReason(e.target.value)}
-                          />
-                          <div className={styles.actionRow}>
-                            <button
-                              className={styles.dangerBtn}
-                              disabled={busyId === c.id}
-                              onClick={() => handleFlagFraud(c.id)}
-                            >
-                              Confirm Flag
-                            </button>
-                            <button
-                              className={styles.secondaryBtn}
-                              onClick={() => {
-                                setFlaggingId(null);
-                                setFlagReason("");
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </li>
                 );
@@ -417,6 +435,41 @@ export default function LegalVerifierDashboard() {
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+function parseCert(raw) {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function norm(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sameName(a, b) {
+  return norm(a) !== "" && norm(a) === norm(b);
+}
+
+function CheckRow({ ok, neutral, label, value }) {
+  const mark = neutral ? "?" : ok ? "✓" : "✗";
+  const color = neutral ? "#92400e" : ok ? "#166534" : "#b91c1c";
+  return (
+    <div className={styles.detailRow}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span style={{ color, fontWeight: 600 }}>{mark} {value}</span>
     </div>
   );
 }

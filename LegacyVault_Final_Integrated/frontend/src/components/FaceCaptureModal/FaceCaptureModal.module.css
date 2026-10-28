@@ -1,0 +1,13 @@
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 16px; }
+.modal { background: #fff; border-radius: 14px; padding: 24px; width: 100%; max-width: 440px; }
+.title { margin: 0 0 6px; font-size: 20px; }
+.hint { margin: 0 0 12px; color: #4b5563; font-size: 14px; }
+.frame { position: relative; background: #0f172a; border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 3; }
+.video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.oval { position: absolute; inset: 12% 28%; border: 3px dashed rgba(255,255,255,.8); border-radius: 50%; pointer-events: none; }
+.scan { position: absolute; inset: auto 0 0 0; background: rgba(30,58,138,.9); color: #fff; text-align: center; padding: 8px; font-size: 14px; }
+.error { color: #b91c1c; font-size: 14px; margin: 10px 0 0; }
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.primary { background: #1e3a8a; color: #fff; border: 0; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.secondary { background: #fff; border: 1px solid #d1d5db; padding: 10px 18px; border-radius: 8px; cursor: pointer; }
+.primary:disabled, .secondary:disabled { opacity: .55; cursor: not-allowed; }

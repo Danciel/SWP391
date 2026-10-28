@@ -467,7 +467,10 @@
 .PENDING,
 .AWAITING_CASE,
 .OPEN,
-.SUBMITTED_FOR_REVIEW {
+.SUBMITTED_FOR_REVIEW,
+.IN_PROGRESS,
+.PAUSED,
+.PENDING_REVIEW {
   background: var(--brass-soft);
   color: var(--brass);
 }
@@ -476,6 +479,8 @@
 .ACTIVE,
 .CASE_OPENED,
 .APPROVED,
+.DELIVERED,
+.COMPLETED,
 .CONFIRMED {
   background: var(--ok-soft);
   color: var(--ok);

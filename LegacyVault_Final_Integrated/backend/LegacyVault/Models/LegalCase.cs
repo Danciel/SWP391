@@ -12,6 +12,8 @@ namespace LegacyVault.Models
         public string Status { get; set; } = "PENDING"; // PENDING | APPROVED | REJECTED
         public Guid? ReviewedByAccountId { get; set; }
         public string? ReviewNote { get; set; }
+        // JSON typed by the Executor on the death-certificate form (optional).
+        public string? CertificateData { get; set; }
         public DateTimeOffset SubmittedAt { get; set; }
         public DateTimeOffset? ReviewedAt { get; set; }
         public Will? Will { get; set; }

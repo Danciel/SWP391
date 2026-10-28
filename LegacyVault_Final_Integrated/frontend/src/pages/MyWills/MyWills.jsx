@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getWills, requestImmediateHandover, deleteWillDraft } from "../../api/vaultApi";
 import { dmsMessage, dmsState } from "../../utils/willHelpers";
 import { useBackdropClose } from "../../utils/useBackdropClose";
+import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import styles from "./MyWills.module.css";
 
 const FILTERS = ["All", "Draft", "Pending", "Active"];
@@ -16,13 +17,15 @@ const STATUS_LABEL = {
   NEEDS_EXECUTOR: "Needs Executor",
   PENDING_VERIFICATION: "Pending Verification",
   DECLINED: "Declined",
+  HANDOVER_IN_PROGRESS: "Handover in progress",
+  HANDED_OVER: "Handed over",
 };
 
 function matchesFilter(status, filter) {
   if (filter === "All") return true;
   if (filter === "Draft") return status === "DRAFT" || status === "DECLINED";
   if (filter === "Pending") return status === "PENDING_EXECUTOR" || status === "PENDING_EXECUTOR_ACCEPTANCE" || status === "NEEDS_EXECUTOR";
-  if (filter === "Active") return status === "ACTIVE" || status === "PENDING_VERIFICATION";
+  if (filter === "Active") return status === "ACTIVE" || status === "PENDING_VERIFICATION" || status === "HANDOVER_IN_PROGRESS" || status === "HANDED_OVER";
   return true;
 }
 
@@ -34,6 +37,7 @@ export default function MyWills() {
   const [loadError, setLoadError] = useState("");
   const [handoverWill, setHandoverWill] = useState(null);
   const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverPinWill, setHandoverPinWill] = useState(null);
   const [handoverError, setHandoverError] = useState("");
   const [deleteWill, setDeleteWill] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -62,18 +66,17 @@ export default function MyWills() {
     }
   }
 
-  async function handleConfirmImmediateHandover() {
-    setHandoverBusy(true);
+  // "Yes" only opens the PIN dialog; the handover starts with the PIN grant.
+  function handleConfirmImmediateHandover() {
     setHandoverError("");
-    try {
-      await requestImmediateHandover(user?.id, handoverWill.id);
-      setHandoverWill(null);
-      load();
-    } catch (err) {
-      setHandoverError(err.message || "Could not request immediate handover");
-    } finally {
-      setHandoverBusy(false);
-    }
+    setHandoverPinWill(handoverWill);
+    setHandoverWill(null);
+  }
+
+  async function handleHandoverPinVerified(grant) {
+    await requestImmediateHandover(user?.id, handoverPinWill.id, grant);
+    setHandoverPinWill(null);
+    load();
   }
 
   async function handleConfirmDelete() {
@@ -204,11 +207,20 @@ export default function MyWills() {
                 disabled={handoverBusy}
                 onClick={handleConfirmImmediateHandover}
               >
-                {handoverBusy ? "Sending..." : "Yes, Send to Executor"}
+                {handoverBusy ? "Sending..." : "Yes, Enter PIN"}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {handoverPinWill && (
+        <SecurityPinModal
+          scope="HANDOVER_START"
+          resourceId={handoverPinWill.id}
+          onVerified={handleHandoverPinVerified}
+          onClose={() => setHandoverPinWill(null)}
+        />
       )}
 
       {deleteWill && (

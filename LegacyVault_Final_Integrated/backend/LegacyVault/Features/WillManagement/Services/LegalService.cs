@@ -41,7 +41,8 @@ namespace LegacyVault.Features.WillManagement.Services
         public async Task<LegalCaseSummaryResponse> SubmitAsync(
             Guid executorAccountId,
             Guid willId,
-            IFormFile file)
+            IFormFile file,
+            string? certificateData = null)
         {
             if (file == null || file.Length == 0)
                 throw new InvalidOperationException("File is required.");
@@ -93,6 +94,26 @@ namespace LegacyVault.Features.WillManagement.Services
                     "This will already has a pending or approved legal case.");
             }
 
+            // Optional form data typed by the Executor. Only keep valid JSON,
+            // capped in size, so it can be shown safely to Legal Verify.
+            string? cleanData = null;
+            if (!string.IsNullOrWhiteSpace(certificateData))
+            {
+                if (certificateData.Length > 4000)
+                    throw new InvalidOperationException("Certificate data is too long.");
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(certificateData);
+                    if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                        throw new InvalidOperationException("Certificate data must be a JSON object.");
+                    cleanData = certificateData;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    throw new InvalidOperationException("Certificate data is not valid JSON.");
+                }
+            }
+
             var caseId = Guid.NewGuid();
             var relative = Path.Combine(
                 "death-certificates", caseId.ToString("N") + ext.ToLowerInvariant());
@@ -113,6 +134,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 // Never trust the client path; keep only the file name.
                 OriginalFileName = Path.GetFileName(file.FileName),
                 ContentType = contentType,
+                CertificateData = cleanData,
                 Status = "PENDING",
                 SubmittedAt = DateTimeOffset.UtcNow
             };
@@ -170,7 +192,8 @@ namespace LegacyVault.Features.WillManagement.Services
                         ? x.ExecutorAccount.FullName : string.Empty,
                     Status = x.Status,
                     SubmittedAt = x.SubmittedAt,
-                    ReviewedAt = x.ReviewedAt
+                    ReviewedAt = x.ReviewedAt,
+                    ReviewNote = x.ReviewNote
                 })
                 .ToListAsync();
         }
@@ -190,6 +213,11 @@ namespace LegacyVault.Features.WillManagement.Services
             var life = await _lifeStatus.GetStatusAsync(
                 c.Will!.OwnerAccountId, CancellationToken.None);
 
+            var assetCount = await _db.WillAssets
+                .CountAsync(x => x.WillId == c.WillId);
+            var beneficiaryCount = await _db.BeneficiaryDesignations
+                .CountAsync(x => x.WillId == c.WillId);
+
             return new LegalCaseDetailResponse
             {
                 Id = c.Id,
@@ -202,6 +230,10 @@ namespace LegacyVault.Features.WillManagement.Services
                 ReviewedAt = c.ReviewedAt,
                 OriginalFileName = c.OriginalFileName,
                 ReviewNote = c.ReviewNote,
+                CertificateData = c.CertificateData,
+                OwnerEmail = c.Will.OwnerAccount?.Email,
+                AssetCount = assetCount,
+                BeneficiaryCount = beneficiaryCount,
                 LifeStatus = life,
                 MissedCheckIns = dms?.MissedCheckIns ?? 0,
                 MaxMissedCheckIns = dms?.MaxMissedCheckIns ?? 0,

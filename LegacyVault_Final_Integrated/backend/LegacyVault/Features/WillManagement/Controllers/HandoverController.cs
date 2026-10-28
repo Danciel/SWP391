@@ -24,10 +24,12 @@ namespace LegacyVault.Features.WillManagement.Controllers
         }
 
         // LV-32: Owner, still alive, presses Immediate Handover.
-        [HttpPost("{willId:guid}/immediate")]
-        public Task<IActionResult> Immediate(Guid willId)
+        // The PIN filter reads the route value named "id" (= Will ID).
+        [HttpPost("{id:guid}/immediate")]
+        [RequireOwnerPin(OwnerPinScopes.HandoverStart)]
+        public Task<IActionResult> Immediate(Guid id)
             => Run(() => _service.StartImmediateAsync(
-                willId, _user.GetRequiredAccountId()));
+                id, _user.GetRequiredAccountId()));
 
         // LV-33: Executor starts handover after legal approval.
         [HttpPost("{willId:guid}/start")]

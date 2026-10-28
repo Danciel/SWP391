@@ -37,12 +37,17 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public string Status { get; set; } = string.Empty;
         public DateTimeOffset SubmittedAt { get; set; }
         public DateTimeOffset? ReviewedAt { get; set; }
+        public string? ReviewNote { get; set; }
     }
 
     public class LegalCaseDetailResponse : LegalCaseSummaryResponse
     {
         public string OriginalFileName { get; set; } = string.Empty;
-        public string? ReviewNote { get; set; }
+        // JSON typed by the Executor on the certificate form (may be null).
+        public string? CertificateData { get; set; }
+        public string? OwnerEmail { get; set; }
+        public int AssetCount { get; set; }
+        public int BeneficiaryCount { get; set; }
         // Read-only value from the third-party identity app (R10).
         public string LifeStatus { get; set; } = "UNKNOWN";
         public int MissedCheckIns { get; set; }
