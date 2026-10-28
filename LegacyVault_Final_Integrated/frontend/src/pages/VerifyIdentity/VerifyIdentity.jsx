@@ -203,8 +203,12 @@ export default function VerifyIdentity() {
       setFinalProfile(profile);
     } catch (err) {
       console.error("Face verification error:", err);
+      // Backend now says WHY (IdP unreachable, no enrolled face, mismatch, ...).
+      const detail = (err?.message || "").trim();
       setError(
-        "Face verification failed. The face may not match the registered profile, or multiple faces may be present in the frame. Please ensure only one person is visible and try again."
+        detail
+          ? `Face verification failed: ${detail}`
+          : "Face verification failed. Please make sure only your face is in the frame and try again."
       );
     } finally {
       setVerifying(false);

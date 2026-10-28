@@ -146,13 +146,14 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
 
             using var stream = faceImage.OpenReadStream();
 
-            // This will now work because it exists on the interface
-            var success = await _idpIntegrationService.LinkIdpUserAsync(userId, externalIdentityId, stream);
+            var result = await _idpIntegrationService.LinkIdpUserAsync(
+                userId, externalIdentityId, stream, HttpContext.RequestAborted);
 
-            if (!success)
-                return BadRequest(new { message = "Face verification failed or user not found." });
+            // The message says WHY (IdP unreachable, no enrolled face, mismatch, ...).
+            if (!result.Success)
+                return StatusCode(result.StatusCode, new { message = result.Message });
 
-            return Ok(new { message = "Identity linked successfully." });
+            return Ok(new { message = result.Message });
         }
 
         // =========================

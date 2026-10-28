@@ -25,5 +25,5 @@ Set the Owner to deceased in MockIdpApi: `PUT /api/idp-users/{id}` with `{ "life
 
 ## Requirements for the beneficiary face scan
 * Beneficiary account must be linked to an IdP user with an enrolled face (Verify Identity page).
-* MockIdpApi must be running (`IdpApiSettings:BaseUrl`, default https://localhost:7176).
+* MockIdpApi must be running (`IdpApiSettings:BaseUrl`, default http://localhost:5100/ - the `http` launch profile).
 * Beneficiary needs a Security PIN (the modal offers setup on first use).

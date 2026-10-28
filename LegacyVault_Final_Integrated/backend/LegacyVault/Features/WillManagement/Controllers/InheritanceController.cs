@@ -227,20 +227,21 @@ namespace LegacyVault.Features.WillManagement.Controllers
             }
 
             await using var stream = faceImage.OpenReadStream();
-            var matched = await _idp.VerifyFaceAsync(
+            var faceCheck = await _idp.VerifyFaceAsync(
                 idpUserId, stream, HttpContext.RequestAborted);
 
             var now = DateTimeOffset.UtcNow;
 
-            if (!matched)
+            if (!faceCheck.Success)
             {
                 AddAudit(me, "INHERITANCE_CLAIM_FACE_FAILED", itemId,
                     new { willId = handoverCase.WillId });
                 await _db.SaveChangesAsync();
 
-                return BadRequest(new
+                // Real reason (IdP unreachable, no enrolled face, mismatch, ...)
+                return StatusCode(faceCheck.StatusCode, new
                 {
-                    message = "Face verification failed. Please try again in good lighting."
+                    message = faceCheck.Message
                 });
             }
 

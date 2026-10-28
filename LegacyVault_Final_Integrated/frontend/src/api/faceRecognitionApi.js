@@ -1,8 +1,11 @@
 import { getToken, ApiError } from "./client";
 
 // Set this in your .env file to match your MockIdpApi port!
-// Example: VITE_IDP_API_URL=https://localhost:7001/api
-const IDP_BASE_URL = /*import.meta.env.VITE_IDP_API_URL ||*/ "https://localhost:7176/api";
+// Example: VITE_IDP_API_URL=http://localhost:5100/api
+// Default matches idpUserApi.js: the http profile of MockIdpApi (no dev certificate needed).
+const IDP_BASE_URL = (
+    import.meta.env.VITE_IDP_API_URL || "http://localhost:5100/api"
+).replace(/\/+$/, "");
 
 async function postMultipart(path, formData) {
     const headers = {};
