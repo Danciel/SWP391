@@ -11,6 +11,7 @@ import {
 } from "../../api/adminApi";
 
 import AdminPricingRules from "../../components/AdminPricingRules/AdminPricingRules";
+import AdminDmsTools from "../../components/AdminDmsTools/AdminDmsTools";
 import styles from "./AdminDashboard.module.css";
 
 const ROLE_LABEL = {
@@ -757,6 +758,8 @@ export default function AdminDashboard() {
               </ul>
             )}
           </section>
+
+          <AdminDmsTools />
 
           <AdminPricingRules />
 

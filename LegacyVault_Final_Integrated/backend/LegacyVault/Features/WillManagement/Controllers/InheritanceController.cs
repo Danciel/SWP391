@@ -183,6 +183,11 @@ namespace LegacyVault.Features.WillManagement.Controllers
             {
                 await _codes.IssueForCaseAsync(caseRow.Id);
                 accessCode = await _codes.GetStatusAsync(caseRow.Id, designationId);
+
+                // Still nothing after a delivery: tell the person the truth instead of
+                // letting the page say the Executor has not delivered.
+                if (accessCode.Status == "NOT_ISSUED")
+                    accessCode = accessCode with { Status = "UNAVAILABLE" };
             }
 
             var account = await _db.Accounts.AsNoTracking()
@@ -193,7 +198,15 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 status = accessCode.Status,
                 verified = accessCode.Verified,
                 lockedUntil = accessCode.LockedUntil,
-                verifiedUntil = accessCode.VerifiedUntil
+                verifiedUntil = accessCode.VerifiedUntil,
+                issueCount = accessCode.IssueCount,
+                maxIssues = accessCode.MaxIssues,
+                nextResendAt = accessCode.NextResendAt,
+                supportRequested = accessCode.SupportRequested,
+                canAskForHelp = !accessCode.Verified &&
+                    accessCode.MaxIssues > 0 &&
+                    (accessCode.IssueCount >= accessCode.MaxIssues ||
+                     accessCode.Status == "LOCKED")
             };
 
             // Until the access code is confirmed the person only gets an overview
@@ -374,6 +387,24 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 return NotFound(new { message = "Inherited will not found." });
 
             var result = await _codes.ResendAsync(
+                caseId.Value, me, HttpContext.RequestAborted);
+
+            return ToCodeResponse(result);
+        }
+
+        // The recipient used all their new codes (or is locked): the Executor is
+        // emailed and the request is kept in the audit trail for the support team.
+        [HttpPost("{id:guid}/access-code/support")]
+        [RequireOwnerPin(OwnerPinScopes.InheritanceView)]
+        public async Task<IActionResult> RequestAccessCodeHelp(Guid id)
+        {
+            var me = _user.GetRequiredAccountId();
+            var caseId = await FindCaseIdAsync(id);
+
+            if (caseId == null)
+                return NotFound(new { message = "Inherited will not found." });
+
+            var result = await _codes.RequestSupportAsync(
                 caseId.Value, me, HttpContext.RequestAborted);
 
             return ToCodeResponse(result);

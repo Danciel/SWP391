@@ -46,6 +46,16 @@ export const resendAccessCode = (willId, pinGrant) => {
   });
 };
 
+// Beneficiary: all new codes were used (or the code is locked) -> ask for help.
+// The Executor is emailed and the request is kept for the support team.
+export const requestAccessCodeHelp = (willId, pinGrant) => {
+  if (!pinGrant) throw new Error("Security PIN is required.");
+  return request(`/inheritance/${willId}/access-code/support`, {
+    method: "POST",
+    headers: { [PIN_HEADER]: pinGrant },
+  });
+};
+
 // Beneficiary: credentials of an asset that was already claimed.
 export const revealInheritedSecret = (willId, itemId, pinGrant) => {
   if (!pinGrant) throw new Error("Security PIN is required.");

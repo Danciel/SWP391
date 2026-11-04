@@ -6,6 +6,7 @@ import {
   revealInheritedSecret,
   verifyAccessCode,
   resendAccessCode,
+  requestAccessCodeHelp,
 } from "../../api/inheritanceApi";
 import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import FaceCaptureModal from "../../components/FaceCaptureModal/FaceCaptureModal";
@@ -142,8 +143,29 @@ export default function InheritedWillDetails() {
     }
   }
 
+  // All new codes were used (or the code is locked): tell the Executor + support.
+  async function submitHelp(g) {
+    setCodeError("");
+    setCodeNotice("");
+    setCodeBusy(true);
+    try {
+      const r = await requestAccessCodeHelp(id, g);
+      setCodeNotice(r?.message || "Your request was sent.");
+      await loadWill(g);
+    } catch (err) {
+      if (err?.status === 423 || !g) {
+        askPinThen((g2) => submitHelp(g2));
+      } else {
+        setCodeError(err.message || "Could not send the request.");
+      }
+    } finally {
+      setCodeBusy(false);
+    }
+  }
+
   const handleVerifyCode = () => submitCode(grant, codeInput);
   const handleResendCode = () => submitResend(grant);
+  const handleAskHelp = () => submitHelp(grant);
 
   async function handleReveal(item) {
     setError("");
@@ -164,6 +186,13 @@ export default function InheritedWillDetails() {
   const ready = items.filter((i) => i.canClaim);
   const allClaimed = items.length > 0 && items.every((i) => i.claimedAt);
   const codeLocked = will?.accessCode?.status === "LOCKED";
+  // Delivered, but the server could not create / send the code.
+  const codeUnavailable = will?.accessCode?.status === "UNAVAILABLE";
+  const canAskForHelp = Boolean(will?.accessCode?.canAskForHelp);
+  const helpRequested = Boolean(will?.accessCode?.supportRequested);
+  const noMoreCodes =
+    (will?.accessCode?.maxIssues || 0) > 0 &&
+    (will?.accessCode?.issueCount || 0) >= will.accessCode.maxIssues;
 
   return (
     <div className={styles.page}>
@@ -223,8 +252,15 @@ export default function InheritedWillDetails() {
                     maxLength={14}
                     autoComplete="off"
                     spellCheck={false}
-                    disabled={codeBusy || codeLocked}
+                    disabled={codeBusy || codeLocked || codeUnavailable}
                   />
+                  {codeUnavailable && (
+                    <p className={styles.warnText}>
+                      We could not create or send your access code right now. Press
+                      &quot;Send me a new code&quot; to try again. If it keeps failing, contact
+                      support.
+                    </p>
+                  )}
                   {codeLocked && will.accessCode.lockedUntil && (
                     <p className={styles.warnText}>
                       Too many wrong codes. Locked until{" "}
@@ -236,19 +272,34 @@ export default function InheritedWillDetails() {
                   <div className={styles.actions}>
                     <button
                       className={styles.primaryBtn}
-                      disabled={codeBusy || codeLocked || codeInput.length < 14}
+                      disabled={codeBusy || codeLocked || codeUnavailable || codeInput.length < 14}
                       onClick={handleVerifyCode}
                     >
                       {codeBusy ? "Checking..." : "Open the will"}
                     </button>
                     <button
                       className={styles.secondaryBtn}
-                      disabled={codeBusy || codeLocked}
+                      disabled={codeBusy || codeLocked || noMoreCodes}
                       onClick={handleResendCode}
                     >
                       Send me a new code
                     </button>
+                    {canAskForHelp && (
+                      <button
+                        className={styles.secondaryBtn}
+                        disabled={codeBusy || helpRequested}
+                        onClick={handleAskHelp}
+                      >
+                        {helpRequested ? "Help requested" : "Ask for help"}
+                      </button>
+                    )}
                   </div>
+                  {noMoreCodes && (
+                    <p className={styles.warnText}>
+                      You used all {will.accessCode.maxIssues} codes. Press &quot;Ask for help&quot;:
+                      your Executor and the support team will be told.
+                    </p>
+                  )}
                 </>
               ) : (
                 <p className={styles.hintSmall}>

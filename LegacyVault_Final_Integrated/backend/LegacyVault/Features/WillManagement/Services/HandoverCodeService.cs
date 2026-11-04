@@ -27,6 +27,13 @@ namespace LegacyVault.Features.WillManagement.Services
         private const int MaxIssues = 5;
         private const int Iterations = 100_000;
 
+        // Executor "send a new code" is not limited by the recipient's 5 codes,
+        // but it keeps the cooldown and has a hard ceiling.
+        private const int MaxIssuesByExecutor = 10;
+
+        private const string NotConfiguredMessage =
+            "Access codes are temporarily unavailable because of a server setting. Please contact support.";
+
         private readonly LegacyVaultDbContext _db;
         private readonly IEmailSender _email;
         private readonly IConfiguration _config;
@@ -42,6 +49,15 @@ namespace LegacyVault.Features.WillManagement.Services
             _email = email;
             _config = config;
             _logger = logger;
+        }
+
+        public bool IsConfigured
+        {
+            get
+            {
+                var pepper = _config["OwnerPin:Pepper"];
+                return !string.IsNullOrWhiteSpace(pepper) && pepper.Length >= 32;
+            }
         }
 
         // ------------------------------------------------------------------
@@ -69,6 +85,14 @@ namespace LegacyVault.Features.WillManagement.Services
 
         public async Task IssueForCaseAsync(Guid caseId, CancellationToken cancellationToken = default)
         {
+            if (!IsConfigured)
+            {
+                _logger.LogError(
+                    "Handover access codes cannot be issued: OwnerPin:Pepper is missing or too short (case {CaseId}).",
+                    caseId);
+                return;
+            }
+
             try
             {
                 var info = await _db.HandoverCases.AsNoTracking()
@@ -227,6 +251,9 @@ namespace LegacyVault.Features.WillManagement.Services
             if (caseStatus != "IN_PROGRESS" && caseStatus != "COMPLETED")
                 return Fail(409, "This handover is not active.");
 
+            if (!IsConfigured)
+                return Fail(503, NotConfiguredMessage);
+
             // A typo is rejected before it can use up one of the 3 attempts.
             if (!TryNormalize(code, out var normalized))
             {
@@ -251,8 +278,17 @@ namespace LegacyVault.Features.WillManagement.Services
                         x.BeneficiaryDesignationId == designationId.Value,
                         cancellationToken);
 
-                return issued
-                    ? Fail(409, "Your access code has just been sent to your email.")
+                if (issued)
+                    return Fail(409, "Your access code has just been sent to your email.");
+
+                var deliveredToMe = await _db.HandoverItems.AnyAsync(i =>
+                    i.HandoverCaseId == caseId &&
+                    i.Status == "DELIVERED" &&
+                    i.AssetAssignment!.BeneficiaryDesignationId == designationId.Value,
+                    cancellationToken);
+
+                return deliveredToMe
+                    ? Fail(503, "We could not issue your access code right now. Try again in a few minutes or contact support.")
                     : Fail(409, "The Executor has not delivered your assets yet.");
             }
 
@@ -388,6 +424,9 @@ namespace LegacyVault.Features.WillManagement.Services
                 return Fail(409, "This handover is not active.");
             }
 
+            if (!IsConfigured)
+                return Fail(503, NotConfiguredMessage);
+
             var delivered = await _db.HandoverItems.AnyAsync(i =>
                 i.HandoverCaseId == caseId &&
                 i.Status == "DELIVERED" &&
@@ -405,7 +444,15 @@ namespace LegacyVault.Features.WillManagement.Services
             if (row == null)
             {
                 await IssueForCaseAsync(caseId, cancellationToken);
-                return new AccessCodeResult(true, 200, "Your access code was sent to your email.");
+
+                var issuedNow = await _db.HandoverAccessCodes.AsNoTracking().AnyAsync(x =>
+                    x.HandoverCaseId == caseId &&
+                    x.BeneficiaryDesignationId == designationId.Value,
+                    cancellationToken);
+
+                return issuedNow
+                    ? new AccessCodeResult(true, 200, "Your access code was sent to your email.")
+                    : Fail(503, "We could not issue your access code right now. Try again in a few minutes or contact support.");
             }
 
             var now = DateTimeOffset.UtcNow;
@@ -426,7 +473,7 @@ namespace LegacyVault.Features.WillManagement.Services
             if (row.IssueCount >= MaxIssues)
             {
                 return Fail(429,
-                    "The limit of new codes was reached. Ask your Executor or the support team for help.");
+                    "The limit of new codes was reached. Use \"Ask for help\": your Executor and the support team will be told.");
             }
 
             var code = GenerateCode();
@@ -461,7 +508,10 @@ namespace LegacyVault.Features.WillManagement.Services
             var row = await _db.HandoverAccessCodes.AsNoTracking()
                 .Where(x => x.HandoverCaseId == caseId &&
                             x.BeneficiaryDesignationId == designationId)
-                .Select(x => new { x.LockedUntil, x.VerifiedAt })
+                .Select(x => new
+                {
+                    x.Id, x.LockedUntil, x.VerifiedAt, x.IssueCount, x.LastIssuedAt
+                })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (row == null)
@@ -472,12 +522,324 @@ namespace LegacyVault.Features.WillManagement.Services
             // The code only proves "you received the email": once it was typed
             // correctly it stays confirmed. PIN + face scan still guard everything else.
             if (row.VerifiedAt != null)
-                return new AccessCodeStatus("VERIFIED", true, null, null);
+                return new AccessCodeStatus("VERIFIED", true, null, null, row.IssueCount, MaxIssues);
+
+            var support = await HasRecentSupportRequestAsync(row.Id, row.LastIssuedAt, cancellationToken);
+            var nextResend = row.LastIssuedAt.AddMinutes(ResendCooldownMinutes);
 
             if (row.LockedUntil != null && row.LockedUntil.Value > now)
-                return new AccessCodeStatus("LOCKED", false, row.LockedUntil, null);
+            {
+                return new AccessCodeStatus(
+                    "LOCKED", false, row.LockedUntil, null,
+                    row.IssueCount, MaxIssues, nextResend, support);
+            }
 
-            return new AccessCodeStatus("SENT", false, null, null);
+            return new AccessCodeStatus(
+                "SENT", false, null, null,
+                row.IssueCount, MaxIssues, nextResend, support);
+        }
+
+        private Task<bool> HasRecentSupportRequestAsync(
+            Guid rowId, DateTimeOffset since, CancellationToken cancellationToken) =>
+            _db.AuditLogs.AsNoTracking().AnyAsync(a =>
+                a.Action == "HANDOVER_CODE_SUPPORT_REQUESTED" &&
+                a.EntityId == rowId &&
+                a.CreatedAt >= since,
+                cancellationToken);
+
+        // ------------------------------------------------------------------
+        // Executor: send a new code to one recipient
+        // ------------------------------------------------------------------
+        public async Task<AccessCodeResult> ResendByExecutorAsync(
+            Guid willId, Guid designationId, Guid executorAccountId,
+            CancellationToken cancellationToken = default)
+        {
+            var isExecutor = await _db.ExecutorAssignments.AnyAsync(x =>
+                x.WillId == willId &&
+                x.ExecutorAccountId == executorAccountId &&
+                x.Status == "ACCEPTED",
+                cancellationToken);
+
+            if (!isExecutor)
+                return Fail(404, "Handover not found.");
+
+            if (await _db.ExecutorProfiles.AnyAsync(x =>
+                    x.AccountId == executorAccountId && x.IsSuspended, cancellationToken))
+            {
+                return Fail(403, "Suspended executors cannot send access codes.");
+            }
+
+            var info = await _db.HandoverCases.AsNoTracking()
+                .Where(x => x.WillId == willId &&
+                            (x.Status == "IN_PROGRESS" || x.Status == "COMPLETED"))
+                .OrderByDescending(x => x.StartedAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    OwnerName = x.Will!.OwnerAccount != null
+                        ? x.Will.OwnerAccount.FullName
+                        : string.Empty
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (info == null)
+                return Fail(409, "This handover is not active.");
+
+            if (!IsConfigured)
+                return Fail(503, NotConfiguredMessage);
+
+            var recipient = await _db.BeneficiaryDesignations.AsNoTracking()
+                .Where(x => x.Id == designationId && x.WillId == willId)
+                .Select(x => new { x.BeneficiaryAccountId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (recipient == null)
+                return Fail(404, "Recipient not found.");
+
+            if (recipient.BeneficiaryAccountId == null)
+                return Fail(409, "This recipient has not registered yet. The code is sent once they have a verified account.");
+
+            var delivered = await _db.HandoverItems.AnyAsync(i =>
+                i.HandoverCaseId == info.Id &&
+                i.Status == "DELIVERED" &&
+                i.AssetAssignment!.BeneficiaryDesignationId == designationId,
+                cancellationToken);
+
+            if (!delivered)
+                return Fail(409, "Deliver this recipient's assets first.");
+
+            var row = await _db.HandoverAccessCodes.FirstOrDefaultAsync(x =>
+                x.HandoverCaseId == info.Id &&
+                x.BeneficiaryDesignationId == designationId,
+                cancellationToken);
+
+            if (row == null)
+            {
+                await IssueForCaseAsync(info.Id, cancellationToken);
+
+                var issuedNow = await _db.HandoverAccessCodes.AsNoTracking().AnyAsync(x =>
+                    x.HandoverCaseId == info.Id &&
+                    x.BeneficiaryDesignationId == designationId,
+                    cancellationToken);
+
+                return issuedNow
+                    ? new AccessCodeResult(true, 200, "The access code was sent to the recipient.")
+                    : Fail(503, "The code could not be issued. Check the server logs and the email settings.");
+            }
+
+            if (row.VerifiedAt != null)
+                return Fail(409, "The recipient already confirmed their access code.");
+
+            var now = DateTimeOffset.UtcNow;
+
+            if (row.LastIssuedAt.AddMinutes(ResendCooldownMinutes) > now)
+            {
+                return Fail(429,
+                    $"A code was sent less than {ResendCooldownMinutes} minutes ago. Please wait before sending another.");
+            }
+
+            if (row.IssueCount >= MaxIssuesByExecutor)
+            {
+                return Fail(429,
+                    "The maximum number of codes was reached for this recipient. Contact the support team.");
+            }
+
+            var code = GenerateCode();
+            var salt = RandomNumberGenerator.GetBytes(16);
+
+            row.Salt = salt;
+            row.CodeHash = Hash(StripDashes(code), salt, info.Id, designationId);
+            row.LastIssuedAt = now;
+            row.IssueCount += 1;
+            row.FailedAttempts = 0;
+            row.LockedUntil = null;
+            row.VerifiedAt = null;
+            row.EmailedAt = null;
+
+            _db.AuditLogs.Add(NewAudit(executorAccountId, "HANDOVER_CODE_RESENT_BY_EXECUTOR", row.Id,
+                new { caseId = info.Id, issueCount = row.IssueCount }));
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await SendCodeEmailAsync(
+                row.Id, recipient.BeneficiaryAccountId.Value, info.OwnerName, code, cancellationToken);
+
+            return new AccessCodeResult(true, 200,
+                "A new access code was emailed to the recipient. The old one no longer works.");
+        }
+
+        // ------------------------------------------------------------------
+        // Recipient: ask for help
+        // ------------------------------------------------------------------
+        public async Task<AccessCodeResult> RequestSupportAsync(
+            Guid caseId, Guid accountId,
+            CancellationToken cancellationToken = default)
+        {
+            var designationId = await FindDesignationIdAsync(caseId, accountId, cancellationToken);
+            if (designationId == null)
+                return Fail(404, "Handover not found.");
+
+            var row = await _db.HandoverAccessCodes.AsNoTracking()
+                .Where(x => x.HandoverCaseId == caseId &&
+                            x.BeneficiaryDesignationId == designationId.Value)
+                .Select(x => new { x.Id, x.IssueCount, x.LockedUntil, x.VerifiedAt })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (row == null)
+                return Fail(409, "No access code was issued to you yet.");
+
+            if (row.VerifiedAt != null)
+                return Fail(409, "Your access code is already confirmed.");
+
+            var now = DateTimeOffset.UtcNow;
+            var locked = row.LockedUntil != null && row.LockedUntil.Value > now;
+
+            if (row.IssueCount < MaxIssues && !locked)
+                return Fail(409, "You can still ask for a new code yourself.");
+
+            var alreadyAsked = await _db.AuditLogs.AsNoTracking().AnyAsync(a =>
+                a.Action == "HANDOVER_CODE_SUPPORT_REQUESTED" &&
+                a.EntityId == row.Id &&
+                a.CreatedAt >= now.AddHours(-24),
+                cancellationToken);
+
+            if (alreadyAsked)
+            {
+                return Fail(429,
+                    "Your request was already sent. Your Executor and the support team have been told.");
+            }
+
+            _db.AuditLogs.Add(NewAudit(accountId, "HANDOVER_CODE_SUPPORT_REQUESTED", row.Id,
+                new { caseId, issueCount = row.IssueCount, locked }));
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await NotifyExecutorOfSupportRequestAsync(caseId, accountId, cancellationToken);
+
+            return new AccessCodeResult(true, 200,
+                "Your request was sent. Your Executor and the support team will help you.");
+        }
+
+        private async Task NotifyExecutorOfSupportRequestAsync(
+            Guid caseId, Guid accountId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var info = await _db.HandoverCases.AsNoTracking()
+                    .Where(x => x.Id == caseId)
+                    .Select(x => new
+                    {
+                        WillTitle = x.Will!.Title,
+                        ExecutorEmail = x.Will.ExecutorAssignment != null &&
+                                        x.Will.ExecutorAssignment.ExecutorAccount != null
+                            ? x.Will.ExecutorAssignment.ExecutorAccount.Email
+                            : null,
+                        ExecutorName = x.Will.ExecutorAssignment != null &&
+                                       x.Will.ExecutorAssignment.ExecutorAccount != null
+                            ? x.Will.ExecutorAssignment.ExecutorAccount.FullName
+                            : string.Empty
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                var recipientName = await _db.Accounts.AsNoTracking()
+                    .Where(x => x.Id == accountId)
+                    .Select(x => x.FullName)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (info == null || string.IsNullOrWhiteSpace(info.ExecutorEmail)) return;
+
+                await _email.SendHandoverSupportRequestEmailAsync(
+                    info.ExecutorEmail, info.ExecutorName,
+                    recipientName ?? string.Empty, info.WillTitle);
+            }
+            catch (Exception ex)
+            {
+                // The request is already in the audit trail (admins and the Executor card see it).
+                _logger.LogWarning(ex, "Could not email the support request for case {CaseId}.", caseId);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Executor / Owner view: where is each recipient?
+        // ------------------------------------------------------------------
+        public async Task<Dictionary<Guid, RecipientCodeInfo>> GetRecipientInfoAsync(
+            Guid caseId, CancellationToken cancellationToken = default)
+        {
+            var result = new Dictionary<Guid, RecipientCodeInfo>();
+
+            var people = await _db.HandoverItems.AsNoTracking()
+                .Where(i => i.HandoverCaseId == caseId)
+                .Select(i => new
+                {
+                    DesignationId = i.AssetAssignment!.BeneficiaryDesignationId,
+                    ItemStatus = i.Status,
+                    AccountId = i.AssetAssignment.BeneficiaryDesignation!.BeneficiaryAccountId,
+                    Email = i.AssetAssignment.BeneficiaryDesignation.Email,
+                    FullName = i.AssetAssignment.BeneficiaryDesignation.FullName
+                })
+                .ToListAsync(cancellationToken);
+
+            var codes = await _db.HandoverAccessCodes.AsNoTracking()
+                .Where(x => x.HandoverCaseId == caseId)
+                .ToListAsync(cancellationToken);
+
+            var now = DateTimeOffset.UtcNow;
+
+            foreach (var group in people.GroupBy(x => x.DesignationId))
+            {
+                var first = group.First();
+                var designationId = group.Key;
+                var anyDelivered = group.Any(x => x.ItemStatus == "DELIVERED");
+
+                if (first.AccountId == null)
+                {
+                    // A verified account with the same email but ANOTHER name is not linked
+                    // automatically: someone has to decide (the owner or an admin).
+                    var email = (first.Email ?? string.Empty).Trim().ToLower();
+                    string? accountName = null;
+
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        accountName = await _db.Accounts.AsNoTracking()
+                            .Where(a => a.EmailVerified && a.Email.ToLower() == email)
+                            .Select(a => a.FullName)
+                            .FirstOrDefaultAsync(cancellationToken);
+                    }
+
+                    var nameDiffers = accountName != null &&
+                        !BeneficiaryAutoLinkService.NamesMatch(accountName, first.FullName);
+
+                    result[designationId] = new RecipientCodeInfo(
+                        nameDiffers ? "NAME_MISMATCH" : "WAITING_REGISTRATION",
+                        0, null, null, false);
+                    continue;
+                }
+
+                if (!anyDelivered)
+                {
+                    result[designationId] = new RecipientCodeInfo("NOT_DELIVERED", 0, null, null, false);
+                    continue;
+                }
+
+                var row = codes.FirstOrDefault(c => c.BeneficiaryDesignationId == designationId);
+
+                if (row == null)
+                {
+                    result[designationId] = new RecipientCodeInfo("CODE_PENDING", 0, null, null, false);
+                    continue;
+                }
+
+                var support = await HasRecentSupportRequestAsync(row.Id, row.LastIssuedAt, cancellationToken);
+
+                string status;
+                if (row.VerifiedAt != null) status = "CODE_VERIFIED";
+                else if (row.LockedUntil != null && row.LockedUntil.Value > now) status = "CODE_LOCKED";
+                else if (row.EmailedAt == null) status = "CODE_NOT_EMAILED";
+                else status = "CODE_SENT";
+
+                result[designationId] = new RecipientCodeInfo(
+                    status, row.IssueCount, row.LockedUntil, row.LastIssuedAt, support);
+            }
+
+            return result;
         }
 
         // ------------------------------------------------------------------

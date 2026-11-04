@@ -34,7 +34,7 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 .Where(x => x.Enabled &&
                             x.Will!.OwnerAccountId == me &&
                             (x.Status == "ACTIVE" ||
-                             x.Status == "THRESHOLD_REACHED"))
+                             x.Status == "TRIGGERED"))
                 .Select(x => new
                 {
                     willId = x.WillId,
@@ -57,9 +57,12 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 x.maxMissedCheckIns,
                 checkInDueSoon = x.nextCheckInAt != null &&
                     now >= x.nextCheckInAt.Value.AddDays(-x.reminderBeforeDays),
-                label = x.missedCheckIns > 0
-                    ? $"Miss {x.missedCheckIns}/{x.maxMissedCheckIns}"
-                    : null
+                triggered = x.status == "TRIGGERED",
+                label = x.status == "TRIGGERED"
+                    ? "Triggered"
+                    : x.missedCheckIns > 0
+                        ? $"Miss {x.missedCheckIns}/{x.maxMissedCheckIns}"
+                        : null
             }));
         }
     }

@@ -40,7 +40,7 @@ export default function AppLayout() {
     return () => { alive = false; clearInterval(t); };
   }, [user?.role]);
 
-  const dueAlerts = alerts.filter((a) => a.checkInDueSoon || a.missedCheckIns > 0 || a.status === "THRESHOLD_REACHED");
+  const dueAlerts = alerts.filter((a) => a.checkInDueSoon || a.missedCheckIns > 0 || a.status === "TRIGGERED");
 
   useEffect(() => {
     function onClickOutside(e) {
@@ -78,7 +78,7 @@ export default function AppLayout() {
                     <strong>{a.willTitle}</strong>
                     <div style={{ fontSize: 12, color: "#6b7280" }}>
                       {a.label ? `${a.label} — ` : ""}
-                      {a.status === "THRESHOLD_REACHED" ? "Threshold reached, executor notified" : "Check-in due. Open to check in."}
+                      {a.status === "TRIGGERED" ? "DMS triggered, your Executor was notified" : "Check-in due. Open to check in."}
                     </div>
                   </NavLink>
                 ))}

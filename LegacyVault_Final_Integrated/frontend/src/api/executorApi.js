@@ -83,6 +83,12 @@ export const getExecutorDashboard = async () => {
                                 item.allocationPercentage ?? null,
                             status: item.status ?? "PENDING",
                             deliveredAt: item.deliveredAt ?? null,
+                            claimedAt: item.claimedAt ?? null,
+                            designationId: item.beneficiaryDesignationId ?? null,
+                            recipientStatus: item.recipientStatus ?? null,
+                            codeIssueCount: item.codeIssueCount ?? 0,
+                            codeLockedUntil: item.codeLockedUntil ?? null,
+                            supportRequested: Boolean(item.recipientSupportRequested),
                         }))
                         : [],
                 };
@@ -222,6 +228,19 @@ export const deliverAllHandover = (willId) => {
     }
 
     return request(`/handover/${willId}/deliver-all`, { method: "POST" });
+};
+
+// Executor sends a NEW access code to one recipient (5 minutes apart).
+// The code only goes to the recipient's own verified email.
+export const resendRecipientCode = (willId, designationId) => {
+    if (!willId || !designationId) {
+        throw new Error("Missing Will or recipient ID.");
+    }
+
+    return request(
+        `/handover/${willId}/recipients/${designationId}/resend-code`,
+        { method: "POST" }
+    );
 };
 
 // LV-33: after Legal Verify approved the death certificate, the Executor

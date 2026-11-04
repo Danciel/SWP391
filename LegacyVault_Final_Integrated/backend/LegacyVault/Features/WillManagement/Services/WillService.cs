@@ -670,8 +670,14 @@ namespace LegacyVault.Features.WillManagement.Services
                     "DMS is not enabled for this will.");
             }
 
-            if (dms.Status != "ACTIVE" &&
-                dms.Status != "THRESHOLD_REACHED")
+            if (dms.Status == "TRIGGERED")
+            {
+                throw new InvalidOperationException(
+                    "The DMS was triggered and your Executor was notified. " +
+                    "Contact support to cancel it.");
+            }
+
+            if (dms.Status != "ACTIVE")
             {
                 throw new InvalidOperationException(
                     "DMS is not active.");

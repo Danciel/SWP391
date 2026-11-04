@@ -12,6 +12,17 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public decimal AllocationPercentage { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTimeOffset? DeliveredAt { get; set; }
+
+        // Filled only for the Owner / Executor view (never for a recipient).
+        public Guid BeneficiaryDesignationId { get; set; }
+        public DateTimeOffset? ClaimedAt { get; set; }
+
+        // WAITING_REGISTRATION | NAME_MISMATCH | NOT_DELIVERED | CODE_PENDING |
+        // CODE_NOT_EMAILED | CODE_SENT | CODE_LOCKED | CODE_VERIFIED
+        public string? RecipientStatus { get; set; }
+        public int CodeIssueCount { get; set; }
+        public DateTimeOffset? CodeLockedUntil { get; set; }
+        public bool RecipientSupportRequested { get; set; }
     }
 
     public class HandoverResponse
@@ -76,7 +87,7 @@ namespace LegacyVault.Features.WillManagement.DTOs
         [Range(0, 30)]
         public int? GraceDays { get; set; }
 
-        // ACTIVE or THRESHOLD_REACHED
+        // ACTIVE or TRIGGERED (THRESHOLD_REACHED is a legacy alias of TRIGGERED)
         public string? Status { get; set; }
     }
 

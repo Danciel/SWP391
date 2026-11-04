@@ -13,13 +13,16 @@ namespace LegacyVault.Features.WillManagement.Controllers
     public class HandoverController : ControllerBase
     {
         private readonly IHandoverService _service;
+        private readonly IHandoverCodeService _codes;
         private readonly ICurrentUserService _user;
 
         public HandoverController(
             IHandoverService service,
+            IHandoverCodeService codes,
             ICurrentUserService user)
         {
             _service = service;
+            _codes = codes;
             _user = user;
         }
 
@@ -49,6 +52,24 @@ namespace LegacyVault.Features.WillManagement.Controllers
         public Task<IActionResult> DeliverAll(Guid willId)
             => Run(() => _service.DeliverAllAsync(
                 willId, _user.GetRequiredAccountId()));
+
+        // Executor sends a NEW access code to one recipient (5 min cooldown).
+        // The old code stops working. The code only ever goes to the recipient's email.
+        [HttpPost("{willId:guid}/recipients/{designationId:guid}/resend-code")]
+        public async Task<IActionResult> ResendCode(Guid willId, Guid designationId)
+        {
+            var result = await _codes.ResendByExecutorAsync(
+                willId, designationId, _user.GetRequiredAccountId(),
+                HttpContext.RequestAborted);
+
+            return result.Success
+                ? Ok(new { message = result.Message })
+                : StatusCode(result.StatusCode, new
+                {
+                    message = result.Message,
+                    lockedUntil = result.LockedUntil
+                });
+        }
 
         // Executor marks one asset-to-beneficiary item as delivered.
         [HttpPost("items/{itemId:guid}/deliver")]

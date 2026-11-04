@@ -205,6 +205,21 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Tables added after the last EF migration are created here if missing, and
+// a missing OwnerPin:Pepper (needed for PIN + handover codes) is reported at once.
+{
+    var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    await LegacyVault.Data.SchemaBootstrap.EnsureAsync(app.Services, startupLogger);
+
+    var pepper = app.Configuration["OwnerPin:Pepper"];
+    if (string.IsNullOrWhiteSpace(pepper) || pepper.Length < 32)
+    {
+        startupLogger.LogError(
+            "OwnerPin:Pepper is missing or shorter than 32 characters. Security PIN and handover " +
+            "access codes will NOT work. Set it with: dotnet user-secrets set \"OwnerPin:Pepper\" \"<32+ random chars>\"");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

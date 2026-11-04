@@ -41,5 +41,12 @@
             string beneficiaryName,
             DateTimeOffset lockedUntil,
             bool toOwner);
+
+        // The recipient used all their new codes (or is locked) and asks for help.
+        Task SendHandoverSupportRequestEmailAsync(
+            string toEmail,
+            string toName,
+            string recipientName,
+            string willTitle);
     }
 }

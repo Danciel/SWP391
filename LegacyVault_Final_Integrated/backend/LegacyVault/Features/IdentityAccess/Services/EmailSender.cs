@@ -190,6 +190,32 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 """);
         }
 
+        public Task SendHandoverSupportRequestEmailAsync(
+            string toEmail,
+            string toName,
+            string recipientName,
+            string willTitle)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(toName);
+            var who = System.Net.WebUtility.HtmlEncode(recipientName);
+            var title = System.Net.WebUtility.HtmlEncode(willTitle);
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - A recipient needs help with an access code",
+                $"""
+                <h2>A recipient needs help</h2>
+
+                <p>Hello {name},</p>
+
+                <p><b>{who}</b> cannot enter the handover access code for
+                <b>{title}</b> (the limit of new codes was reached, or the code is locked).</p>
+
+                <p>Open the Handovers card in LegacyVault and press <b>Send a new code</b>
+                next to this recipient, or contact the support team.</p>
+                """);
+        }
+
         private async Task SendAsync(
             string toEmail,
             string subject,

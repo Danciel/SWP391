@@ -255,6 +255,15 @@ namespace LegacyVault.Features.WillManagement.Services
             if (isSuspended)
                 throw new InvalidOperationException("Suspended executors cannot deliver handover items.");
 
+            // Without OwnerPin:Pepper no recipient could ever receive a code: say so now
+            // instead of marking assets delivered and failing silently in the log.
+            if (!_codes.IsConfigured)
+            {
+                throw new InvalidOperationException(
+                    "Access codes cannot be issued: the server setting OwnerPin:Pepper is missing. " +
+                    "Ask the administrator to set it, then deliver again.");
+            }
+
             var item = await _db.HandoverItems
                 .AsNoTracking()
                 .Include(x => x.HandoverCase)
@@ -322,6 +331,15 @@ namespace LegacyVault.Features.WillManagement.Services
                 x.AccountId == executorAccountId && x.IsSuspended);
             if (isSuspended)
                 throw new InvalidOperationException("Suspended executors cannot deliver handover items.");
+
+            // Without OwnerPin:Pepper no recipient could ever receive a code: say so now
+            // instead of marking assets delivered and failing silently in the log.
+            if (!_codes.IsConfigured)
+            {
+                throw new InvalidOperationException(
+                    "Access codes cannot be issued: the server setting OwnerPin:Pepper is missing. " +
+                    "Ask the administrator to set it, then deliver again.");
+            }
 
             var isExecutor = await _db.ExecutorAssignments.AnyAsync(x =>
                 x.WillId == willId &&
@@ -742,9 +760,40 @@ namespace LegacyVault.Features.WillManagement.Services
                     AllocationPercentage = i.AssetAssignment
                         ?.AllocationPercentage ?? 0m,
                     Status = i.Status,
-                    DeliveredAt = i.DeliveredAt
+                    DeliveredAt = i.DeliveredAt,
+                    BeneficiaryDesignationId = i.AssetAssignment?.BeneficiaryDesignationId
+                        ?? Guid.Empty,
+                    ClaimedAt = onlyBeneficiaryAccount == null ? i.ClaimedAt : null
                 })
                 .ToList();
+
+            // Owner / Executor only: where is each recipient (registered? code sent? locked?).
+            if (onlyBeneficiaryAccount == null)
+            {
+                try
+                {
+                    var info = await _codes.GetRecipientInfoAsync(caseId);
+
+                    foreach (var item in items)
+                    {
+                        if (!info.TryGetValue(item.BeneficiaryDesignationId, out var r)) continue;
+
+                        item.RecipientStatus = r.Status;
+                        item.CodeIssueCount = r.IssueCount;
+                        item.CodeLockedUntil = r.LockedUntil;
+                        item.RecipientSupportRequested = r.SupportRequested;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // The status is extra information: never break the handover screen for it.
+                    _logger.LogWarning(ex, "Could not load recipient code status for case {CaseId}.", caseId);
+                }
+            }
+            else
+            {
+                foreach (var item in items) item.BeneficiaryDesignationId = Guid.Empty;
+            }
 
             return new HandoverResponse
             {

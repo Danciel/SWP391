@@ -7,6 +7,7 @@ import {
   verifyCaseProfile,
   deliverHandoverItem,
   deliverAllHandover,
+  resendRecipientCode,
   startDeathHandover,
   deleteExecutorRequest,
 } from "../../api/executorApi";
@@ -39,6 +40,36 @@ const STATUS_LABEL = {
   PENDING_REVIEW: "Pending Review",
   DELIVERED: "Delivered",
 };
+
+// Where each recipient stands (the code itself is never shown to anyone).
+const RECIPIENT_STATUS = {
+  WAITING_REGISTRATION: {
+    text: "Waiting for the recipient to register",
+    hint: "The code is sent once they have a verified account with the same email and name.",
+  },
+  NAME_MISMATCH: {
+    text: "Name does not match the account",
+    hint: "A verified account uses this email under a different name, so it is not linked automatically.",
+  },
+  NOT_DELIVERED: { text: "Not delivered yet" },
+  CODE_PENDING: {
+    text: "Code not issued yet",
+    hint: "The code could not be created. Check the server settings, then send a new code.",
+  },
+  CODE_NOT_EMAILED: {
+    text: "Code created, email not sent",
+    hint: "The email failed. Send a new code.",
+  },
+  CODE_SENT: { text: "Code sent, waiting for the recipient" },
+  CODE_LOCKED: { text: "Code locked after 3 wrong tries" },
+  CODE_VERIFIED: { text: "Recipient confirmed the code" },
+};
+
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
 
 function isOverdue(deadlineAt) {
   return Boolean(deadlineAt) && new Date(deadlineAt) < new Date();
@@ -303,6 +334,22 @@ export default function ExecutorDashboard() {
       await load();
     } catch (err) {
       setError(err.message || "Could not deliver the assets");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Sends a NEW code to one recipient; the old code stops working.
+  async function handleResendCode(willId, designationId) {
+    const key = `code:${designationId}`;
+    setBusyId(key);
+    setError("");
+    try {
+      const result = await resendRecipientCode(willId, designationId);
+      showToast(result?.message || "A new access code was emailed to the recipient.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not send a new code");
     } finally {
       setBusyId(null);
     }
@@ -601,15 +648,49 @@ export default function ExecutorDashboard() {
                             </button>
                           </div>
                         )}
-                      {(hr.assets || []).map((a) => (
-                        <div className={styles.detailRow} key={a.id}>
+                      {(hr.assets || []).map((a) => {
+                        const rs = a.recipientStatus ? RECIPIENT_STATUS[a.recipientStatus] : null;
+                        const canResend =
+                          hr.status === "IN_PROGRESS" || hr.status === "COMPLETED"
+                            ? ["CODE_PENDING", "CODE_NOT_EMAILED", "CODE_SENT", "CODE_LOCKED"].includes(
+                                a.recipientStatus
+                              )
+                            : false;
+                        const resendKey = `code:${a.designationId}`;
+                        return (
+                        <div className={styles.detailRow} key={a.id} style={{ flexWrap: "wrap" }}>
                           <span>
                             {a.name} ({a.type}) → {a.beneficiaryName}
                             {a.relationship ? ` · ${a.relationship}` : ""}
                             {a.allocationPercentage != null ? ` · ${a.allocationPercentage}%` : ""}
+                            {rs && (
+                              <span className={styles.metaText} style={{ display: "block" }}>
+                                {a.claimedAt ? "Received by the recipient" : rs.text}
+                                {a.recipientStatus === "CODE_LOCKED" && a.codeLockedUntil
+                                  ? ` until ${formatTime(a.codeLockedUntil)}`
+                                  : ""}
+                                {a.codeIssueCount > 1 ? ` · ${a.codeIssueCount} codes sent` : ""}
+                                {rs.hint ? ` — ${rs.hint}` : ""}
+                                {a.supportRequested
+                                  ? " The recipient asked for help: please send a new code."
+                                  : ""}
+                              </span>
+                            )}
                           </span>
                           {a.status === "DELIVERED" ? (
-                            <span>✓ Delivered</span>
+                            <span>
+                              ✓ Delivered
+                              {canResend && !a.claimedAt && a.designationId && (
+                                <button
+                                  className={styles.secondaryBtn}
+                                  style={{ marginLeft: 8 }}
+                                  disabled={busyId === resendKey}
+                                  onClick={() => handleResendCode(hr.willId, a.designationId)}
+                                >
+                                  {busyId === resendKey ? "Sending..." : "Send a new code"}
+                                </button>
+                              )}
+                            </span>
                           ) : (
                             <button
                               className={styles.primaryBtn}
@@ -620,7 +701,8 @@ export default function ExecutorDashboard() {
                             </button>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </li>
                 ))}
