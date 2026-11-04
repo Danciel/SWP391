@@ -17,6 +17,11 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task<HandoverResponse> DeliverAsync(
             Guid itemId, Guid executorAccountId);
 
+        // Executor hands over EVERY pending item of the will's running handover
+        // at once. Each recipient receives their own access code by email.
+        Task<HandoverResponse> DeliverAllAsync(
+            Guid willId, Guid executorAccountId);
+
         // Admin: handover could not be completed -> refund the held fee.
         Task<HandoverResponse> AbortAsync(Guid willId, Guid adminAccountId);
 

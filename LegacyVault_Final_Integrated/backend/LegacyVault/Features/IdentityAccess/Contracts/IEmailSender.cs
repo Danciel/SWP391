@@ -19,5 +19,27 @@
             string executorName,
             string ownerName,
             string willTitle);
+
+        // The Security PIN was locked after too many wrong attempts.
+        Task SendPinLockedEmailAsync(
+            string toEmail,
+            string fullName,
+            DateTimeOffset lockedUntil);
+
+        // The recipient's handover access code (XXXX-XXXX-XXXX).
+        Task SendHandoverCodeEmailAsync(
+            string toEmail,
+            string recipientName,
+            string ownerName,
+            string code);
+
+        // The access code was locked after 3 wrong codes.
+        // toOwner = true: the owner is told that someone failed to enter it.
+        Task SendHandoverCodeLockedEmailAsync(
+            string toEmail,
+            string recipientName,
+            string beneficiaryName,
+            DateTimeOffset lockedUntil,
+            bool toOwner);
     }
 }

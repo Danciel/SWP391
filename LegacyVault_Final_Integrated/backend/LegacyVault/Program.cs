@@ -118,6 +118,12 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.IHandoverService,
     LegacyVault.Features.WillManagement.Services.HandoverService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IHandoverCodeService,
+    LegacyVault.Features.WillManagement.Services.HandoverCodeService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IBeneficiaryAutoLinkService,
+    LegacyVault.Features.WillManagement.Services.BeneficiaryAutoLinkService>();
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
 // D05: LifeStatus comes from the separate MockIdpApi over HTTP

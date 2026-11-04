@@ -43,6 +43,13 @@ namespace LegacyVault.Features.WillManagement.Controllers
             => Run(() => _service.GetAsync(
                 willId, _user.GetRequiredAccountId()));
 
+        // Executor hands over everything that is still pending in one go.
+        // Every recipient gets their own access code by email.
+        [HttpPost("{willId:guid}/deliver-all")]
+        public Task<IActionResult> DeliverAll(Guid willId)
+            => Run(() => _service.DeliverAllAsync(
+                willId, _user.GetRequiredAccountId()));
+
         // Executor marks one asset-to-beneficiary item as delivered.
         [HttpPost("items/{itemId:guid}/deliver")]
         public Task<IActionResult> Deliver(Guid itemId)

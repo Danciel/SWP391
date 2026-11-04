@@ -49,7 +49,8 @@ public sealed class ResetOwnerPinRequest
 [Route("api/owner-pin")]
 public sealed class OwnerSecurityPinController : ControllerBase
 {
-    private const int MaxAttempts = 5;
+    private const int MaxAttempts = 3;
+    private const int LockMinutes = 15;
     private const int Iterations = 210_000;
 
     private readonly LegacyVaultDbContext _db;
@@ -61,6 +62,7 @@ public sealed class OwnerSecurityPinController : ControllerBase
     private readonly IEmailOtpRepository _emailOtpRepository;
     private readonly IEmailSender _emailSender;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<OwnerSecurityPinController> _logger;
 
     private const int MaxOtpAttempts = 5;
 
@@ -73,7 +75,8 @@ public sealed class OwnerSecurityPinController : ControllerBase
         IEmailOtpService emailOtpService,
         IEmailOtpRepository emailOtpRepository,
         IEmailSender emailSender,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        ILogger<OwnerSecurityPinController> logger)
     {
         _db = db;
         _currentUser = currentUser;
@@ -84,6 +87,29 @@ public sealed class OwnerSecurityPinController : ControllerBase
         _emailOtpRepository = emailOtpRepository;
         _emailSender = emailSender;
         _cache = cache;
+        _logger = logger;
+    }
+
+    // Tells the account holder the PIN is locked. An email problem never
+    // changes the PIN response.
+    private async Task NotifyPinLockedAsync(
+        Guid accountId, DateTimeOffset lockedUntil)
+    {
+        try
+        {
+            var account = await _accounts.GetByIdAsync(accountId);
+
+            if (account == null) return;
+
+            await _emailSender.SendPinLockedEmailAsync(
+                account.Email, account.FullName, lockedUntil);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Could not send the PIN locked email for account {AccountId}.",
+                accountId);
+        }
     }
 
     // B3. VALIDATE PIN
@@ -372,7 +398,7 @@ public sealed class OwnerSecurityPinController : ControllerBase
 
             DateTimeOffset? newLock =
                 failedAttempts >= MaxAttempts
-                    ? now.AddMinutes(15)
+                    ? now.AddMinutes(LockMinutes)
                     : null;
 
             await using var update = new NpgsqlCommand(
@@ -402,12 +428,15 @@ public sealed class OwnerSecurityPinController : ControllerBase
             await update.ExecuteNonQueryAsync();
             await transaction.CommitAsync();
 
+            if (newLock.HasValue)
+                await NotifyPinLockedAsync(ownerId, newLock.Value);
+
             return StatusCode(
                 newLock.HasValue ? 429 : 401,
                 new
                 {
                     message = newLock.HasValue
-                        ? "PIN locked for 15 minutes."
+                        ? "PIN locked for " + LockMinutes + " minutes."
                         : "Incorrect PIN.",
                     remainingAttempts =
                         MaxAttempts - failedAttempts
@@ -547,7 +576,7 @@ public sealed class OwnerSecurityPinController : ControllerBase
             failedAttempts = Math.Min(MaxAttempts, failedAttempts + 1);
 
             DateTimeOffset? newLock =
-                failedAttempts >= MaxAttempts ? now.AddMinutes(15) : null;
+                failedAttempts >= MaxAttempts ? now.AddMinutes(LockMinutes) : null;
 
             await using var update = new NpgsqlCommand(
                 """
@@ -569,12 +598,15 @@ public sealed class OwnerSecurityPinController : ControllerBase
             await update.ExecuteNonQueryAsync();
             await transaction.CommitAsync();
 
+            if (newLock.HasValue)
+                await NotifyPinLockedAsync(ownerId, newLock.Value);
+
             return StatusCode(
                 newLock.HasValue ? 429 : 401,
                 new
                 {
                     message = newLock.HasValue
-                        ? "PIN locked for 15 minutes."
+                        ? "PIN locked for " + LockMinutes + " minutes."
                         : "Current PIN is incorrect.",
                     remainingAttempts = MaxAttempts - failedAttempts
                 });

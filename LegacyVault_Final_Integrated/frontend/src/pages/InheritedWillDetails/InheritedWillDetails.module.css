@@ -212,3 +212,25 @@
 .secretModal { background: #fff; border-radius: 14px; padding: 22px; width: 100%; max-width: 460px; }
 .secretRow { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #eef0f3; }
 .secretValue { font-family: ui-monospace, Menlo, monospace; font-size: 13px; word-break: break-all; }
+
+.codeBox {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e3e6ec;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.codeInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px solid #cfd5de;
+  border-radius: 10px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 20px;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+}

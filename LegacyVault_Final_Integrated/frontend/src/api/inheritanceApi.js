@@ -25,6 +25,27 @@ export const claimInheritedItem = (itemId, faceBlob) => {
   });
 };
 
+// Beneficiary: type the access code that was emailed (XXXX-XXXX-XXXX).
+// The Security PIN comes first (grant scope INHERITANCE_VIEW, resource = Will ID).
+// 3 wrong codes lock it for 15 minutes (the server answers 429).
+export const verifyAccessCode = (willId, code, pinGrant) => {
+  if (!pinGrant) throw new Error("Security PIN is required.");
+  return request(`/inheritance/${willId}/access-code/verify`, {
+    method: "POST",
+    body: { code },
+    headers: { [PIN_HEADER]: pinGrant },
+  });
+};
+
+// Beneficiary: ask for a NEW access code by email (the old one stops working).
+export const resendAccessCode = (willId, pinGrant) => {
+  if (!pinGrant) throw new Error("Security PIN is required.");
+  return request(`/inheritance/${willId}/access-code/resend`, {
+    method: "POST",
+    headers: { [PIN_HEADER]: pinGrant },
+  });
+};
+
 // Beneficiary: credentials of an asset that was already claimed.
 export const revealInheritedSecret = (willId, itemId, pinGrant) => {
   if (!pinGrant) throw new Error("Security PIN is required.");

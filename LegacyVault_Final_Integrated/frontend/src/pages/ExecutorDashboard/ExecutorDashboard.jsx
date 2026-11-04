@@ -6,6 +6,7 @@ import {
   submitExecutorLegalDocuments,
   verifyCaseProfile,
   deliverHandoverItem,
+  deliverAllHandover,
   startDeathHandover,
   deleteExecutorRequest,
 } from "../../api/executorApi";
@@ -287,13 +288,33 @@ export default function ExecutorDashboard() {
     }
   }
 
+  // One button for the whole will: every pending asset is handed over and each
+  // beneficiary receives their own access code by email.
+  async function handleDeliverAll(willId) {
+    setBusyId(willId);
+    setError("");
+    try {
+      const result = await deliverAllHandover(willId);
+      showToast(
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "All pending assets delivered. Each beneficiary received an access code by email."
+      );
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not deliver the assets");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   // After Legal Verify approved the death certificate.
   async function handleStartHandover(willId) {
     setBusyId(willId);
     setError("");
     try {
       await startDeathHandover(willId);
-      showToast("Handover started. Deliver each asset to its beneficiary.");
+      showToast("Handover started. Use Deliver all to hand everything over.");
       await load();
     } catch (err) {
       setError(err.message || "Could not start the handover");
@@ -564,6 +585,22 @@ export default function ExecutorDashboard() {
                           This handover is paused while a problem is being reviewed by Admin.
                         </p>
                       )}
+                      {hr.status === "IN_PROGRESS" &&
+                        (hr.assets || []).some((a) => a.status !== "DELIVERED") && (
+                          <div className={styles.detailRow}>
+                            <span>
+                              Hand everything over at once. Every beneficiary gets
+                              their own access code by email.
+                            </span>
+                            <button
+                              className={styles.primaryBtn}
+                              disabled={busyId === hr.willId}
+                              onClick={() => handleDeliverAll(hr.willId)}
+                            >
+                              {busyId === hr.willId ? "Delivering..." : "Deliver all"}
+                            </button>
+                          </div>
+                        )}
                       {(hr.assets || []).map((a) => (
                         <div className={styles.detailRow} key={a.id}>
                           <span>

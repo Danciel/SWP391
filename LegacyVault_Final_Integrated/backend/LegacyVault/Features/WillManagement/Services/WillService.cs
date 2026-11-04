@@ -11,15 +11,18 @@ namespace LegacyVault.Features.WillManagement.Services
         private readonly ICurrentUserService _currentUserService;
 
         private readonly IWalletService _wallet;
+        private readonly IHandoverCodeService _handoverCodes;
 
         public WillService(
             IWillRepository willRepository,
             ICurrentUserService currentUserService,
-            IWalletService wallet)
+            IWalletService wallet,
+            IHandoverCodeService handoverCodes)
         {
             _willRepository = willRepository;
             _currentUserService = currentUserService;
             _wallet = wallet;
+            _handoverCodes = handoverCodes;
         }
 
         public async Task<WillSummaryResponse> CreateAsync(
@@ -798,6 +801,10 @@ namespace LegacyVault.Features.WillManagement.Services
             beneficiary.BeneficiaryAccountId = account.Id;
             beneficiary.UpdatedAt = DateTimeOffset.UtcNow;
             await _willRepository.SaveChangesAsync();
+
+            // A handover is already running and assets were delivered to this
+            // person: their access code goes out now.
+            await _handoverCodes.IssueForWillAsync(willId);
 
             return ToBeneficiaryResponse(beneficiary);
         }

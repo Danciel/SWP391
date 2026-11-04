@@ -2,16 +2,19 @@
 
 ## 0. Run once (Supabase SQL Editor)
 `backend/LegacyVault/database/s9_handover_claim_and_certificate.sql`
-(adds `HandoverItems.ClaimedAt/ClaimedByAccountId` and `LegalCases.CertificateData`).
+(adds `HandoverItems.ClaimedAt/ClaimedByAccountId` and `LegalCases.CertificateData`) and
+`backend/LegacyVault/database/s10_handover_access_codes.sql` (table `HandoverAccessCodes`).
 Then rebuild the backend (not compiled in the sandbox where this was written).
 
 ## 1. Immediate Handover (Owner, still alive)
 1. Owner: My Wills (or Will Details) -> **Immediate Handover** -> "Yes, Enter PIN".
 2. PIN dialog (scope `HANDOVER_START`, bound to that will). Backend refuses without the grant (HTTP 423).
 3. Will -> `HANDOVER_IN_PROGRESS`, a handover case with one item per asset/beneficiary is created.
-4. Executor Dashboard -> **Handovers** card -> **Deliver** per asset.
+4. Executor Dashboard -> **Handovers** card -> **Deliver all** (the per-asset **Deliver** stays available).
+   Every beneficiary gets their own access code by email (see `CHANGES_PIN_LOCK_AND_HANDOVER_CODE.md`).
    Last delivery -> case COMPLETED, will HANDED_OVER, the REMAINING fee (total - 20% advance) goes to the Executor wallet.
-5. Beneficiary: **View Will** -> Open with PIN (`INHERITANCE_VIEW`) -> **Scan face to receive** -> **View credentials**.
+5. Beneficiary: **View Will** -> Open with PIN (`INHERITANCE_VIEW`) -> type the **access code** from the email
+   -> **Scan face to receive** -> **View credentials**.
 
 ## 2. After death (certificate)
 1. Executor Dashboard -> DMS trigger -> **Submit Legal Document** -> fill the **death-certificate form**

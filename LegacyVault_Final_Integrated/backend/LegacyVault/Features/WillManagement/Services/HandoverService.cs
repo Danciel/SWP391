@@ -16,6 +16,8 @@ namespace LegacyVault.Features.WillManagement.Services
         private readonly IWalletService _wallet;
         private readonly ILifeStatusClient _lifeStatus;
         private readonly IEmailSender _email;
+        private readonly IHandoverCodeService _codes;
+        private readonly IBeneficiaryAutoLinkService _autoLink;
         private readonly ILogger<HandoverService> _logger;
 
         public HandoverService(
@@ -23,12 +25,16 @@ namespace LegacyVault.Features.WillManagement.Services
             IWalletService wallet,
             ILifeStatusClient lifeStatus,
             IEmailSender email,
+            IHandoverCodeService codes,
+            IBeneficiaryAutoLinkService autoLink,
             ILogger<HandoverService> logger)
         {
             _db = db;
             _wallet = wallet;
             _lifeStatus = lifeStatus;
             _email = email;
+            _codes = codes;
+            _autoLink = autoLink;
             _logger = logger;
         }
 
@@ -159,6 +165,17 @@ namespace LegacyVault.Features.WillManagement.Services
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
 
+            // People who already have a verified account with the same email and
+            // name join the handover without the owner (who may no longer be alive).
+            try
+            {
+                await _autoLink.TryLinkWillAsync(willId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Auto-link failed for will {WillId}.", willId);
+            }
+
             await InviteUnregisteredAsync(willId);
 
             return await BuildResponseAsync(handover.Id);
@@ -281,6 +298,9 @@ namespace LegacyVault.Features.WillManagement.Services
             if (pending == 0)
                 await CompleteAsync(item.HandoverCaseId, willId, executorAccountId);
 
+            // The recipient of this item gets the access code (once per person).
+            await _codes.IssueForCaseAsync(item.HandoverCaseId);
+
             _db.AuditLogs.Add(new AuditLog
             {
                 Id = Guid.NewGuid(), ActorAccountId = executorAccountId, Action = "HANDOVER_ITEM_DELIVERED",
@@ -290,6 +310,74 @@ namespace LegacyVault.Features.WillManagement.Services
             });
             await _db.SaveChangesAsync();
             return await BuildResponseAsync(item.HandoverCaseId);
+        }
+
+        // One button for the whole will: every pending item is delivered and each
+        // recipient gets their own access code by email. A recipient without an
+        // account yet is simply "waiting": the code goes out once they join.
+        public async Task<HandoverResponse> DeliverAllAsync(
+            Guid willId, Guid executorAccountId)
+        {
+            var isSuspended = await _db.ExecutorProfiles.AnyAsync(x =>
+                x.AccountId == executorAccountId && x.IsSuspended);
+            if (isSuspended)
+                throw new InvalidOperationException("Suspended executors cannot deliver handover items.");
+
+            var isExecutor = await _db.ExecutorAssignments.AnyAsync(x =>
+                x.WillId == willId &&
+                x.ExecutorAccountId == executorAccountId &&
+                x.Status == "ACCEPTED");
+
+            if (!isExecutor)
+                throw new KeyNotFoundException("Handover not found.");
+
+            var handoverCase = await _db.HandoverCases
+                .AsNoTracking()
+                .Where(x => x.WillId == willId && x.Status != "ABORTED")
+                .OrderByDescending(x => x.StartedAt)
+                .FirstOrDefaultAsync()
+                ?? throw new KeyNotFoundException("Handover not found.");
+
+            if (handoverCase.Status == "PAUSED")
+                throw new WillConflictException(
+                    "Handover is paused while a problem is being reviewed.");
+
+            if (handoverCase.Status != "IN_PROGRESS")
+                throw new WillConflictException("Handover is not in progress.");
+
+            var now = DateTimeOffset.UtcNow;
+
+            // Atomic: every item is delivered once.
+            var delivered = await _db.HandoverItems
+                .Where(x => x.HandoverCaseId == handoverCase.Id && x.Status == "PENDING")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "DELIVERED")
+                    .SetProperty(x => x.DeliveredAt, now)
+                    .SetProperty(x => x.DeliveredByAccountId, executorAccountId));
+
+            if (delivered == 0)
+                throw new WillConflictException("There is nothing left to deliver.");
+
+            var pending = await _db.HandoverItems.CountAsync(x =>
+                x.HandoverCaseId == handoverCase.Id &&
+                x.Status == "PENDING");
+
+            if (pending == 0)
+                await CompleteAsync(handoverCase.Id, willId, executorAccountId);
+
+            // One email with one code per recipient.
+            await _codes.IssueForCaseAsync(handoverCase.Id);
+
+            _db.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(), ActorAccountId = executorAccountId, Action = "HANDOVER_DELIVERED_ALL",
+                EntityType = "HandoverCase", EntityId = handoverCase.Id,
+                Details = System.Text.Json.JsonSerializer.Serialize(new { willId, delivered, remainingItems = pending }),
+                CreatedAt = now
+            });
+            await _db.SaveChangesAsync();
+
+            return await BuildResponseAsync(handoverCase.Id);
         }
 
         private async Task CompleteAsync(

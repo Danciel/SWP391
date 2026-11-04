@@ -214,6 +214,16 @@ export const deliverHandoverItem = (itemId) => {
     return request(`/handover/items/${itemId}/deliver`, { method: "POST" });
 };
 
+// Executor hands over EVERY pending item of the will at once.
+// Each recipient gets their own access code by email.
+export const deliverAllHandover = (willId) => {
+    if (!willId) {
+        throw new Error("Missing Will ID.");
+    }
+
+    return request(`/handover/${willId}/deliver-all`, { method: "POST" });
+};
+
 // LV-33: after Legal Verify approved the death certificate, the Executor
 // starts the handover (same flow as an immediate handover from here on).
 export const startDeathHandover = (willId) => {
