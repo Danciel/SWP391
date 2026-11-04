@@ -12,4 +12,6 @@ public interface IFaceRepository
 
     // Saves all tracked changes on the shared DbContext (Face + IdpUser.FaceId)
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<List<Face>> GetAllExceptUserAsync(Guid idpUserId, CancellationToken cancellationToken = default);
 }

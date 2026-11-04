@@ -28,4 +28,12 @@ public class FaceRepository : IFaceRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => _context.SaveChangesAsync(cancellationToken);
+
+    public Task<List<Face>> GetAllExceptUserAsync(
+        Guid idpUserId,
+        CancellationToken cancellationToken = default)
+        => _context.Faces
+            .AsNoTracking()
+            .Where(x => x.IdpUserId != idpUserId)
+            .ToListAsync(cancellationToken);
 }

@@ -25,22 +25,36 @@ public class FaceRecognitionService : IFaceRecognitionService
 
     public float[] ExtractEmbedding(Stream imageStream)
     {
-        using var image = Image.Load<Rgb24>(imageStream);
+        using var image = LoadImage(imageStream);
 
         lock (_sync)
         {
             var faces = _detector.DetectFaces(image);
 
-            // Do not enroll an ambiguous image.
-            if (faces.Count != 1)
+            if (faces.Count == 0)
             {
-                throw new InvalidFaceImageException(
-                    faces.Count == 0
-                        ? "No face was detected."
-                        : "Multiple faces were detected.");
+                throw new InvalidFaceImageException("No face was detected.");
             }
 
-            var face = faces.First();
+            // Webcam shots often include small faces in the background:
+            // use the largest face, and only reject the image as ambiguous
+            // when another face is of comparable size (> 50% of its area).
+            var largest = faces
+                .OrderByDescending(f => f.Box.Width * f.Box.Height)
+                .First();
+
+            var largestArea = largest.Box.Width * largest.Box.Height;
+
+            var comparableFaces = faces
+                .Where(f => f.Box.Width * f.Box.Height > largestArea * 0.5f)
+                .Count();
+
+            if (comparableFaces > 1)
+            {
+                throw new InvalidFaceImageException("Multiple faces were detected.");
+            }
+
+            var face = largest;
 
             if (face.Landmarks is null)
             {
@@ -58,6 +72,19 @@ public class FaceRecognitionService : IFaceRecognitionService
 
             // Store ordinary numbers, not the model-specific object.
             return embedding.ToArray();
+        }
+    }
+
+    // Corrupt / non-image uploads become a clean 422 instead of a 500.
+    private static Image<Rgb24> LoadImage(Stream imageStream)
+    {
+        try
+        {
+            return Image.Load<Rgb24>(imageStream);
+        }
+        catch (Exception)
+        {
+            throw new InvalidFaceImageException("The uploaded file is not a valid image.");
         }
     }
 
