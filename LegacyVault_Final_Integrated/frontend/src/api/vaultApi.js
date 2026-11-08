@@ -1,5 +1,5 @@
 import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
-import { request } from "./client";
+import { request, BASE_URL, getToken } from "./client";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
@@ -209,7 +209,37 @@ export const checkInDms = async (userId, id, pinGrant = null) => {
   await r(`/wills/${id}/dms/check-in`, "POST");
   return getWill(userId, id, pinGrant);
 };
-export const cancelDeathHandover = unsupported("Cancel death handover");
+// C6/C9: Owner presses "I'm alive" after the DMS triggered / a death handover was opened.
+// ASSUMED contract (agree with Cuong): POST /handover/{willId}/alive -> 204/200, cancels the death handover,
+// resets DMS to ACTIVE and clears the missed counter. Change this one path if BE uses another route.
+const OWNER_ALIVE_PATH = (willId) => `/handover/${willId}/alive`;
+
+export const confirmOwnerAlive = async (userId, id, pinGrant = null) => {
+  await r(OWNER_ALIVE_PATH(id), "POST");
+  return getWill(userId, id, pinGrant);
+};
+export const cancelDeathHandover = confirmOwnerAlive; // old name, still used by OwnerDashboard/ownerApi
+
+// C2: sealed handover report (PDF). ASSUMED: GET /handover/{willId}/report -> application/pdf.
+export async function downloadHandoverReport(willId) {
+  const res = await fetch(`${BASE_URL}/handover/${willId}/report`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) {
+    let msg = `Could not download the report (${res.status}).`;
+    try { msg = (await res.json())?.message || msg; } catch { /* not json */ }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `handover-report-${willId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 
 export const requestImmediateHandover = async (
   userId,

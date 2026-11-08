@@ -203,9 +203,19 @@ export default function VerifyIdentity() {
       setFinalProfile(profile);
     } catch (err) {
       console.error("Face verification error:", err);
-      setError(
-        "Face verification failed. The face may not match the registered profile, or multiple faces may be present in the frame. Please ensure only one person is visible and try again."
-      );
+      if (err?.status === 409 || err?.code === "IDP_ALREADY_LINKED") {
+        // N6: this identity already belongs to another LegacyVault account.
+        setError(
+          err.message ||
+            "This identity is already linked to another LegacyVault account. Use a different identity or contact support."
+        );
+      } else if (err?.status === 429) {
+        setError(err.message);
+      } else {
+        setError(
+          "Face verification failed. The face may not match the registered profile, or multiple faces may be present in the frame. Please ensure only one person is visible and try again."
+        );
+      }
     } finally {
       setVerifying(false);
     }

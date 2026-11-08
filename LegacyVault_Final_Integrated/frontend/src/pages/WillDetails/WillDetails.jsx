@@ -9,7 +9,8 @@ import {
   getWills,
   getAssets,
   checkInDms,
-  cancelDeathHandover,
+  confirmOwnerAlive,
+  downloadHandoverReport,
   requestImmediateHandover,
   getExecutors,
   getHandover,
@@ -36,6 +37,13 @@ const EXECUTOR_STATUS_LABEL = {
   PENDING: "Waiting for the executor to accept",
   ACCEPTED: "Accepted",
   DECLINED: "Declined",
+};
+
+const HANDOVER_ITEM_LABEL = {
+  PENDING: "Pending",
+  AWAITING_EXECUTOR_SIGNATURE: "Waiting for executor signature",
+  AWAITING_BENEFICIARY_SIGNATURE: "Waiting for beneficiary signature",
+  DELIVERED: "Delivered",
 };
 
 export default function WillDetails() {
@@ -71,6 +79,12 @@ export default function WillDetails() {
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInError, setCheckInError] = useState("");
   const [checkInDone, setCheckInDone] = useState("");
+
+  // C6/C9: "I'm alive" after the DMS triggered; C2: sealed report download
+  const [aliveBusy, setAliveBusy] = useState(false);
+  const [aliveError, setAliveError] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const [handover, setHandover] = useState(null);
 
@@ -298,16 +312,38 @@ export default function WillDetails() {
   }
 
   async function handleCancelHandover() {
+    if (aliveBusy) return;
+    setAliveBusy(true);
+    setAliveError("");
     setCheckInError("");
 
     try {
-      setWill(
-        await cancelDeathHandover(user?.id, will.id)
-      );
+      const updated = await confirmOwnerAlive(user?.id, will.id, pinGrant);
+      setWill(updated);
+      setCheckInDone("Welcome back. The handover was cancelled and your Dead Man's Switch is active again.");
+      loadHandover();
     } catch (err) {
-      setCheckInError(
-        err.message || "Could not cancel handover"
+      setAliveError(
+        err?.status === 409
+          ? err.message || "This handover can no longer be cancelled."
+          : err?.status === 423
+            ? "PIN access expired. Return to My Wills and unlock again, then retry."
+            : err.message || "Could not cancel handover"
       );
+    } finally {
+      setAliveBusy(false);
+    }
+  }
+
+  async function handleDownloadReport() {
+    setReportBusy(true);
+    setReportError("");
+    try {
+      await downloadHandoverReport(will.id);
+    } catch (err) {
+      setReportError(err.message || "Could not download the report");
+    } finally {
+      setReportBusy(false);
     }
   }
 
@@ -500,6 +536,18 @@ export default function WillDetails() {
           >
             Check in now
           </button>
+        </div>
+      )}
+
+      {/* DMS TRIGGERED: Owner must be able to say "I'm alive" from anywhere on this page */}
+      {will.status === "PENDING_VERIFICATION" && (
+        <div className={styles.bannerDanger} role="alert">
+          Your Dead Man's Switch has triggered and your executor was notified. If you are alive,
+          cancel it now.{" "}
+          <button className={styles.linkBtn} disabled={aliveBusy} onClick={handleCancelHandover}>
+            {aliveBusy ? "Cancelling..." : "I'm alive — cancel handover"}
+          </button>
+          {aliveError && <div style={{ marginTop: 6 }}>{aliveError}</div>}
         </div>
       )}
 
@@ -957,7 +1005,7 @@ export default function WillDetails() {
                 </div>
 
                 <div className={styles.itemMeta}>
-                  {it.status}
+                  {HANDOVER_ITEM_LABEL[it.status] || it.status}
 
                   {it.deliveredAt
                     ? ` · ${fmtDate(
@@ -969,6 +1017,40 @@ export default function WillDetails() {
               </div>
             </div>
           ))}
+
+          {/* C1-C5: signatures + sealed report. Rendered only when the backend sends them. */}
+          {(handover.report || handover.signatures?.length > 0) && (
+            <>
+              <h3 className={styles.sectionTitle} style={{ fontSize: 15, marginTop: 16 }}>
+                Handover report
+              </h3>
+              {handover.report?.sha256 && (
+                <Row label="SHA-256" value={<code style={{ wordBreak: "break-all" }}>{handover.report.sha256}</code>} />
+              )}
+              {handover.report?.generatedAt && (
+                <Row label="Sealed at" value={fmtDate(handover.report.generatedAt, true)} />
+              )}
+              {(handover.signatures || []).map((sg, i) => (
+                <Row
+                  key={sg.id || i}
+                  label={sg.role === "EXECUTOR" ? "Executor" : "Beneficiary"}
+                  value={
+                    sg.signedAt
+                      ? `${sg.signerName || "—"} signed on ${fmtDate(sg.signedAt, true)}`
+                      : `${sg.signerName || "—"} — waiting for signature`
+                  }
+                />
+              ))}
+              {handover.report && (
+                <div className={styles.actions}>
+                  <button className={styles.primaryBtn} disabled={reportBusy} onClick={handleDownloadReport}>
+                    {reportBusy ? "Downloading..." : "Download sealed report (PDF)"}
+                  </button>
+                </div>
+              )}
+              {reportError && <p role="alert" className={styles.errorText}>{reportError}</p>}
+            </>
+          )}
         </section>
       )}
 
@@ -1157,12 +1239,14 @@ export default function WillDetails() {
                 <div className={styles.demoRow}>
                   <button
                     className={styles.primaryBtn}
+                    disabled={aliveBusy}
                     onClick={
                       handleCancelHandover
                     }
                   >
-                    I'm Still Active /
-                    Cancel Handover
+                    {aliveBusy
+                      ? "Cancelling..."
+                      : "I'm Still Active / Cancel Handover"}
                   </button>
                 </div>
               </div>

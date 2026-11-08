@@ -129,3 +129,13 @@
 }
 
 
+
+.noticeBanner {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
