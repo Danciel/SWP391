@@ -314,3 +314,229 @@
   flex: 1;
   min-width: 0;
 }
+
+.paymentStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 22px 0;
+}
+
+.paymentStatCard {
+  min-height: 155px;
+  padding: 22px 24px;
+  border: 1px solid #dce7e1;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.paymentStatCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(20, 60, 45, 0.09);
+}
+
+.paymentStatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.paymentStatCard h3 {
+  margin: 20px 0 10px;
+  font-size: clamp(19px, 2vw, 25px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  overflow-wrap: anywhere;
+}
+
+.paymentStatCard p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.heldCard {
+  background: #f0f5f2;
+  color: #174c3c;
+}
+
+.releasedCard {
+  background: #edf6f1;
+  color: #146344;
+}
+
+.refundedCard {
+  background: #fbf1ed;
+  color: #a95137;
+}
+
+.heldBadge,
+.releasedBadge,
+.refundedBadge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.heldBadge {
+  background: #dce9e1;
+  color: #527d68;
+}
+
+.releasedBadge {
+  background: #d5eee0;
+  color: #16845b;
+}
+
+.refundedBadge {
+  background: #f5dfd7;
+  color: #b45d42;
+}
+
+@media (max-width: 768px) {
+  .paymentStats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .paymentStatCard {
+    min-height: 130px;
+  }
+}
+
+
+/* Audit Log Entity */
+
+.auditEntity strong {
+  display: block;
+  color: #174c3c;
+}
+
+.auditEntityName {
+  margin-top: 4px;
+  color: #789087;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Audit Log Details */
+
+.auditDetails {
+  min-width: 180px;
+}
+
+.auditDetailsSummary {
+  cursor: pointer;
+  color: #176451;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.auditDetailsSummary:hover {
+  color: #b58a35;
+}
+
+.auditDetailsContent {
+  margin-top: 10px;
+  padding: 12px;
+  min-width: 260px;
+  background: #f4f7f5;
+  border: 1px solid #e0e8e3;
+  border-radius: 8px;
+}
+
+.auditDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid #e0e8e3;
+}
+
+.auditDetailRow:last-child {
+  border-bottom: none;
+}
+
+.auditDetailLabel {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #174c3c;
+}
+
+.auditDetailValue {
+  font-size: 12px;
+  color: #526b60;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Audit Log Pagination */
+
+.auditPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e8e3;
+}
+
+.auditPaginationInfo {
+  color: #789087;
+  font-size: 14px;
+}
+
+.auditPaginationActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auditPageBtn {
+  min-width: 88px;
+  padding: 9px 16px;
+  border: 1px solid #1d6653;
+  border-radius: 9px;
+  background: #1d6653;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auditPageBtn:hover:not(:disabled) {
+  background: #154c3e;
+  border-color: #154c3e;
+  transform: translateY(-1px);
+}
+
+.auditPageBtn:disabled {
+  background: #e8efeb;
+  border-color: #d5e1da;
+  color: #9aaba2;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .auditPagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .auditPaginationActions {
+    justify-content: flex-end;
+  }
+}

@@ -7,18 +7,20 @@ import {
   updateAccount,
   deleteAccount,
   setAccountRole,
-  setAccountStatus,
 } from "../../api/adminApi";
+
+import {
+  getAdminPayments,
+  getAdminAuditLogs,
+} from "../../api/adminOperationsApi";
 
 import AdminPricingRules from "../../components/AdminPricingRules/AdminPricingRules";
 import styles from "./AdminDashboard.module.css";
 
 const ROLE_LABEL = {
-  OWNER: "Owner",
+  USER: "User (Owner / Beneficiary)",
+  EXECUTOR: "Executor",
   LEGAL_VERIFIER: "Legal Verifier",
-  ADMIN: "Admin",
-  USER: "User",
-  BENEFICIARY: "Beneficiary",
 };
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABEL);
@@ -53,8 +55,58 @@ function CaseBadge({ status }) {
   );
 }
 
+
+const AUDIT_DETAIL_LABELS = {
+  willId: "Will ID",
+  assetId: "Asset ID",
+  amount: "Amount",
+  Amount: "Amount",
+  paidNow: "Paid Now",
+  Currency: "Currency",
+  currency: "Currency",
+  targetAccountId: "Target Account",
+  executorAccountId: "Executor Account",
+  beneficiaryId: "Beneficiary ID",
+  handoverCaseId: "Handover Case",
+  remainingItems: "Remaining Items",
+  itemCount: "Item Count",
+  type: "Handover Type",
+  Title: "Will Title",
+  relationship: "Relationship",
+};
+
+function parseAuditDetails(details) {
+  if (!details) return {};
+
+  if (typeof details === "object") return details;
+
+  try {
+    return JSON.parse(details);
+  } catch {
+    return { description: details };
+  }
+}
+
+function formatAuditValue(key, value) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  if (key.toLowerCase().includes("amount") || key === "paidNow") {
+    return `${Number(value).toLocaleString("vi-VN")} VND`;
+  }
+
+  return String(value);
+}
+
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize] = useState(7);
+  const [paymentStatus, setPaymentStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
@@ -83,6 +135,38 @@ export default function AdminDashboard() {
     totalPages: 1,
   });
 
+  const loadPayments = useCallback(async () => {
+    try {
+      const result = await getAdminPayments({
+        page: 1,
+        pageSize: 50,
+        status: paymentStatus || undefined,
+      });
+
+      setData((previous) => ({
+        ...(previous ?? {}),
+        payments: result?.items ?? [],
+        paymentTotal: result?.total ?? 0,
+      }));
+    } catch (err) {
+      console.error("Could not load admin payments:", err);
+    }
+  }, [paymentStatus]);
+
+  const loadAuditLogs = useCallback(async () => {
+    try {
+      const result = await getAdminAuditLogs({
+        page: auditPage,
+        pageSize: auditPageSize,
+      });
+
+      setAuditLogs(result?.items ?? []);
+      setAuditTotal(result?.total ?? 0);
+    } catch (err) {
+      console.error("Could not load audit logs:", err);
+    }
+  }, [auditPage, auditPageSize]);
+
   const load = useCallback(async () => {
     setIsLoading(true);
     setError("");
@@ -96,12 +180,15 @@ export default function AdminDashboard() {
       });
 
       const result = response?.data ?? response;
-      const accounts = Array.isArray(result?.items)
+      const allAccounts = Array.isArray(result?.items)
         ? result.items
         : Array.isArray(result?.accounts)
           ? result.accounts
           : [];
 
+      const accounts = allAccounts.filter(
+        (account) => account.role?.toUpperCase() !== "ADMIN"
+      );
       setData((previous) => ({
         ...(previous ?? {}),
         accounts,
@@ -124,6 +211,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
 
   function showToast(msg) {
     setToast(msg);
@@ -195,20 +290,6 @@ export default function AdminDashboard() {
 
 
 
-  async function handleToggleStatus(account) {
-    setBusyId(account.id);
-    try {
-      const nextStatus = account.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-      await setAccountStatus({ accountId: account.id, status: nextStatus });
-      showToast(`${account.name} is now ${nextStatus.toLowerCase()}`);
-      await load();
-    } catch (err) {
-      setError(err.message || "Could not update account");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   async function handleRoleChange(account, nextRole) {
     if (nextRole === account.role) return;
     setRoleBusyId(account.id);
@@ -223,7 +304,41 @@ export default function AdminDashboard() {
     }
   }
 
-  const totalPaid = data?.payments.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+  const paymentStats = (data?.payments ?? []).reduce(
+    (stats, payment) => {
+      const status = payment.status?.toUpperCase();
+      const amount = Number(payment.amount) || 0;
+
+      if (status === "HELD") {
+        stats.held += amount;
+        stats.heldCount++;
+      }
+
+      if (status === "RELEASED") {
+        stats.released += amount;
+        stats.releasedCount++;
+      }
+
+      if (status === "REFUNDED") {
+        stats.refunded += amount;
+        stats.refundedCount++;
+      }
+
+      return stats;
+    },
+    {
+      held: 0,
+      released: 0,
+      refunded: 0,
+      heldCount: 0,
+      releasedCount: 0,
+      refundedCount: 0,
+    }
+  );
+
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat("vi-VN").format(amount) + " VND";
 
   return (
     <div className={styles.page}>
@@ -657,18 +772,6 @@ export default function AdminDashboard() {
                         </button>
 
 
-                        <button
-                          type="button"
-                          className={
-                            acc.status === "ACTIVE"
-                              ? styles.dangerBtn
-                              : styles.primaryBtn
-                          }
-                          disabled={busyId === acc.id}
-                          onClick={() => handleToggleStatus(acc)}
-                        >
-                          {acc.status === "ACTIVE" ? "Suspend" : "Reactivate"}
-                        </button>
                       </td>
 
                     </tr>
@@ -735,47 +838,296 @@ export default function AdminDashboard() {
             )}
           </section>
 
-          <section className={styles.card}>
+          <section className={`${styles.card} ${styles.cardWide}`}>
             <h2 className={styles.cardTitle}>
-              Payments — ${totalPaid.toFixed(2)} total
+              Payments ({data?.paymentTotal ?? data?.payments?.length ?? 0})
             </h2>
-            {data.payments.length === 0 ? (
-              <p className={styles.mutedText}>No payments recorded</p>
+
+            <div className={styles.paymentStats}>
+
+              {/* HELD */}
+              <div className={`${styles.paymentStatCard} ${styles.heldCard}`}>
+                <div className={styles.paymentStatHeader}>
+                  <span>Held Balance</span>
+                  <span className={styles.heldBadge}>HELD</span>
+                </div>
+
+                <h3>{formatMoney(paymentStats.held)}</h3>
+
+                <p>
+                  {paymentStats.heldCount} {paymentStats.heldCount === 1 ? "transaction" : "transactions"}
+                </p>
+              </div>
+
+              {/* RELEASED */}
+              <div className={`${styles.paymentStatCard} ${styles.releasedCard}`}>
+                <div className={styles.paymentStatHeader}>
+                  <span>Released</span>
+                  <span className={styles.releasedBadge}>RELEASED</span>
+                </div>
+
+                <h3>{formatMoney(paymentStats.released)}</h3>
+
+                <p>
+                  {paymentStats.releasedCount} {paymentStats.releasedCount === 1 ? "transaction" : "transactions"}
+                </p>
+              </div>
+
+              {/* REFUNDED */}
+              <div className={`${styles.paymentStatCard} ${styles.refundedCard}`}>
+                <div className={styles.paymentStatHeader}>
+                  <span>Refunded</span>
+                  <span className={styles.refundedBadge}>REFUNDED</span>
+                </div>
+
+                <h3>{formatMoney(paymentStats.refunded)}</h3>
+
+                <p>
+                  {paymentStats.refundedCount} {paymentStats.refundedCount === 1 ? "transaction" : "transactions"}
+                </p>
+              </div>
+
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <select
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                <option value="HELD">Held</option>
+                <option value="RELEASED">Released</option>
+                <option value="REFUNDED">Refunded</option>
+              </select>
+            </div>
+
+            {!data?.payments?.length ? (
+              <p className={styles.mutedText}>
+                No payments recorded
+              </p>
             ) : (
-              <ul className={styles.list}>
-                {data.payments.map((p) => (
-                  <li key={p.id} className={styles.listItem}>
-                    <div>
-                      <strong>{p.user}</strong>
-                      <div className={styles.metaText}>
-                        {p.plan} · {formatDate(p.date)}
-                      </div>
-                    </div>
-                    <span className={styles.amount}>${p.amount.toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div style={{ overflowX: "auto" }}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Will</th>
+                      <th>Owner</th>
+                      <th>Executor</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Held At</th>
+                      <th>Released / Refunded</th>
+                      <th>Ledger Details</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {data.payments.map((payment) => (
+                      <tr key={payment.id}>
+                        <td>{payment.willTitle || payment.willId}</td>
+
+                        <td>{payment.ownerName || "N/A"}</td>
+
+                        <td>{payment.executorName || "N/A"}</td>
+
+                        <td>
+                          {new Intl.NumberFormat("vi-VN", {
+                            style: "currency",
+                            currency: payment.currency || "VND",
+                          }).format(payment.amount || 0)}
+                        </td>
+
+                        <td>
+                          <CaseBadge status={payment.status} />
+                        </td>
+
+                        <td>
+                          {formatDate(payment.heldAt)}
+                        </td>
+
+                        <td>
+                          {formatDate(
+                            payment.releasedAt || payment.refundedAt
+                          )}
+                        </td>
+                        <td>
+                          <details>
+                            <summary style={{ cursor: "pointer", color: "#176451" }}>
+                              View Ledger ({payment.ledger?.length ?? 0})
+                            </summary>
+
+                            {!payment.ledger?.length ? (
+                              <p>No ledger transactions</p>
+                            ) : (
+                              <div style={{ minWidth: 300, marginTop: 10 }}>
+                                {payment.ledger.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    style={{
+                                      padding: "10px",
+                                      borderBottom: "1px solid #ddd",
+                                    }}
+                                  >
+                                    <strong>{item.type}</strong>
+
+                                    <div>
+                                      Amount: {Number(item.amount || 0).toLocaleString("vi-VN")} VND
+                                    </div>
+
+                                    <div>
+                                      Balance after: {Number(item.balanceAfter || 0).toLocaleString("vi-VN")} VND
+                                    </div>
+
+                                    <div>
+                                      Note: {item.note || "—"}
+                                    </div>
+
+                                    <small>
+                                      {formatDate(item.createdAt)}
+                                    </small>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </details>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 
           <AdminPricingRules />
 
           <section className={`${styles.card} ${styles.cardWide}`}>
-            <h2 className={styles.cardTitle}>Audit Log</h2>
-            {data.auditLog.length === 0 ? (
-              <p className={styles.mutedText}>No activity recorded yet</p>
+
+            <h2 className={styles.cardTitle}>
+              Audit Log ({auditTotal})
+            </h2>
+
+            {auditLogs.length === 0 ? (
+              <p className={styles.mutedText}>
+                No activity recorded yet
+              </p>
             ) : (
-              <ul className={styles.list}>
-                {data.auditLog.map((log) => (
-                  <li key={log.id} className={styles.listItem}>
-                    <span>
-                      <strong>{log.actor}</strong> — {log.action}
-                    </span>
-                    <span className={styles.metaText}>{formatDate(log.time)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div style={{ overflowX: "auto" }}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Actor</th>
+                      <th>Role</th>
+                      <th>Action</th>
+                      <th>Entity</th>
+                      <th>Details</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id}>
+                        <td>{log.actorName || "System"}</td>
+
+                        <td>{log.actorRole || "N/A"}</td>
+
+                        <td>
+                          <strong>{log.action || "N/A"}</strong>
+                        </td>
+
+
+                        <td>
+                          <div className={styles.auditEntity}>
+                            <strong>
+                              {log.entityType || "Unknown"}
+                            </strong>
+
+                            <div
+                              className={styles.auditEntityName}
+                              title={log.entityName || log.entityId}
+                            >
+                              {log.entityName || "No entity name"}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          {(() => {
+                            const details = parseAuditDetails(log.details);
+                            const entries = Object.entries(details);
+
+                            if (!entries.length) return "—";
+
+                            return (
+                              <details className={styles.auditDetails}>
+                                <summary className={styles.auditDetailsSummary}>
+                                  View Details ({entries.length})
+                                </summary>
+
+                                <div className={styles.auditDetailsContent}>
+                                  {entries.map(([key, value]) => (
+                                    <div
+                                      key={key}
+                                      className={styles.auditDetailRow}
+                                    >
+                                      <strong className={styles.auditDetailLabel}>
+                                        {AUDIT_DETAIL_LABELS[key] || key}
+                                      </strong>
+
+                                      <span className={styles.auditDetailValue}>
+                                        {formatAuditValue(key, value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            );
+                          })()}
+                        </td>
+
+
+                        <td>
+                          {formatDate(log.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
+
+            <div className={styles.auditPagination}>
+              <span className={styles.auditPaginationInfo}>
+                Page {auditPage} of{" "}
+                {Math.max(1, Math.ceil(auditTotal / auditPageSize))}
+                {" · "}
+                {auditTotal} activities
+              </span>
+
+              <div className={styles.auditPaginationActions}>
+                <button
+                  type="button"
+                  className={styles.auditPageBtn}
+                  disabled={auditPage <= 1}
+                  onClick={() => setAuditPage((page) => page - 1)}
+                >
+                  Previous
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.auditPageBtn}
+                  disabled={
+                    auditPage >= Math.ceil(auditTotal / auditPageSize)
+                  }
+                  onClick={() => setAuditPage((page) => page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+
           </section>
         </div>
       )}
