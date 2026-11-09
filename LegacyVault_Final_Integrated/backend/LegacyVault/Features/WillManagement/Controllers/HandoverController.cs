@@ -71,6 +71,36 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 });
         }
 
+        // C2: minutes (content, hash, signature status) of the latest handover.
+        [HttpGet("{willId:guid}/minutes")]
+        public Task<IActionResult> GetMinutes(Guid willId)
+            => Run(() => _service.GetMinutesAsync(
+                willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN")));
+
+        // C2: sealed PDF. Owner, Executor and Admin only.
+        [HttpGet("{willId:guid}/minutes/pdf")]
+        public async Task<IActionResult> GetMinutesPdf(Guid willId)
+        {
+            try
+            {
+                var file = await _service.GetMinutesPdfAsync(
+                    willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN"));
+
+                Response.Headers["X-Content-SHA256"] = file.Sha256;
+                return File(file.Pdf, "application/pdf", file.FileName);
+            }
+            catch (KeyNotFoundException ex)
+            { return NotFound(new { message = ex.Message }); }
+        }
+
+        // C3: the Executor signs. Without it no item can be delivered (C4).
+        [HttpPost("{willId:guid}/minutes/executor-sign")]
+        public Task<IActionResult> ExecutorSign(Guid willId)
+            => Run(() => _service.SignAsExecutorAsync(
+                willId,
+                _user.GetRequiredAccountId(),
+                HttpContext.Connection.RemoteIpAddress?.ToString()));
+
         // Executor marks one asset-to-beneficiary item as delivered.
         [HttpPost("items/{itemId:guid}/deliver")]
         public Task<IActionResult> Deliver(Guid itemId)
