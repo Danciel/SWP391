@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(rgba(14, 44, 38, 0.84), rgba(21, 59, 51, 0.8)), var(--photo-vault) center / cover fixed, var(--vault-deep);
+  background: #f3f5f9;
 }
 
 .idp-profile-card {
@@ -56,7 +56,7 @@
 .idp-profile-id {
   flex: 1;
   min-width: 0;
-  color: var(--vault-hover);
+  color: #1d4ed8;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -98,9 +98,9 @@
 .idp-profile-note {
   margin: 20px 0;
   padding: 12px;
-  border-left: 3px solid var(--vault);
+  border-left: 3px solid #1677ff;
   border-radius: 4px;
-  background: var(--vault-soft);
+  background: #eff6ff;
   color: #1e40af;
   font-size: 13px;
   line-height: 1.6;
@@ -108,7 +108,7 @@
 
 .idp-profile-link {
   display: inline-block;
-  color: var(--vault);
+  color: #1677ff;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;

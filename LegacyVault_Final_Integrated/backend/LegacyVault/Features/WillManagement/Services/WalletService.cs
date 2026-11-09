@@ -304,20 +304,56 @@ namespace LegacyVault.Features.WillManagement.Services
 
             await GetOrCreateAsync(target);
 
-            await ChangeBalanceAsync(
-                target,
-                payment.Amount,
-                release ? "RELEASE_IN" : "REFUND",
-                willId,
-                release ? "Fee released after verified handover"
-                        : "Held fee refunded");
+            // The 20% advance was already credited to the Executor when the
+            // will was accepted, so a release pays only the REMAINING fee.
+            var payout = payment.Amount;
+            var note = release ? "Fee released after verified handover"
+                               : "Held fee refunded";
+
+            if (release)
+            {
+                var advance = await _db.ExecutorDeposits
+                    .Where(x => x.WillId == willId && x.Status == "HELD")
+                    .Select(x => (decimal?)x.Amount)
+                    .FirstOrDefaultAsync();
+
+                if (advance.HasValue && advance.Value > 0m)
+                {
+                    payout = Math.Max(0m, payment.Amount - advance.Value);
+                    note = $"Remaining fee released after verified handover "
+                         + $"(total {payment.Amount:N0} - advance {advance.Value:N0})";
+
+                    await _db.ExecutorDeposits
+                        .Where(x => x.WillId == willId && x.Status == "HELD")
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(x => x.Status, "SETTLED"));
+
+                    await _db.ExecutorProfiles
+                        .Where(x => x.AccountId == payment.ExecutorAccountId)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(x => x.TotalHeldDeposit,
+                                x => x.TotalHeldDeposit >= advance.Value
+                                    ? x.TotalHeldDeposit - advance.Value
+                                    : 0m));
+                }
+            }
+
+            if (payout > 0m)
+            {
+                await ChangeBalanceAsync(
+                    target,
+                    payout,
+                    release ? "RELEASE_IN" : "REFUND",
+                    willId,
+                    note);
+            }
 
             Guid? actorId;
             try { actorId = _user.GetRequiredAccountId(); }
             catch { actorId = null; }
             AddAudit(actorId, release ? "PAYMENT_RELEASED" : "PAYMENT_REFUNDED",
                 "ServicePayment", payment.Id,
-                new { willId, payment.Amount, payment.Currency, targetAccountId = target });
+                new { willId, payment.Amount, paidNow = payout, payment.Currency, targetAccountId = target });
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
         }

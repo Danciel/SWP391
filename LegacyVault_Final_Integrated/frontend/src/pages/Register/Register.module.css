@@ -1,0 +1,325 @@
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--vault-soft), var(--paper));
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.logo {
+  width: 160px;
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--vault-hover);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submitError {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: -6px 0 16px;
+}
+
+/* Terms checkbox */
+.termsRow {
+  margin: -6px 0 18px;
+  text-align: left;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.checkboxLabel input {
+  width: 15px;
+  height: 15px;
+  margin: 2px 3px 0 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--vault);
+}
+
+.checkboxLabel label {
+  cursor: pointer;
+}
+
+.termsLink {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vault);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.termsLink:hover {
+  color: var(--vault-deep);
+}
+
+.termsLink:focus-visible,
+.closeButton:focus-visible,
+.closeModalBtn:focus-visible {
+  outline: 2px solid var(--vault);
+  outline-offset: 3px;
+}
+
+.error {
+  color: var(--bad);
+  font-size: 12px;
+  margin: 4px 0 0 23px;
+}
+
+.footerText {
+  margin-top: 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.footerText a {
+  color: var(--vault);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.demoHint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* Modal backdrop */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+/* Modal container */
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  max-height: min(80vh, 720px);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  text-align: left;
+  animation: modalAppear 0.18s ease-out;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  margin: 0;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.modalSubtitle {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+/* Only this area scrolls */
+.termsContent {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.termsContent section + section {
+  margin-top: 22px;
+}
+
+.termsContent h3 {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.termsContent p {
+  margin: 0;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  background: #ffffff;
+}
+
+.closeModalBtn {
+  min-width: 90px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--vault);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.closeModalBtn:hover {
+  background: var(--vault-hover);
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 24px 20px;
+  }
+
+  .modalOverlay {
+    padding: 12px;
+  }
+
+  .modal {
+    max-height: 85vh;
+    border-radius: 12px;
+  }
+
+  .modalHeader {
+    padding: 18px;
+  }
+
+  .modalTitle {
+    font-size: 18px;
+  }
+
+  .termsContent {
+    padding: 18px;
+  }
+
+  .modalFooter {
+    padding: 14px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
+}

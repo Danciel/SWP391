@@ -1,5 +1,5 @@
 import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
-import { request } from "./client";
+import { request, BASE_URL, getToken } from "./client";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
@@ -209,30 +209,75 @@ export const checkInDms = async (userId, id, pinGrant = null) => {
   await r(`/wills/${id}/dms/check-in`, "POST");
   return getWill(userId, id, pinGrant);
 };
-export const cancelDeathHandover = unsupported("Cancel death handover");
+// C6/C9: Owner presses "I'm alive" after the DMS triggered / a death handover was opened.
+// ASSUMED contract (agree with Cuong): POST /handover/{willId}/alive -> 204/200, cancels the death handover,
+// resets DMS to ACTIVE and clears the missed counter. Change this one path if BE uses another route.
+const OWNER_ALIVE_PATH = (willId) => `/handover/${willId}/alive`;
 
+export const confirmOwnerAlive = async (userId, id, pinGrant = null) => {
+  await r(OWNER_ALIVE_PATH(id), "POST");
+  return getWill(userId, id, pinGrant);
+};
+export const cancelDeathHandover = confirmOwnerAlive; // old name, still used by OwnerDashboard/ownerApi
+
+// C2: sealed handover report (PDF). ASSUMED: GET /handover/{willId}/report -> application/pdf.
+export async function downloadHandoverReport(willId) {
+  const res = await fetch(`${BASE_URL}/handover/${willId}/report`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) {
+    let msg = `Could not download the report (${res.status}).`;
+    try { msg = (await res.json())?.message || msg; } catch { /* not json */ }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `handover-report-${willId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// Immediate Handover needs a fresh Security PIN grant (scope HANDOVER_START,
+// resource = Will ID). The optional detailGrant is the WILL_DETAIL grant used to
+// re-read the will afterwards.
 export const requestImmediateHandover = async (
   userId,
   id,
-  pinGrant = null
+  handoverGrant,
+  detailGrant = null
 ) => {
-  const result = await r(`/handover/${id}/immediate`, "POST");
-
-  // Khi goi tu Will Detail, da co PIN Grant
-  if (pinGrant) {
-    return getWill(userId, id, pinGrant);
+  if (!handoverGrant) {
+    throw new Error("Security PIN is required.");
   }
 
-  // Khi goi tu My Wills, khong tu dong doc chi tiet
+  const result = await r(
+    `/handover/${id}/immediate`,
+    "POST",
+    undefined,
+    { "X-Owner-Pin-Grant": handoverGrant }
+  );
+
+  // Called from Will Detail: reload the will with its existing PIN grant.
+  if (detailGrant) {
+    return getWill(userId, id, detailGrant);
+  }
+
+  // Called from My Wills: the caller reloads the list itself.
   return result;
 };
 export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
-export const getInheritedWills = async () => [];
-export const getInheritedWill = unsupported("Inherited will details");
-export const issueClaimKey = unsupported("Claim key");
-export const confirmClaim = unsupported("Confirm claim");
+export {
+  getInheritedWills,
+  getInheritedWill,
+  claimInheritedItem,
+  revealInheritedSecret,
+} from "./inheritanceApi";
 export async function getOwnerDashboardData() { const [wills, assets] = await Promise.all([getWills(), getAssets()]); const main = wills.find(w => w.status === "ACTIVE") || wills[0]; const detail = main ? await getWill(null, main.id) : null; return { vaultStatus: detail?.status || "LOCKED", deadManSwitch: detail?.dms ? { enabled: detail.dms.enabled, willId: detail.id, checkInCycleDays: detail.dms.checkInDays, lastCheckIn: detail.dms.lastCheckIn, nextCheckInDue: detail.dms.nextCheckInAt, missedCount: detail.dms.missedCount, maxMissed: detail.dms.maxMissed, caseOpen: false } : { enabled: false }, assets: assets.map(a => ({ ...a, beneficiary: null })), executors: detail?.executor ? [{ id: detail.executor.id, name: detail.executor.name, status: detail.executor.status }] : [], beneficiaries: (detail?.beneficiaries || []).map(b => ({ id: b.id, name: b.fullName, assetsAssigned: (detail.assignments || []).filter(a => a.beneficiaryDesignationId === b.id).length })), recentActivity: [] }; }
 
 // ---- Owner: notifications, wallet, executor review ----

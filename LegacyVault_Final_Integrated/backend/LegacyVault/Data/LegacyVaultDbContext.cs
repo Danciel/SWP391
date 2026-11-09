@@ -53,6 +53,8 @@ namespace LegacyVault.Data
 
         public DbSet<HandoverItem> HandoverItems { get; set; }
 
+        public DbSet<HandoverAccessCode> HandoverAccessCodes { get; set; }
+
         public DbSet<Wallet> Wallets { get; set; }
 
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
@@ -571,6 +573,17 @@ namespace LegacyVault.Data
                     .WithMany()
                     .HasForeignKey(x => x.AssetAssignmentId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Sprint 10: per-recipient handover access code (hash only).
+            modelBuilder.Entity<HandoverAccessCode>(entity =>
+            {
+                entity.ToTable("HandoverAccessCodes");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => new { x.HandoverCaseId, x.BeneficiaryDesignationId })
+                    .IsUnique();
+                entity.Property(x => x.Salt).IsRequired();
+                entity.Property(x => x.CodeHash).IsRequired();
             });
 
             modelBuilder.Entity<Wallet>(entity =>

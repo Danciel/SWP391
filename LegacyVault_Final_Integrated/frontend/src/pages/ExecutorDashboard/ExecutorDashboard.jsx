@@ -1,0 +1,1031 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  getExecutorDashboard,
+  respondToExecutorRequest,
+  openExecutorCase,
+  submitExecutorLegalDocuments,
+  verifyCaseProfile,
+  deliverHandoverItem,
+  deliverAllHandover,
+  resendRecipientCode,
+  startDeathHandover,
+  deleteExecutorRequest,
+} from "../../api/executorApi";
+import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import ExecutorPricingCard, { EvaluationCsvActions } from "../../components/ExecutorPricingCard/ExecutorPricingCard";
+import useExecutorPricing from "../../components/ExecutorPricingCard/useExecutorPricing";
+import DeathCertificateModal from "../../components/DeathCertificate/DeathCertificateModal";
+import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
+import { getStoredUser } from "../../api/client";
+import styles from "./ExecutorDashboard.module.css";
+
+const STATUS_LABEL = {
+  PENDING: "Pending",
+  ACCEPTED: "Accepted",
+  DECLINED: "Declined",
+  ACTIVE: "Active",
+  AWAITING_CASE: "Awaiting Case",
+  CASE_OPENED: "Case Opened",
+  THRESHOLD_REACHED: "Threshold Reached",
+  TRIGGERED: "Triggered",
+  COMPLETED: "Completed",
+  CLOSED: "Closed",
+  OPEN: "Open",
+  SUBMITTED_FOR_REVIEW: "Submitted for Review",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  CONFIRMED: "Confirmed",
+  IN_PROGRESS: "In progress",
+  PAUSED: "Paused",
+  PENDING_REVIEW: "Pending Review",
+  DELIVERED: "Delivered",
+};
+
+// Where each recipient stands (the code itself is never shown to anyone).
+const RECIPIENT_STATUS = {
+  WAITING_REGISTRATION: {
+    text: "Waiting for the recipient to register",
+    hint: "The code is sent once they have a verified account with the same email and name.",
+  },
+  NAME_MISMATCH: {
+    text: "Name does not match the account",
+    hint: "A verified account uses this email under a different name, so it is not linked automatically.",
+  },
+  NOT_DELIVERED: { text: "Not delivered yet" },
+  CODE_PENDING: {
+    text: "Code not issued yet",
+    hint: "The code could not be created. Check the server settings, then send a new code.",
+  },
+  CODE_NOT_EMAILED: {
+    text: "Code created, email not sent",
+    hint: "The email failed. Send a new code.",
+  },
+  CODE_SENT: { text: "Code sent, waiting for the recipient" },
+  CODE_LOCKED: { text: "Code locked after 3 wrong tries" },
+  CODE_VERIFIED: { text: "Recipient confirmed the code" },
+};
+
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+function isOverdue(deadlineAt) {
+  return Boolean(deadlineAt) && new Date(deadlineAt) < new Date();
+}
+
+function formatDeadline(deadlineAt) {
+  if (!deadlineAt) return null;
+  const overdue = isOverdue(deadlineAt);
+  return {
+    overdue,
+    text: `${overdue ? "Overdue — " : "Respond by "}${formatDate(deadlineAt)}`,
+  };
+}
+
+function Badge({ status }) {
+  return (
+    <span className={`${styles.badge} ${styles[status] || ""}`}>
+      {STATUS_LABEL[status] || status}
+    </span>
+  );
+}
+
+export default function ExecutorDashboard() {
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
+  const [toast, setToast] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [fee, setFee] = useState(null);
+  const [feeInput, setFeeInput] = useState("");
+  const [editingFee, setEditingFee] = useState(false);
+  const [savingFee, setSavingFee] = useState(false);
+  const [uploadCaseId, setUploadCaseId] = useState(null);
+  const [uploadFiles, setUploadFiles] = useState([]);
+  const [uploadWillId, setUploadWillId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadOwnerName, setUploadOwnerName] = useState("");
+  // Delete a declined request: 1) confirm popup  2) PIN popup
+  const [deleteConfirmReq, setDeleteConfirmReq] = useState(null);
+  const [deletePinReq, setDeletePinReq] = useState(null);
+
+  const pricing = useExecutorPricing({
+    onFeeUpdated: (updated) => {
+      const next = {
+        ...fee,
+        fee: updated.serviceFee,
+        currency: updated.currency || fee?.currency || "VND",
+        updatedAt: updated.updatedAt || new Date().toISOString(),
+      };
+      setFee(next);
+      setFeeInput(String(next.fee));
+    },
+  });
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const result = await getExecutorDashboard();
+      setData(result);
+
+      const user = getStoredUser();
+
+      if (user?.id) {
+        const profile = await getExecutorProfile(user.id);
+
+        const currentFee = {
+          fee: profile.serviceFee ?? null,
+          currency: profile.currency || "VND",
+          updatedAt: profile.updatedAt || null,
+        };
+
+        setFee(currentFee);
+        setFeeInput(
+          currentFee.fee != null ? String(currentFee.fee) : ""
+        );
+      } else {
+        setFee({ fee: null, currency: "VND", updatedAt: null });
+        setFeeInput("");
+      }
+    } catch (err) {
+      setError(err.message || "Could not load executor data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function toggleExpanded(id) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
+
+  async function handleSaveFee() {
+    const amount = Number(feeInput);
+
+    if (feeInput.trim() === "" || !Number.isFinite(amount) || amount < 0) {
+      setError("Service fee must be a valid non-negative number.");
+      return;
+    }
+
+    setSavingFee(true);
+    setError("");
+
+    try {
+      const updated = await updateMyExecutorPricing({
+        serviceFee: amount,
+        currency: fee?.currency || "VND",
+      });
+
+      const updatedFee = {
+        ...fee,
+        fee: updated.serviceFee ?? amount,
+        currency: updated.currency || fee?.currency || "VND",
+        updatedAt: updated.updatedAt || new Date().toISOString(),
+      };
+
+      setFee(updatedFee);
+      setFeeInput(String(updatedFee.fee));
+      setEditingFee(false);
+      showToast("Service fee updated");
+    } catch (err) {
+      setError(err.message || "Could not update fee");
+    } finally {
+      setSavingFee(false);
+    }
+  }
+
+  async function handleVerifyProfile(caseId) {
+    setBusyId(caseId);
+    try {
+      await verifyCaseProfile({ caseId });
+      showToast("Owner profile verified");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not verify profile");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }
+
+  async function handleRequest(requestId, accept) {
+    setBusyId(requestId);
+    try {
+      await respondToExecutorRequest({ requestId, accept });
+      showToast(accept ? "Request accepted" : "Request declined");
+      await load();
+    } catch (err) {
+      setError(err.message || "Action failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function startDeleteRequest(req) {
+    setError("");
+    setDeleteConfirmReq(req);
+  }
+
+  function continueDeleteToPin() {
+    setDeletePinReq(deleteConfirmReq);
+    setDeleteConfirmReq(null);
+  }
+
+  async function handleDeleteVerified(grant) {
+    const req = deletePinReq;
+    if (!req) return;
+    await deleteExecutorRequest({ requestId: req.id, pinGrant: grant });
+    setDeletePinReq(null);
+    if (expandedId === req.id) setExpandedId(null);
+    showToast("Declined request deleted");
+    await load();
+  }
+
+  async function handleOpenCase(triggerId) {
+    setBusyId(triggerId);
+    try {
+      await openExecutorCase({ triggerId });
+      showToast("Case opened");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not open case");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function openUploadPopup(caseId) {
+    setUploadCaseId(caseId);
+    setUploadFiles([]);
+  }
+
+  function closeUploadPopup() {
+    setUploadCaseId(null);
+    setUploadFiles([]);
+  }
+
+  function handleFilesChosen(e) {
+    setUploadFiles(Array.from(e.target.files || []).map((f) => f.name));
+  }
+
+  async function handleConfirmUpload() {
+    const caseId = uploadCaseId;
+    setBusyId(caseId);
+    try {
+      await submitExecutorLegalDocuments({
+        caseId,
+        documentNames: uploadFiles.length > 0 ? uploadFiles : ["death_certificate.pdf", "id_verification.pdf"],
+      });
+      showToast("Legal documents submitted");
+      closeUploadPopup();
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not submit documents");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Executor hands ONE asset to its beneficiary. When the last item is
+  // delivered the backend completes the handover and releases the
+  // remaining fee to this Executor's wallet.
+  async function handleDeliver(itemId) {
+    setBusyId(itemId);
+    setError("");
+    try {
+      const result = await deliverHandoverItem(itemId);
+      showToast(
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "Asset delivered to the beneficiary"
+      );
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not deliver this asset");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // One button for the whole will: every pending asset is handed over and each
+  // beneficiary receives their own access code by email.
+  async function handleDeliverAll(willId) {
+    setBusyId(willId);
+    setError("");
+    try {
+      const result = await deliverAllHandover(willId);
+      showToast(
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "All pending assets delivered. Each beneficiary received an access code by email."
+      );
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not deliver the assets");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Sends a NEW code to one recipient; the old code stops working.
+  async function handleResendCode(willId, designationId) {
+    const key = `code:${designationId}`;
+    setBusyId(key);
+    setError("");
+    try {
+      const result = await resendRecipientCode(willId, designationId);
+      showToast(result?.message || "A new access code was emailed to the recipient.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not send a new code");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // After Legal Verify approved the death certificate.
+  async function handleStartHandover(willId) {
+    setBusyId(willId);
+    setError("");
+    try {
+      await startDeathHandover(willId);
+      showToast("Handover started. Use Deliver all to hand everything over.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not start the handover");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function openLegalDocumentUpload(willId, ownerName) {
+    setUploadWillId(willId);
+    setUploadOwnerName(ownerName || "");
+    setUploadFile(null);
+    setError("");
+  }
+
+  function closeLegalDocumentUpload() {
+    setUploadWillId(null);
+    setUploadFile(null);
+  }
+
+  // Called by the certificate form / upload dialog. Errors are thrown back
+  // so the dialog can show them.
+  async function handleCertificateSubmit({ file, certificateData }) {
+    if (!uploadWillId) throw new Error("Missing Will ID.");
+
+    setBusyId(uploadWillId);
+    try {
+      await submitExecutorLegalDocuments({
+        willId: uploadWillId,
+        file,
+        certificateData,
+      });
+
+      showToast("Death certificate sent to Legal Verify.");
+      closeLegalDocumentUpload();
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
+  const dmsTriggers = data?.dmsTriggers ?? [];
+  const stats = data
+    ? [
+        { label: "Pending requests", value: data.requests.filter((r) => r.status === "PENDING").length },
+        { label: "Active wills", value: data.activeWills.length },
+        { label: "Triggers", value: dmsTriggers.length },
+        { label: "Cases awaiting review", value: data.cases.filter((c) => c.status === "PENDING").length },
+      ]
+    : [];
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Executor Dashboard</h1>
+          <p className={styles.subtitle}>
+            Manage requests from Owners, active wills, Dead Man's Switch triggers and legal cases.
+          </p>
+        </div>
+        {stats.length > 0 && !isLoading && (
+          <dl className={styles.stats}>
+            {stats.map((st) => (
+              <div className={styles.stat} key={st.label}>
+                <dd className={styles.statValue}>{st.value}</dd>
+                <dt className={styles.statLabel}>{st.label}</dt>
+              </div>
+            ))}
+          </dl>
+        )}
+      </header>
+
+      {toast && <div className={styles.toast}>{toast}</div>}
+      {isLoading && <p className={styles.info}>Loading data...</p>}
+      {error && <p className={styles.errorBox}>{error}</p>}
+
+      {data && !isLoading && (
+        <div className={styles.grid}>
+          <div className={styles.feeRow}>
+            <section className={`${styles.card} ${styles.feeCard}`}>
+              <h2 className={styles.cardTitle}>My Service Fee</h2>
+              {editingFee ? (
+                <div>
+                  <input
+                    className={styles.feeInput}
+                    type="number"
+                    min="0"
+                    value={feeInput}
+                    onChange={(e) => setFeeInput(e.target.value)}
+                  />
+                  <div className={styles.actionRow} style={{ marginTop: 10 }}>
+                    <button
+                      className={styles.secondaryBtn}
+                      onClick={() => {
+                        setEditingFee(false);
+                        setFeeInput(fee?.fee != null ? String(fee.fee) : "");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button className={styles.primaryBtn} disabled={savingFee} onClick={handleSaveFee}>
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
+                  <p className={styles.metaText}>
+                    {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
+                  </p>
+                  <div className={styles.feeActions}>
+                    <button className={styles.secondaryBtn} onClick={() => setEditingFee(true)}>
+                      Edit Fee
+                    </button>
+                    <EvaluationCsvActions pricing={pricing} variant="dark" />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <ExecutorPricingCard pricing={pricing} />
+          </div>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Requests from Owner <span className={styles.count}>{data.requests.length}</span>
+            </h2>
+            {data.requests.length === 0 ? (
+              <p className={styles.mutedText}>No pending requests</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.requests.map((req) => {
+                  const deadline = req.status === "PENDING" ? formatDeadline(req.deadlineAt) : null;
+                  return (
+                    <li key={req.id} className={styles.listItemColumn}>
+                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                        <div>
+                          <strong>{req.ownerName}</strong>
+                          <div className={styles.metaText}>
+                            Sent {formatDate(req.sentAt)}
+                          </div>
+                          {deadline && (
+                            <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
+                              {deadline.text}
+                            </div>
+                          )}
+                        </div>
+                        <div className={styles.itemRight}>
+                          <Badge status={req.status} />
+                          <button className={styles.linkBtn} onClick={() => toggleExpanded(req.id)}>
+                            {expandedId === req.id ? "Hide Details" : "View Details"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {expandedId === req.id && (
+                        <div className={styles.detailPanel}>
+                          <div className={styles.detailRow}>
+                            <span>Will Title</span>
+                            <span>{req.willTitle || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Email</span>
+                            <span>{req.ownerEmail || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Phone</span>
+                            <span>{req.ownerPhone || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Assets</span>
+                            <span>{req.assetsCount ?? "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Proposed Fee</span>
+                            <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Assets ({req.assets?.length ?? 0})</strong>
+                            {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
+                              <ul style={{ paddingLeft: 18 }}>
+                                {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
+                                  <strong>{a.assetName}</strong>
+                                  <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
+                                  <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
+                                </li>)}
+                              </ul>}
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
+                            {(req.beneficiaries || []).map(b =>
+                              <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
+                          </div>
+                          {req.message && <p className={styles.metaText}>"{req.message}"</p>}
+                        </div>
+                      )}
+
+                      {req.status === "DECLINED" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.dangerBtn}
+                            onClick={() => startDeleteRequest(req)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+
+                      {req.status === "PENDING" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, true)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className={styles.secondaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, false)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className={`${styles.card} ${styles.cardWide}`}>
+            <h2 className={styles.cardTitle}>
+              Handovers <span className={styles.count}>{data.handoverRequests.length}</span>
+            </h2>
+            {data.handoverRequests.length === 0 ? (
+              <p className={styles.mutedText}>No handover has been started yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.handoverRequests.map((hr) => (
+                  <li key={hr.id} className={styles.listItemColumn}>
+                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                      <div>
+                        <strong>{hr.ownerName}</strong>
+                        <div className={styles.metaText}>
+                          {hr.willTitle} ·{" "}
+                          {hr.type === "DEATH" ? "After death (certificate approved)" : "Immediate (Owner still alive)"} ·
+                          Started {formatDate(hr.requestedAt)}
+                        </div>
+                        <div className={styles.metaText}>
+                          {hr.deliveredItems} / {hr.totalItems} assets delivered
+                        </div>
+                      </div>
+                      <div className={styles.itemRight}>
+                        <Badge status={hr.status} />
+                      </div>
+                    </div>
+
+                    <div className={styles.detailPanel}>
+                      {hr.status === "PAUSED" && (
+                        <p className={styles.metaText}>
+                          This handover is paused while a problem is being reviewed by Admin.
+                        </p>
+                      )}
+                      {hr.status === "IN_PROGRESS" &&
+                        (hr.assets || []).some((a) => a.status !== "DELIVERED") && (
+                          <div className={styles.detailRow}>
+                            <span>
+                              Hand everything over at once. Every beneficiary gets
+                              their own access code by email.
+                            </span>
+                            <button
+                              className={styles.primaryBtn}
+                              disabled={busyId === hr.willId}
+                              onClick={() => handleDeliverAll(hr.willId)}
+                            >
+                              {busyId === hr.willId ? "Delivering..." : "Deliver all"}
+                            </button>
+                          </div>
+                        )}
+                      {(hr.assets || []).map((a) => {
+                        const rs = a.recipientStatus ? RECIPIENT_STATUS[a.recipientStatus] : null;
+                        const canResend =
+                          hr.status === "IN_PROGRESS" || hr.status === "COMPLETED"
+                            ? ["CODE_PENDING", "CODE_NOT_EMAILED", "CODE_SENT", "CODE_LOCKED"].includes(
+                                a.recipientStatus
+                              )
+                            : false;
+                        const resendKey = `code:${a.designationId}`;
+                        return (
+                        <div className={styles.detailRow} key={a.id} style={{ flexWrap: "wrap" }}>
+                          <span>
+                            {a.name} ({a.type}) → {a.beneficiaryName}
+                            {a.relationship ? ` · ${a.relationship}` : ""}
+                            {a.allocationPercentage != null ? ` · ${a.allocationPercentage}%` : ""}
+                            {rs && (
+                              <span className={styles.metaText} style={{ display: "block" }}>
+                                {a.claimedAt ? "Received by the recipient" : rs.text}
+                                {a.recipientStatus === "CODE_LOCKED" && a.codeLockedUntil
+                                  ? ` until ${formatTime(a.codeLockedUntil)}`
+                                  : ""}
+                                {a.codeIssueCount > 1 ? ` · ${a.codeIssueCount} codes sent` : ""}
+                                {rs.hint ? ` — ${rs.hint}` : ""}
+                                {a.supportRequested
+                                  ? " The recipient asked for help: please send a new code."
+                                  : ""}
+                              </span>
+                            )}
+                          </span>
+                          {a.status === "DELIVERED" ? (
+                            <span>
+                              ✓ Delivered
+                              {canResend && !a.claimedAt && a.designationId && (
+                                <button
+                                  className={styles.secondaryBtn}
+                                  style={{ marginLeft: 8 }}
+                                  disabled={busyId === resendKey}
+                                  onClick={() => handleResendCode(hr.willId, a.designationId)}
+                                >
+                                  {busyId === resendKey ? "Sending..." : "Send a new code"}
+                                </button>
+                              )}
+                            </span>
+                          ) : (
+                            <button
+                              className={styles.primaryBtn}
+                              disabled={busyId === a.id || hr.status !== "IN_PROGRESS"}
+                              onClick={() => handleDeliver(a.id)}
+                            >
+                              {busyId === a.id ? "Delivering..." : "Deliver"}
+                            </button>
+                          )}
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Active Wills <span className={styles.count}>{data.activeWills.length}</span>
+            </h2>
+            {data.activeWills.length === 0 ? (
+              <p className={styles.mutedText}>No active wills yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.activeWills.map((will) => (
+                  <li key={will.id} className={styles.listItemColumn}>
+                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                      <div>
+                        <strong>{will.willTitle}</strong>
+                        <div className={styles.metaText}>Owner: {will.ownerName}</div>
+                      </div>
+                      <div className={styles.itemRight}>
+                        <Badge status={will.status} />
+                        <button className={styles.linkBtn} onClick={() => toggleExpanded(will.id)}>
+                          {expandedId === will.id ? "Hide Details" : "View Details"}
+                        </button>
+                      </div>
+                    </div>
+                    {expandedId === will.id && (
+                      <div className={styles.detailPanel}>
+                        <p className={styles.metaText}>{will.description || "No description provided."}</p>
+                        <div className={styles.detailRow}>
+                          <span>Assets</span>
+                          <span>{will.assetsCount ?? "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Beneficiaries</span>
+                          <span>{will.beneficiariesCount ?? "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Dead Man's Switch</span>
+                          <span>{will.dmsStatus || "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Created</span>
+                          <span>{formatDate(will.createdAt)}</span>
+                        </div>
+                        {will.assets && will.assets.length > 0 ? (
+                          <>
+                            <p className={styles.metaText} style={{ marginTop: 6 }}>
+                              Asset breakdown
+                            </p>
+                            {will.assets.map((a) => (
+                              <div className={styles.assetDetailCard} key={a.id}>
+                                <div className={styles.detailRow}>
+                                  <span>
+                                    <strong>{a.name}</strong> ({a.type})
+                                  </span>
+                                  <span>{a.status || "—"}</span>
+                                </div>
+                                {a.description && (
+                                  <p className={styles.metaText} style={{ margin: "4px 0" }}>
+                                    {a.description}
+                                  </p>
+                                )}
+                                <div className={styles.detailRow}>
+                                  <span>Beneficiary</span>
+                                  <span>{a.beneficiaryName || "Unassigned"}</span>
+                                </div>
+                                {a.beneficiaryRelationship && (
+                                  <div className={styles.detailRow}>
+                                    <span>Relationship</span>
+                                    <span>{a.beneficiaryRelationship}</span>
+                                  </div>
+                                )}
+                                {a.beneficiaryEmail && (
+                                  <div className={styles.detailRow}>
+                                    <span>Contact Email</span>
+                                    <span>{a.beneficiaryEmail}</span>
+                                  </div>
+                                )}
+                                {a.beneficiaryPhone && (
+                                  <div className={styles.detailRow}>
+                                    <span>Contact Phone</span>
+                                    <span>{a.beneficiaryPhone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <p className={styles.metaText}>No individual asset details recorded for this will yet.</p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Dead Man's Switch Triggers <span className={styles.count}>{dmsTriggers.length}</span>
+            </h2>
+
+            {dmsTriggers.length === 0 ? (
+              <p className={styles.mutedText}>No triggers</p>
+            ) : (
+              <ul className={styles.list}>
+                {dmsTriggers.map((trig) => (
+                  <li
+                    key={trig.assignmentId || trig.id}
+                    className={styles.triggerCardItem}
+                  >
+                    <div>
+                      <strong>
+                        {trig.ownerName || "Unknown Owner"}
+                      </strong>
+
+                      <div className={styles.metaText}>
+                        Will: {trig.willTitle || "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Triggered:{" "}
+                        {trig.thresholdReachedAt
+                          ? formatDate(trig.thresholdReachedAt)
+                          : trig.triggeredAt
+                            ? formatDate(trig.triggeredAt)
+                            : "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Missed check-ins: {trig.missedCheckIns ?? "—"} /{" "}
+                        {trig.maxMissedCheckIns ?? "—"}
+                      </div>
+                    </div>
+
+
+
+                    <div className={styles.triggerActions}>
+                      <Badge status={trig.status || "TRIGGERED"} />
+
+                      {Number(trig.missedCheckIns ?? 0) >=
+                        Number(trig.maxMissedCheckIns ?? Infinity) &&
+                        trig.willId && (
+                          <button
+                            className={styles.triggerSubmitBtn}
+                            disabled={busyId === trig.willId}
+                            onClick={() => openLegalDocumentUpload(trig.willId, trig.ownerName)}
+                          >
+                            Submit Legal Document
+                          </button>
+                        )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+
+
+          <section className={`${styles.card} ${styles.cardWide}`}>
+            <h2 className={styles.cardTitle}>
+              Legal Cases <span className={styles.count}>{data.cases.length}</span>
+            </h2>
+            {data.cases.length === 0 ? (
+              <p className={styles.mutedText}>No death certificate submitted yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.cases.map((c) => {
+                  const handoverStarted = data.handoverRequests.some(
+                    (h) => h.willId === c.willId && h.type === "DEATH"
+                  );
+                  return (
+                    <li key={c.id} className={styles.listItemColumn}>
+                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                        <div>
+                          <strong>Case for {c.ownerName}</strong>
+                          <div className={styles.metaText}>
+                            Will: {c.willTitle || "—"} · Submitted: {formatDate(c.submittedAt)}
+                          </div>
+                          {c.reviewedAt && (
+                            <div className={styles.metaText}>Reviewed: {formatDate(c.reviewedAt)}</div>
+                          )}
+                          {c.status === "REJECTED" && c.reviewNote && (
+                            <div className={styles.deadlineOverdue}>Reason: {c.reviewNote}</div>
+                          )}
+                        </div>
+                        <div className={styles.itemRight}>
+                          <Badge status={c.status} />
+                        </div>
+                      </div>
+
+                      {c.status === "PENDING" && (
+                        <p className={styles.metaText} style={{ marginTop: 8 }}>
+                          Waiting for Legal Verify to check the certificate.
+                        </p>
+                      )}
+
+                      {c.status === "APPROVED" && !handoverStarted && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === c.willId}
+                            onClick={() => handleStartHandover(c.willId)}
+                          >
+                            {busyId === c.willId ? "Starting..." : "Start Handover"}
+                          </button>
+                          <span className={styles.metaText}>
+                            Legal Verify approved the certificate. Starting the handover also checks the Owner is DECEASED.
+                          </span>
+                        </div>
+                      )}
+
+                      {c.status === "APPROVED" && handoverStarted && (
+                        <p className={styles.metaText} style={{ marginTop: 8 }}>
+                          Handover started — deliver the assets in the Handovers card above.
+                        </p>
+                      )}
+
+                      {c.status === "REJECTED" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.secondaryBtn}
+                            onClick={() => openLegalDocumentUpload(c.willId, c.ownerName)}
+                          >
+                            Submit a new certificate
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      )}
+
+      {deleteConfirmReq && (
+        <div className={styles.overlay} onClick={() => setDeleteConfirmReq(null)}>
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete declined request"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>Delete this request?</h2>
+            <p className={styles.metaText}>
+              You declined the request from <strong>{deleteConfirmReq.ownerName}</strong>
+              {deleteConfirmReq.willTitle ? ` (${deleteConfirmReq.willTitle})` : ""}.
+              Are you sure you want to delete it? It will be removed from your dashboard and this cannot be undone.
+              You will need to enter your Security PIN to confirm.
+            </p>
+            <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
+              <button className={styles.secondaryBtn} onClick={() => setDeleteConfirmReq(null)}>
+                Cancel
+              </button>
+              <button className={styles.dangerBtnSolid} onClick={continueDeleteToPin}>
+                Yes, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletePinReq && (
+        <SecurityPinModal
+          scope="EXECUTOR_REQUEST_DELETE"
+          resourceId={deletePinReq.id}
+          onVerified={handleDeleteVerified}
+          onClose={() => setDeletePinReq(null)}
+        />
+      )}
+
+      {uploadCaseId && (
+        <div className={styles.overlay} onClick={closeUploadPopup}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Upload Legal Documents</h2>
+            <p className={styles.metaText}>
+              Attach the death certificate and identity verification documents for this case.
+            </p>
+            <label className={styles.uploadArea}>
+              <input type="file" multiple onChange={handleFilesChosen} className={styles.hiddenFileInput} />
+              {uploadFiles.length > 0 ? (
+                <span>{uploadFiles.join(", ")}</span>
+              ) : (
+                <span>Upload file here</span>
+              )}
+            </label>
+            <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
+              <button className={styles.secondaryBtn} disabled={busyId === uploadCaseId} onClick={closeUploadPopup}>
+                Cancel Upload
+              </button>
+              <button className={styles.primaryBtn} disabled={busyId === uploadCaseId} onClick={handleConfirmUpload}>
+                Confirm Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadWillId && (
+        <DeathCertificateModal
+          ownerName={uploadOwnerName}
+          busy={busyId === uploadWillId}
+          onSubmit={handleCertificateSubmit}
+          onClose={closeLegalDocumentUpload}
+        />
+      )}
+
+    </div>
+  );
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-US");
+}

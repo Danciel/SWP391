@@ -1,0 +1,86 @@
+.page {
+  max-width: 700px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 18px;
+}
+
+.muted {
+  color: var(--faint);
+  font-size: 14px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.willName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.claimedTag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ok);
+}
+
+.metaLine {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+.readyTag {
+  color: var(--brass);
+  font-weight: 700;
+}
+
+.mutedTag {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.viewBtn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: var(--vault-soft);
+  color: var(--vault);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.viewBtn:hover {
+  background: var(--vault-soft);
+}
