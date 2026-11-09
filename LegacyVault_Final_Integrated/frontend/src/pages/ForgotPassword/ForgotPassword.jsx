@@ -36,7 +36,7 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     try {
       await requestPasswordReset({ email });
-      navigate("/verify-otp", { state: { email, purpose: "reset" } });
+      navigate("/reset-password", { state: { email } });
     } catch (err) {
       setSubmitError(
         err instanceof ApiError ? err.message : "Could not send verification code, please try again"
