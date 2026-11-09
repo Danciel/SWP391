@@ -2,6 +2,9 @@
 using LegacyVault.Features.IdentityAccess.DTOs;
 using LegacyVault.Features.IdentityAccess.Repositories;
 using LegacyVault.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using LegacyVault.Data;
 
 namespace LegacyVault.Features.IdentityAccess.Services
 {
@@ -14,7 +17,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private readonly IPhoneOtpService _phoneOtpService;
         private readonly ISmsSender _smsSender;
         private readonly IPhoneOtpRepository _phoneOtpRepository;
-
+        private readonly LegacyVaultDbContext _db;
         private readonly IJwtTokenService _jwtTokenService;
 
         public AuthService(
@@ -25,7 +28,8 @@ namespace LegacyVault.Features.IdentityAccess.Services
     IJwtTokenService jwtTokenService,
     IPhoneOtpService phoneOtpService,
     ISmsSender smsSender,
-    IPhoneOtpRepository phoneOtpRepository)
+    IPhoneOtpRepository phoneOtpRepository,
+    LegacyVaultDbContext db)
         {
             _accountRepository = accountRepository;
             _emailOtpService = emailOtpService;
@@ -35,6 +39,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
             _phoneOtpService = phoneOtpService;
             _smsSender = smsSender;
             _phoneOtpRepository = phoneOtpRepository;
+            _db = db;
         }
 
         public async Task<AccountResponse> RegisterAsync(
@@ -257,16 +262,22 @@ namespace LegacyVault.Features.IdentityAccess.Services
                     "Email is not verified.");
             }
 
+            if (account.IdentityStatus == "LOCKED")
+                throw new UnauthorizedAccessException("This account is locked. Please contact support.");
+
             // 4. Tạo JWT
             var token =
                 _jwtTokenService.GenerateToken(
                     account,
                     request.RememberMe);
 
+            var refreshToken = await GenerateRefreshTokenAsync(account.Id);
+
             // 5. Trả token + thông tin user
             return new LoginResponse
             {
                 Token = token,
+                RefreshToken = refreshToken.Token,
 
                 User = new AccountResponse
                 {
@@ -283,6 +294,66 @@ namespace LegacyVault.Features.IdentityAccess.Services
             };
         }
 
+        public async Task<RefreshToken> GenerateRefreshTokenAsync(Guid accountId)
+        {
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                AccountId = accountId,
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(7), // Long-lived
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _db.RefreshTokens.Add(refreshToken);
+            await _db.SaveChangesAsync();
+            return refreshToken;
+        }
+
+        public async Task<LoginResponse> RefreshTokenAsync(string token)
+        {
+            var existing = await _db.RefreshTokens
+                .Include(x => x.Account)
+                .FirstOrDefaultAsync(x => x.Token == token);
+
+            if (existing == null || existing.IsRevoked || existing.ExpiresAt < DateTimeOffset.UtcNow)
+                throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+
+            // TOKEN ROTATION: Revoke the old one, issue a new one
+            existing.IsRevoked = true;
+            existing.RevokedAt = DateTimeOffset.UtcNow;
+
+            var newRefreshToken = await GenerateRefreshTokenAsync(existing.AccountId);
+            var newJwt = _jwtTokenService.GenerateToken(existing.Account, false);
+
+            return new LoginResponse
+            {
+                Token = newJwt,
+                RefreshToken = newRefreshToken.Token,
+                User = new AccountResponse
+                {
+                    Id = existing.Account.Id,
+                    FullName = existing.Account.FullName,
+                    Email = existing.Account.Email,
+                    PhoneNumber = existing.Account.Phone,
+                    Role = existing.Account.Role,
+                    EmailVerified = existing.Account.EmailVerified,
+                    PhoneVerified = existing.Account.PhoneVerified,
+                    IdentityStatus = existing.Account.IdentityStatus,
+                    CreatedAt = existing.Account.CreatedAt
+                }
+            };
+        }
+
+        public async Task RevokeTokenAsync(string token)
+        {
+            var existing = await _db.RefreshTokens.FirstOrDefaultAsync(x => x.Token == token);
+            if (existing != null && !existing.IsRevoked)
+            {
+                existing.IsRevoked = true;
+                existing.RevokedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
 
         public async Task SendPhoneOtpAsync(Guid accountId)
         {

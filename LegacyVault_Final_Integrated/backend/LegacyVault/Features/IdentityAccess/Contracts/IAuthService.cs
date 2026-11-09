@@ -1,4 +1,5 @@
 ﻿using LegacyVault.Features.IdentityAccess.DTOs;
+using LegacyVault.Models;
 
 namespace LegacyVault.Features.IdentityAccess.Contracts
 {
@@ -21,5 +22,11 @@ namespace LegacyVault.Features.IdentityAccess.Contracts
         Task ResetPasswordAsync(ResetPasswordRequest request);
 
         Task ChangePasswordAsync(Guid accountId, string currentPassword, string newPassword);
+
+        Task<RefreshToken> GenerateRefreshTokenAsync(Guid accountId);
+
+        Task<LoginResponse> RefreshTokenAsync(string token);
+
+        Task RevokeTokenAsync(string token);
     }
 }
