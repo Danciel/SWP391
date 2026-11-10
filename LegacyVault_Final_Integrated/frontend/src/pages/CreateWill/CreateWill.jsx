@@ -14,11 +14,10 @@ import {
   getWills,
   getWallet,
 } from "../../api/vaultApi";
-import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, executorForAsset, specialistFor, formatFee } from "../../utils/willHelpers";
+import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, formatFee } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
-import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./CreateWill.module.css";
 import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
@@ -354,7 +353,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
                 Cancel
               </button>
               <button type="submit" className={styles.primaryBtn} disabled={saving}>
-                {saving ? "Adding..." : "Add Asset"}
+                {saving ? "Adding..." : form.type === "Cloud Storage" ? "Select Drive File & Add" : "Add Asset"}
               </button>
             </div>
           </form>
@@ -592,14 +591,6 @@ function BeneficiaryModal({ onClose, onAssign }) {
 function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   const willAssets = will.assets || [];
   const [mainId, setMainId] = useState(will.executor?.id || "");
-  const [picks, setPicks] = useState(() => {
-    const init = {};
-    willAssets.forEach((a) => {
-      const e = specialistFor(will, a.willAssetId);
-      if (e) init[a.willAssetId] = e.id;
-    });
-    return init;
-  });
   const [saving, setSaving] = useState(false);
   const [error,setError]=useState("");
   const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
@@ -621,10 +612,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   async function handleNext() {
     setSaving(true);
     try {
-      const specialists = willAssets
-        .filter((a) => picks[a.willAssetId] && picks[a.willAssetId] !== mainId)
-        .map((a) => ({ willAssetId: a.willAssetId, executorId: picks[a.willAssetId] }));
-      await onSave({ mainExecutorId: mainId, specialists });
+      await onSave({ mainExecutorId: mainId });
       setError("");
       onNext();
     } catch (err) { setError(err.message || "Could not assign executor"); }
@@ -652,7 +640,6 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
               <p className={styles.feeText}>
                 Booking fee: {formatFee(ex) || "Not set by this executor yet"}
               </p>
-              <ExecutorFeeInsight executor={ex} />
             </div>
             <div className={styles.actions} style={{ marginTop: 0 }}>
               <button
@@ -669,7 +656,6 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
                 aria-pressed={mainId === ex.id}
                 onClick={() => {
                   setMainId(ex.id);
-                  setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([, id]) => id !== ex.id)));
                 }}
               >
                 {mainId === ex.id ? "Main executor" : "Choose as main executor"}
@@ -691,30 +677,6 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
           </Fragment>
         ))}
       </div>
-
-      <h3 className={styles.stepHeading}>Specialists for specific assets (optional)</h3>
-      <p className={styles.hint}>
-        A specialist is a recommendation for the main executor, for example someone who knows crypto wallets.
-        They do not need to accept, are not charged through LegacyVault, and the main executor still hands over the asset.
-      </p>
-      {willAssets.length === 0 && <p className={styles.hint}>Add assets in the previous steps first.</p>}
-      {willAssets.map((a) => (
-        <div key={a.willAssetId} className={styles.beneficiaryCard}>
-          <h4 className={styles.beneficiaryAssetName}>{a.assetName || "Asset"}</h4>
-          <select
-            className={styles.input}
-            aria-label={`Specialist for ${a.assetName || "asset"}`}
-            disabled={!mainId}
-            value={picks[a.willAssetId] || ""}
-            onChange={(e) => setPicks((prev) => ({ ...prev, [a.willAssetId]: e.target.value || undefined }))}
-          >
-            <option value="">No specialist: main executor handles it</option>
-            {executors.filter((ex) => ex.id !== mainId).map((ex) => (
-              <option key={ex.id} value={ex.id}>{ex.name}</option>
-            ))}
-          </select>
-        </div>
-      ))}
 
       <div className={styles.actions}>
         <button className={styles.secondaryBtn} onClick={onBack}>
@@ -848,19 +810,6 @@ function ReviewStep({ will, assets, profile, executors = [], userId, onBack, onS
         <p className={styles.reviewLabel}>Main executor</p>
         <p className={styles.reviewLine}>{mainExecutor?.name || "—"}</p>
         {mainFee && <p className={styles.feeText}>Booking fee: {mainFee}. It is held from your wallet when you submit.</p>}
-        {(will.assets || []).some((a) => specialistFor(will, a.willAssetId)) && (
-          <>
-            <p className={styles.reviewLabel} style={{ marginTop: 12 }}>Specialists (recommendations only)</p>
-            {(will.assets || []).map((a) => {
-              const sp = specialistFor(will, a.willAssetId);
-              return sp ? (
-                <p key={a.willAssetId || a.assetId} className={styles.reviewLine}>
-                  {assetName(a.assetId)} → {sp.name}
-                </p>
-              ) : null;
-            })}
-          </>
-        )}
       </div>
 
       <div className={styles.reviewBlock}>

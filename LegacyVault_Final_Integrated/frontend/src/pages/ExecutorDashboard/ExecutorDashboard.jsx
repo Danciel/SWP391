@@ -12,8 +12,6 @@ import {
   deleteExecutorRequest,
 } from "../../api/executorApi";
 import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
-import ExecutorPricingCard, { EvaluationCsvActions } from "../../components/ExecutorPricingCard/ExecutorPricingCard";
-import useExecutorPricing from "../../components/ExecutorPricingCard/useExecutorPricing";
 import DeathCertificateModal from "../../components/DeathCertificate/DeathCertificateModal";
 import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import { getStoredUser } from "../../api/client";
@@ -111,19 +109,6 @@ export default function ExecutorDashboard() {
   // Delete a declined request: 1) confirm popup  2) PIN popup
   const [deleteConfirmReq, setDeleteConfirmReq] = useState(null);
   const [deletePinReq, setDeletePinReq] = useState(null);
-
-  const pricing = useExecutorPricing({
-    onFeeUpdated: (updated) => {
-      const next = {
-        ...fee,
-        fee: updated.serviceFee,
-        currency: updated.currency || fee?.currency || "VND",
-        updatedAt: updated.updatedAt || new Date().toISOString(),
-      };
-      setFee(next);
-      setFeeInput(String(next.fee));
-    },
-  });
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -478,13 +463,11 @@ export default function ExecutorDashboard() {
                     <button className={styles.secondaryBtn} onClick={() => setEditingFee(true)}>
                       Edit Fee
                     </button>
-                    <EvaluationCsvActions pricing={pricing} variant="dark" />
                   </div>
                 </div>
               )}
             </section>
 
-            <ExecutorPricingCard pricing={pricing} />
           </div>
 
           <section className={styles.card}>

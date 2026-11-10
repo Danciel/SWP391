@@ -28,8 +28,8 @@ public sealed class StartAssetConnectionRequest
 
     public string? Description { get; set; }
 
-    // Required for Google Drive
-    public string? FileId { get; set; }
+    // Google Drive file selection now happens in Google Picker, after OAuth.
+    // The obsolete FileId field is intentionally ignored by Start().
 
     // Gmail address or GitHub username
     public string? ExpectedIdentifier { get; set; }
@@ -38,9 +38,17 @@ public sealed class StartAssetConnectionRequest
     public string? FrontendOrigin { get; set; }
 }
 
+public sealed class PickerSessionRequest
+{
+    public string Ticket { get; set; } = "";
+}
+
 public sealed class CompleteAssetConnectionRequest
 {
     public string Ticket { get; set; } = "";
+
+    // Returned by Google Picker; verified server-side with the same OAuth grant.
+    public string? SelectedFileId { get; set; }
 
     // Optional owner-supplied handover details.
     // These do NOT authenticate with Google/GitHub.
@@ -63,8 +71,6 @@ internal sealed class PendingAssetConnection
 
     public string? Description { get; init; }
 
-    public string? FileId { get; init; }
-
     public string? ExpectedIdentifier { get; init; }
 
     public string FrontendOrigin { get; init; } = "http://localhost:5173";
@@ -86,6 +92,10 @@ internal sealed class VerifiedAssetConnection
     public string DisplayName { get; init; } = "";
 
     public string? AccountIdentifier { get; init; }
+
+    // Short-lived Google access token, used only for Picker and final file check.
+    // Never persist this value in AssetSecret or a database.
+    public string? GooglePickerAccessToken { get; init; }
 
     public bool Consumed { get; set; }
 }
@@ -194,24 +204,6 @@ public class AssetConnectionsController : ControllerBase
             {
                 message =
                     "Asset name must be between 1 and 150 characters."
-            });
-        }
-
-        if (provider == "GOOGLE_DRIVE"
-            && string.IsNullOrWhiteSpace(request.FileId))
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Google Drive requires a selected fileId."
-            });
-        }
-
-        if (request.FileId?.Length > 512)
-        {
-            return BadRequest(new
-            {
-                message = "Invalid fileId."
             });
         }
 
@@ -361,8 +353,6 @@ public class AssetConnectionsController : ControllerBase
             Name = request.Name.Trim(),
 
             Description = request.Description,
-
-            FileId = request.FileId?.Trim(),
 
             ExpectedIdentifier =
                 needsIdentifier
@@ -547,7 +537,11 @@ public class AssetConnectionsController : ControllerBase
                     DisplayName = displayName,
 
                     AccountIdentifier =
-                        accountId
+                        accountId,
+
+                    GooglePickerAccessToken = provider == "GOOGLE_DRIVE"
+                        ? accessToken
+                        : null
                 },
 
                 SessionLifetime
@@ -615,6 +609,39 @@ public class AssetConnectionsController : ControllerBase
     }
 
     // ========================================
+    // GOOGLE PICKER: SHORT-LIVED SESSION
+    // ========================================
+    // The browser needs a Google access token to render Picker. Only the
+    // authenticated Owner with the matching, unconsumed ticket may obtain it.
+    // Never return refresh tokens, and never store this token in the browser.
+    [HttpPost("google_drive/picker-session")]
+    [Authorize]
+    public IActionResult GooglePickerSession([FromBody] PickerSessionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Ticket)
+            || !_cache.TryGetValue(TicketKey(request.Ticket), out VerifiedAssetConnection? verified)
+            || verified is null)
+            return BadRequest(new { message = "Google Drive connection has expired. Please reconnect." });
+
+        if (verified.Pending.OwnerId != _currentUser.GetRequiredAccountId())
+            return Forbid();
+
+        if (verified.Pending.Provider != "GOOGLE_DRIVE" || verified.Consumed
+            || string.IsNullOrEmpty(verified.GooglePickerAccessToken))
+            return BadRequest(new { message = "Invalid Google Drive Picker session." });
+
+        string? apiKey = _config["GooglePicker:ApiKey"];
+        string? appId = _config["GooglePicker:AppId"];
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(appId))
+            return StatusCode(503, new {
+                message = "Set GooglePicker:ApiKey and GooglePicker:AppId in User Secrets."
+            });
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new { accessToken = verified.GooglePickerAccessToken, apiKey, appId });
+    }
+
+    // ========================================
     // B7. COMPLETE AND SAVE ASSET
     // ========================================
 
@@ -650,6 +677,32 @@ public class AssetConnectionsController : ControllerBase
             return Forbid();
         }
 
+        // Google Picker selection is untrusted input: use the OAuth token
+        // stored with this Owner's ticket to verify the exact file via Drive API.
+        string externalIdentifier = verified.ExternalIdentifier;
+        string displayName = verified.DisplayName;
+        string? accountIdentifier = verified.AccountIdentifier;
+
+        if (verified.Pending.Provider == "GOOGLE_DRIVE")
+        {
+            string fileId = request.SelectedFileId?.Trim() ?? "";
+            if (!Regex.IsMatch(fileId, @"^[A-Za-z0-9_-]{1,512}$"))
+                return BadRequest(new { message = "Choose a Google Drive file using the Picker." });
+
+            if (string.IsNullOrEmpty(verified.GooglePickerAccessToken))
+                return BadRequest(new { message = "Google Drive session expired. Reconnect." });
+
+            try
+            {
+                (externalIdentifier, displayName) = await VerifyDriveFileAsync(
+                    verified.GooglePickerAccessToken, fileId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // B7.1. Check duplicate verified Asset
         bool alreadyExists =
             await _db.AssetVerifications
@@ -659,7 +712,7 @@ public class AssetConnectionsController : ControllerBase
                         verified.Pending.Provider
 
                     && v.ExternalIdentifier ==
-                        verified.ExternalIdentifier
+                        externalIdentifier
 
                     && _db.Assets.Any(a =>
                         a.Id == v.AssetId &&
@@ -755,22 +808,24 @@ public class AssetConnectionsController : ControllerBase
             new Dictionary<string, string>
             {
                 ["externalIdentifier"] =
-                    verified.ExternalIdentifier,
+                    externalIdentifier,
 
                 ["displayName"] =
-                    verified.DisplayName,
+                    displayName,
 
                 ["verificationMethod"] =
                     "OAUTH",
 
                 ["verifiedAccountIdentifier"] =
-                    verified.DisplayName
+                    verified.Pending.Provider == "GOOGLE_DRIVE"
+                        ? verified.DisplayName
+                        : displayName
             };
 
-        if (verified.AccountIdentifier != null)
+        if (accountIdentifier != null)
         {
             data["accountIdentifier"] =
-                verified.AccountIdentifier;
+                accountIdentifier;
         }
 
         // Optional handover secret
@@ -1081,71 +1136,53 @@ public class AssetConnectionsController : ControllerBase
             );
         }
 
-        // Google Drive file access
+        // Google Drive requires a Picker-selected file. Keep the Google account
+        // identity for the pending ticket, but don't validate a file until Complete().
         if (pending.Provider == "GOOGLE_DRIVE")
-        {
-            string fileId = pending.FileId!;
-
-            using var fileReq =
-                new HttpRequestMessage(
-                    HttpMethod.Get,
-
-                    "https://www.googleapis.com/drive/v3/files/"
-                    +
-                    Uri.EscapeDataString(fileId)
-                    +
-                    "?fields=id,name,trashed"
-                );
-
-            fileReq.Headers.Authorization =
-                new AuthenticationHeaderValue(
-                    "Bearer",
-                    token
-                );
-
-            using var fileResponse =
-                await _httpFactory
-                    .CreateClient("asset-oauth")
-                    .SendAsync(fileReq);
-
-            if (!fileResponse.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(
-                    "Cannot access selected Google Drive file " +
-                    "with granted permissions."
-                );
-            }
-
-            using var fileJson =
-                JsonDocument.Parse(
-                    await fileResponse.Content.ReadAsStringAsync()
-                );
-
-            var file =
-                fileJson.RootElement;
-
-            if (
-                file.TryGetProperty(
-                    "trashed",
-                    out var trashed
-                )
-                &&
-                trashed.GetBoolean()
-            )
-            {
-                throw new InvalidOperationException(
-                    "Google Drive file is in trash."
-                );
-            }
-
-            return (
-                ReadString(file, "id"),
-                ReadString(file, "name"),
-                id
-            );
-        }
+            return (id, name, id);
 
         return (id, name, null);
+    }
+
+    private async Task<(string id, string name)> VerifyDriveFileAsync(
+        string accessToken, string fileId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            "https://www.googleapis.com/drive/v3/files/"
+            + Uri.EscapeDataString(fileId)
+            + "?fields=id,name,mimeType,trashed&supportsAllDrives=true");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpFactory.CreateClient("asset-oauth")
+            .SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.NotFound =>
+                    "Google returned 404: the file is missing or has not been granted to this application. Select it again using Google Picker.",
+                System.Net.HttpStatusCode.Forbidden =>
+                    "Google returned 403: the selected file cannot be accessed with these permissions.",
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Google authorization expired. Connect to Drive again.",
+                _ => $"Google Drive verification failed (HTTP {(int)response.StatusCode})."
+            });
+        }
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        if (root.TryGetProperty("trashed", out var trashed) && trashed.ValueKind == JsonValueKind.True)
+            throw new InvalidOperationException("The Google Drive file is in the trash.");
+
+        if (ReadString(root, "mimeType") == "application/vnd.google-apps.folder")
+            throw new InvalidOperationException("Choose a file, not a Google Drive folder.");
+
+        string id = ReadString(root, "id");
+        string name = ReadString(root, "name");
+        if (id != fileId || string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Google returned unexpected file information. Please try again.");
+        return (id, name);
     }
 
     // ========================================

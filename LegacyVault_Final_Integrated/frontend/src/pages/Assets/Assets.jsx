@@ -205,21 +205,12 @@ export function AssetFields({ form, setForm, editing = false }) {
       )}
 
       {isCloud && !editing && (
-        <>
-          <label className={styles.label}>
-            Google Drive File ID
-          </label>
-          <input
-            className={styles.input}
-            required
-            maxLength={512}
-            value={form.fileId || ""}
-            onChange={(e) =>
-              set({ fileId: e.target.value })
-            }
-            placeholder="Google Drive File ID"
-          />
-        </>
+        <div className={styles.drivePickerNotice}>
+          <strong>Choose your file securely from Google Drive</strong>
+          <p>After you click “Select Drive File &amp; Add”, sign in to Google,
+             then choose the file in Google Picker. You no longer need to paste a File ID.</p>
+          <p>LegacyVault only verifies access; it does not store a copy of the file.</p>
+        </div>
       )}
 
       <label className={styles.label}>Description</label>
@@ -873,7 +864,7 @@ export default function Assets() {
                 className={styles.primaryBtn}
                 disabled={saving}
               >
-                {saving ? "Adding..." : "Add Asset"}
+                {saving ? "Adding..." : form.type === "Cloud Storage" ? "Select Drive File & Add" : "Add Asset"}
               </button>
             </div>
           </form>

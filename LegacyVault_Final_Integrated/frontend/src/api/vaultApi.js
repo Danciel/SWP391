@@ -186,14 +186,8 @@ export async function saveWillDraft(userId, id, patch = {}) {
   if (patch.mainExecutorId !== undefined) {
     // One main executor accepts the will, is paid and hands everything over.
     if (patch.mainExecutorId && patch.mainExecutorId !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: patch.mainExecutorId });
-    // Specialists are optional per-asset suggestions that need no acceptance.
-    const wanted = new Map((patch.specialists || []).map(x => [x.willAssetId, x.executorId]));
-    for (const a of before.assets) {
-      const current = (before.assetExecutors || []).find(x => x.willAssetId === a.willAssetId)?.id;
-      const want = wanted.get(a.willAssetId);
-      if (want && want !== patch.mainExecutorId) { if (want !== current || current === before.executor?.id) await assignAssetExecutor(id, a.willAssetId, want); }
-      else if (current) await r(`/wills/${id}/assets/${a.willAssetId}/executor`, "DELETE");
-    }
+    // Legacy per-asset executor assignments are preserved for existing wills.
+    // Removing suggestions from the UI must not silently delete saved assignments.
   }
   if (patch.dms) await r(`/wills/${id}/dms`, "PUT", { enabled: true, checkInIntervalDays: patch.dms.checkInDays, reminderBeforeDays: patch.dms.reminderDays, maxMissedCheckIns: patch.dms.maxMissed });
   return getWill(userId, id);

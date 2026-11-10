@@ -25,11 +25,9 @@ import {
   dmsMessage,
   dmsState,
   fmtDate,
-  specialistFor,
 } from "../../utils/willHelpers";
 
 import { useBackdropClose } from "../../utils/useBackdropClose";
-import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./WillDetails.module.css";
 
 const EXECUTOR_STATUS_LABEL = {
@@ -775,22 +773,6 @@ export default function WillDetails() {
                       : "No executor assigned."}
                   </p>
 
-                  {specialistFor(
-                    will,
-                    entry.willAssetId
-                  ) && (
-                    <p className={styles.itemMeta}>
-                      Suggested specialist:{" "}
-                      {
-                        specialistFor(
-                          will,
-                          entry.willAssetId
-                        ).name
-                      }{" "}
-                      (recommendation only, does not
-                      accept or get paid)
-                    </p>
-                  )}
                 </div>
               )}
             </div>
@@ -916,7 +898,6 @@ export default function WillDetails() {
                     executorProfile.rating || 0
                   ).toFixed(1)}`}
                 />
-                <ExecutorFeeInsight executor={executorProfile} />
               </>
             )}
           </>

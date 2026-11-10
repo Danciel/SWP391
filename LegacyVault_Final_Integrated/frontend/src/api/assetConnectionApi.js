@@ -1,4 +1,5 @@
 
+import { pickGoogleDriveFile } from "./googleDrivePicker";
 import {
   BASE_URL,
   ApiError,
@@ -186,15 +187,8 @@ export async function connectAccountAsset(form) {
     );
   }
 
-  // Google Drive: requires an accessible file
-  if (
-    provider === "GOOGLE_DRIVE" &&
-    !form.fileId?.trim()
-  ) {
-    throw new Error(
-      "Google Drive File ID is required."
-    );
-  }
+  // Drive file selection is performed in Google Picker after OAuth.
+  // Do not trust or request a pasted file ID.
 
   // Gmail / GitHub: declared account identity
   const needsIdentifier =
@@ -265,11 +259,7 @@ export async function connectAccountAsset(form) {
             ? { expectedIdentifier }
             : {}),
 
-          ...(provider === "GOOGLE_DRIVE"
-            ? {
-                fileId: form.fileId.trim()
-              }
-            : {})
+          // Picker selection is sent later to Complete().
         }
       }
     );
@@ -289,6 +279,17 @@ export async function connectAccountAsset(form) {
       started.authorizationUrl
     );
 
+    // Picker uses the same short-lived Google OAuth grant. The server
+    // verifies the chosen File ID itself before creating any asset.
+    let selectedFile = null;
+    if (provider === "GOOGLE_DRIVE") {
+      const pickerSession = await request(
+        "/assets/connections/google_drive/picker-session",
+        { method: "POST", body: { ticket } }
+      );
+      selectedFile = await pickGoogleDriveFile(pickerSession);
+    }
+
     // ========================================
     // B5.3. COMPLETE & SAVE ASSET
     // ========================================
@@ -303,6 +304,7 @@ export async function connectAccountAsset(form) {
         method: "POST",
         body: {
           ticket,
+          ...(selectedFile ? { selectedFileId: selectedFile.id } : {}),
 
           handoverPassword:
             needsIdentifier
@@ -325,6 +327,7 @@ export async function connectAccountAsset(form) {
       id: completed.assetId,
 
       name: form.name.trim(),
+      ...(selectedFile ? { selectedFileName: selectedFile.name } : {}),
 
       description:
         form.description || "",

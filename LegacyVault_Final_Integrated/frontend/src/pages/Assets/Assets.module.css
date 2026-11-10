@@ -234,3 +234,16 @@
 .fileMeta {
   color: var(--muted);
 }
+
+/* Google Drive Picker explanation, shared by both Add Asset forms. */
+.drivePickerNotice {
+  margin: 0 0 14px;
+  padding: 12px;
+  background: #f2f7f5;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.drivePickerNotice p { margin: 6px 0 0; }
