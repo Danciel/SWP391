@@ -85,14 +85,26 @@ namespace LegacyVault.Features.WillManagement.Controllers
             if (!string.IsNullOrWhiteSpace(request.Status))
             {
                 var s = request.Status.Trim().ToUpperInvariant();
-                if (s != "ACTIVE" && s != "THRESHOLD_REACHED")
-                    return BadRequest(new
-                    { message = "Status must be ACTIVE or THRESHOLD_REACHED." });
 
-                dms.Status = s;
-                dms.ExecutorNotifiedAt = null;
-                dms.ThresholdReachedAt =
-                    s == "THRESHOLD_REACHED" ? now : null;
+                // THRESHOLD_REACHED is the old name of TRIGGERED.
+                if (s == "THRESHOLD_REACHED") s = "TRIGGERED";
+
+                if (s != "ACTIVE" && s != "TRIGGERED")
+                    return BadRequest(new
+                    { message = "Status must be ACTIVE or TRIGGERED." });
+
+                if (s == "TRIGGERED")
+                {
+                    DmsMissedCycleWorker.MarkTriggered(
+                        _db, dms, now, "ADMIN_CONFIGURE",
+                        _user.GetRequiredAccountId(), null);
+                }
+                else
+                {
+                    dms.Status = s;
+                    dms.ExecutorNotifiedAt = null;
+                    dms.ThresholdReachedAt = null;
+                }
             }
 
             dms.UpdatedAt = now;
@@ -105,6 +117,72 @@ namespace LegacyVault.Features.WillManagement.Controllers
             });
             await _db.SaveChangesAsync();
             return Ok(new { dms.WillId, dms.Status, dms.MissedCheckIns, dms.NextCheckInAt });
+        }
+
+        // Demo / support tool: force the trigger now (same state as missing all
+        // check-ins), then tell the Executor. It does NOT mark the Owner deceased
+        // and does NOT start a handover: the Executor still needs the certificate
+        // and Legal Verify.
+        [HttpPost("{willId:guid}/force-trigger")]
+        public async Task<IActionResult> ForceTrigger(
+            Guid willId,
+            [FromBody] HandoverReasonRequest request)
+        {
+            var reason = request?.Reason?.Trim();
+            if (string.IsNullOrWhiteSpace(reason))
+                return BadRequest(new { message = "A reason is required." });
+
+            var dms = await _db.DmsConfigurations
+                .Include(x => x.Will)
+                .FirstOrDefaultAsync(x => x.WillId == willId);
+
+            if (dms == null || !dms.Enabled)
+                return NotFound(new { message = "This will has no active DMS." });
+
+            if (dms.Will == null || dms.Will.Status != "ACTIVE")
+            {
+                return Conflict(new
+                {
+                    message = "The DMS can be triggered only for an ACTIVE will."
+                });
+            }
+
+            if (dms.Status == "TRIGGERED")
+                return Conflict(new { message = "The DMS is already triggered." });
+
+            var now = DateTimeOffset.UtcNow;
+
+            DmsMissedCycleWorker.MarkTriggered(
+                _db, dms, now, "ADMIN_FORCED",
+                _user.GetRequiredAccountId(), reason);
+            await _db.SaveChangesAsync();
+
+            // Same email the automatic trigger sends; a mail problem never undoes the trigger.
+            try
+            {
+                await DmsMissedCycleWorker.NotifyExecutorAsync(
+                    _db, _email, _life, _logger, willId, now,
+                    HttpContext.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Executor email failed after forced trigger for will {WillId}.", willId);
+            }
+
+            var notified = await _db.DmsConfigurations.AsNoTracking()
+                .Where(x => x.WillId == willId)
+                .Select(x => x.ExecutorNotifiedAt)
+                .FirstOrDefaultAsync();
+
+            return Ok(new
+            {
+                willId,
+                status = "TRIGGERED",
+                executorNotified = notified != null,
+                message = notified != null
+                    ? "DMS triggered. The Executor was emailed."
+                    : "DMS triggered. The Executor was not emailed (no accepted Executor, or the email failed); it will be retried every hour."
+            });
         }
 
         // Run the same job as the hourly worker, optionally at a

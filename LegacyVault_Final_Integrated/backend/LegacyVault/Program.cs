@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,43 @@ builder.Services.AddSingleton<
 
 builder.Services.AddHttpClient("asset-oauth");
 builder.Services.AddOpenApi();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Policy for strict endpoints (Login, Forgot Password)
+    options.AddFixedWindowLimiter("StrictPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+    // Add this block to send the countdown
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            // Send the Retry-After header (in seconds)
+            context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
+
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                message = $"Too many requests. Please try again in {Math.Ceiling(retryAfter.TotalSeconds)} seconds."
+            }, cancellationToken: token);
+        }
+        else
+        {
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                message = "Too many requests. Please try again later."
+            }, cancellationToken: token);
+        }
+    };
+});
 
 // Frontend (Vite) development CORS.
 builder.Services.AddCors(options =>
@@ -118,6 +157,12 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.IHandoverService,
     LegacyVault.Features.WillManagement.Services.HandoverService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IHandoverCodeService,
+    LegacyVault.Features.WillManagement.Services.HandoverCodeService>();
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IBeneficiaryAutoLinkService,
+    LegacyVault.Features.WillManagement.Services.BeneficiaryAutoLinkService>();
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
 // D05: LifeStatus comes from the separate MockIdpApi over HTTP
@@ -199,6 +244,21 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Tables added after the last EF migration are created here if missing, and
+// a missing OwnerPin:Pepper (needed for PIN + handover codes) is reported at once.
+{
+    var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    await LegacyVault.Data.SchemaBootstrap.EnsureAsync(app.Services, startupLogger);
+
+    var pepper = app.Configuration["OwnerPin:Pepper"];
+    if (string.IsNullOrWhiteSpace(pepper) || pepper.Length < 32)
+    {
+        startupLogger.LogError(
+            "OwnerPin:Pepper is missing or shorter than 32 characters. Security PIN and handover " +
+            "access codes will NOT work. Set it with: dotnet user-secrets set \"OwnerPin:Pepper\" \"<32+ random chars>\"");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -219,6 +279,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseRateLimiter();
 
 app.Run();
 

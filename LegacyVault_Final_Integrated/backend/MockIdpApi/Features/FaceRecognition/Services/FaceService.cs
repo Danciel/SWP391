@@ -9,7 +9,7 @@ namespace MockIdpApi.Features.FaceRecognition.Services;
 public class FaceService : IFaceService
 {
     // Tune per environment.
-    private const double MatchThreshold = 0.45;
+    private const double MatchThreshold = 0.42;
 
     private readonly IFaceRepository _faceRepository;
     private readonly IIdpUserRepository _idpUserRepository;
@@ -37,31 +37,10 @@ public class FaceService : IFaceService
                 ServiceStatus.NotFound, "IdpUser not found.");
         }
 
-        // 1. Extract the new face embedding
-        var newEmbedding = _faceRecognition.ExtractEmbedding(imageStream);
+        // Throws InvalidFaceImageException / InvalidImageContentException
+        var embedding = _faceRecognition.ExtractEmbedding(imageStream);
+        var json = JsonSerializer.Serialize(embedding);
 
-        // 2. Check for duplicate faces across OTHER accounts
-        var otherFaces = await _faceRepository.GetAllExceptUserAsync(idpUserId, cancellationToken);
-
-        foreach (var otherFace in otherFaces)
-        {
-            var storedEmbedding = JsonSerializer.Deserialize<float[]>(otherFace.EmbeddingJson);
-            if (storedEmbedding != null)
-            {
-                var score = _faceRecognition.Compare(newEmbedding, storedEmbedding);
-
-                // If it matches an existing face on another account
-                if (score >= MatchThreshold)
-                {
-                    return ServiceResult<FaceEnrollResponse>.Fail(
-                        ServiceStatus.Conflict,
-                        "This face is already registered to another account. Please use a different face.");
-                }
-            }
-        }
-
-        // 3. If no duplicates, proceed with enrollment
-        var json = JsonSerializer.Serialize(newEmbedding);
         var existing = await _faceRepository.GetByUserIdAsync(idpUserId, cancellationToken);
         var now = DateTimeOffset.UtcNow;
 

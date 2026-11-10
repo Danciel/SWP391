@@ -12,6 +12,17 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public decimal AllocationPercentage { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTimeOffset? DeliveredAt { get; set; }
+
+        // Filled only for the Owner / Executor view (never for a recipient).
+        public Guid BeneficiaryDesignationId { get; set; }
+        public DateTimeOffset? ClaimedAt { get; set; }
+
+        // WAITING_REGISTRATION | NAME_MISMATCH | NOT_DELIVERED | CODE_PENDING |
+        // CODE_NOT_EMAILED | CODE_SENT | CODE_LOCKED | CODE_VERIFIED
+        public string? RecipientStatus { get; set; }
+        public int CodeIssueCount { get; set; }
+        public DateTimeOffset? CodeLockedUntil { get; set; }
+        public bool RecipientSupportRequested { get; set; }
     }
 
     public class HandoverResponse
@@ -25,6 +36,9 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public int TotalItems { get; set; }
         public int DeliveredItems { get; set; }
         public List<HandoverItemResponse> Items { get; set; } = new();
+
+        // C1: state of the minutes / signatures (null for very old handovers).
+        public HandoverMinutesSummary? Minutes { get; set; }
     }
 
     public class LegalCaseSummaryResponse
@@ -37,12 +51,17 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public string Status { get; set; } = string.Empty;
         public DateTimeOffset SubmittedAt { get; set; }
         public DateTimeOffset? ReviewedAt { get; set; }
+        public string? ReviewNote { get; set; }
     }
 
     public class LegalCaseDetailResponse : LegalCaseSummaryResponse
     {
         public string OriginalFileName { get; set; } = string.Empty;
-        public string? ReviewNote { get; set; }
+        // JSON typed by the Executor on the certificate form (may be null).
+        public string? CertificateData { get; set; }
+        public string? OwnerEmail { get; set; }
+        public int AssetCount { get; set; }
+        public int BeneficiaryCount { get; set; }
         // Read-only value from the third-party identity app (R10).
         public string LifeStatus { get; set; } = "UNKNOWN";
         public int MissedCheckIns { get; set; }
@@ -71,7 +90,7 @@ namespace LegacyVault.Features.WillManagement.DTOs
         [Range(0, 30)]
         public int? GraceDays { get; set; }
 
-        // ACTIVE or THRESHOLD_REACHED
+        // ACTIVE or TRIGGERED (THRESHOLD_REACHED is a legacy alias of TRIGGERED)
         public string? Status { get; set; }
     }
 

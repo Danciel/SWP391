@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
-import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./VerifyOtp.module.css";
 
 const OTP_LENGTH = 6;
@@ -110,7 +109,7 @@ export default function VerifyOtp() {
   }
 
   return (
-    <AuthShell>
+    <div className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Verify your account</h1>
@@ -159,6 +158,6 @@ export default function VerifyOtp() {
           <Link to="/login">← Back to Login</Link>
         </p>
       </form>
-    </AuthShell>
+    </div>
   );
 }

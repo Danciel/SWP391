@@ -54,195 +54,186 @@ export const EMPTY_FORM = {
 // ==========================================
 export function AssetFields({ form, setForm, editing = false }) {
   const set = (patch) =>
-    setForm((prev) => ({ ...prev, ...patch }));
+      setForm((prev) => ({ ...prev, ...patch }));
 
   const isAccount = form.type === "Online Account";
   const isCloud = form.type === "Cloud Storage";
 
   return (
-    <>
-      <label className={styles.label}>Asset Name</label>
-      <input
-        className={styles.input}
-        required
-        maxLength={150}
-        value={form.name || ""}
-        onChange={(e) => set({ name: e.target.value })}
-        placeholder="Enter asset name"
-      />
-
-      <label className={styles.label}>Asset Type</label>
-      <select
-        className={styles.input}
-        value={form.type}
-        disabled={editing}
-        onChange={(e) =>
-          set({
-            type: e.target.value,
-            accountType:
-              e.target.value === "Cloud Storage"
-                ? "GOOGLE_DRIVE"
-                : "GMAIL",
-            expectedIdentifier: "",
-            handoverPassword: "",
-            handoverConsent: false,
-            fileId: "",
-            file: null,
-          })
-        }
-      >
-        {(
-          ASSET_TYPES.includes(form.type)
-            ? ASSET_TYPES
-            : [form.type, ...ASSET_TYPES]
-        ).map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-
-      {(isAccount || isCloud) && (
-        <>
-          <label className={styles.label}>Provider</label>
-          <select
+      <>
+        <label className={styles.label}>Asset Name</label>
+        <input
             className={styles.input}
-            value={
-              form.accountType ||
-              (isCloud ? "GOOGLE_DRIVE" : "GMAIL")
-            }
-            disabled={editing || isCloud}
+            required
+            maxLength={150}
+            value={form.name || ""}
+            onChange={(e) => set({ name: e.target.value })}
+            placeholder="Enter asset name"
+        />
+
+        <label className={styles.label}>Asset Type</label>
+        <select
+            className={styles.input}
+            value={form.type}
+            disabled={editing}
             onChange={(e) =>
-              set({
-                accountType: e.target.value,
-                expectedIdentifier: "",
-                handoverPassword: "",
-                handoverConsent: false,
-              })
+                set({
+                  type: e.target.value,
+                  accountType:
+                      e.target.value === "Cloud Storage"
+                          ? "GOOGLE_DRIVE"
+                          : "GMAIL",
+                  expectedIdentifier: "",
+                  handoverPassword: "",
+                  handoverConsent: false,
+                  fileId: "",
+                  file: null,
+                })
             }
-          >
-            {(isCloud
-              ? ["GOOGLE_DRIVE"]
-              : ACCOUNT_TYPES
-            ).map((code) => (
-              <option key={code} value={code}>
-                {providerLabel(code)}
+        >
+          {(
+              ASSET_TYPES.includes(form.type)
+                  ? ASSET_TYPES
+                  : [form.type, ...ASSET_TYPES]
+          ).map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
-            ))}
-          </select>
-        </>
-      )}
+          ))}
+        </select>
 
-      {isAccount && !editing && (
-        <>
-          <label className={styles.label}>
-            {form.accountType === "GITHUB"
-              ? "GitHub Username or Verified Email"
-              : "Gmail Address"}
-          </label>
-          <input
-            className={styles.input}
-            required
-            type={
-              form.accountType === "GITHUB"
-                ? "text"
-                : "email"
-            }
-            maxLength={254}
-            autoComplete="off"
-            value={form.expectedIdentifier || ""}
-            onChange={(e) =>
-              set({ expectedIdentifier: e.target.value })
-            }
-            placeholder={
-              form.accountType === "GITHUB"
-                ? "GitHub username or verified email"
-                : "example@gmail.com"
-            }
-          />
-        </>
-      )}
+        {(isAccount || isCloud) && (
+            <>
+              <label className={styles.label}>Provider</label>
+              <select
+                  className={styles.input}
+                  value={
+                      form.accountType ||
+                      (isCloud ? "GOOGLE_DRIVE" : "GMAIL")
+                  }
+                  disabled={editing || isCloud}
+                  onChange={(e) =>
+                      set({
+                        accountType: e.target.value,
+                        expectedIdentifier: "",
+                        handoverPassword: "",
+                        handoverConsent: false,
+                      })
+                  }
+              >
+                {(isCloud
+                        ? ["GOOGLE_DRIVE"]
+                        : ACCOUNT_TYPES
+                ).map((code) => (
+                    <option key={code} value={code}>
+                      {providerLabel(code)}
+                    </option>
+                ))}
+              </select>
+            </>
+        )}
 
-      {isAccount && (
-        <>
-          <label className={styles.label}>
-            {editing
-              ? "New Handover Password (Optional)"
-              : "Password for Handover (Optional)"}
-          </label>
-          <input
-            className={styles.input}
-            type="password"
-            autoComplete="new-password"
-            maxLength={1024}
-            value={form.handoverPassword || ""}
-            onChange={(e) =>
-              set({ handoverPassword: e.target.value })
-            }
-            placeholder={
-              editing
-                ? "Leave blank to keep current password"
-                : "Enter password to encrypt"
-            }
-          />
-
-          {!!form.handoverPassword && (
-            <label className={styles.label}>
+        {isAccount && !editing && (
+            <>
+              <label className={styles.label}>
+                {form.accountType === "GITHUB"
+                    ? "GitHub Username or Verified Email"
+                    : "Gmail Address"}
+              </label>
               <input
-                type="checkbox"
-                required
-                checked={!!form.handoverConsent}
-                onChange={(e) =>
-                  set({
-                    handoverConsent: e.target.checked,
-                  })
-                }
+                  className={styles.input}
+                  required
+                  type={
+                    form.accountType === "GITHUB"
+                        ? "text"
+                        : "email"
+                  }
+                  maxLength={254}
+                  autoComplete="off"
+                  value={form.expectedIdentifier || ""}
+                  onChange={(e) =>
+                      set({ expectedIdentifier: e.target.value })
+                  }
+                  placeholder={
+                    form.accountType === "GITHUB"
+                        ? "GitHub username or verified email"
+                        : "example@gmail.com"
+                  }
               />
-              {" "}I authorize secure storage of this password.
-            </label>
-          )}
-        </>
-      )}
+            </>
+        )}
 
-      {isCloud && !editing && (
-        <>
-          <label className={styles.label}>
-            Google Drive File ID
-          </label>
-          <input
-            className={styles.input}
-            required
-            maxLength={512}
-            value={form.fileId || ""}
+        {isAccount && (
+            <>
+              <label className={styles.label}>
+                {editing
+                    ? "New Handover Password (Optional)"
+                    : "Password for Handover (Optional)"}
+              </label>
+              <input
+                  className={styles.input}
+                  type="password"
+                  autoComplete="new-password"
+                  maxLength={1024}
+                  value={form.handoverPassword || ""}
+                  onChange={(e) =>
+                      set({ handoverPassword: e.target.value })
+                  }
+                  placeholder={
+                    editing
+                        ? "Leave blank to keep current password"
+                        : "Enter password to encrypt"
+                  }
+              />
+
+              {!!form.handoverPassword && (
+                  <label className={styles.label}>
+                    <input
+                        type="checkbox"
+                        required
+                        checked={!!form.handoverConsent}
+                        onChange={(e) =>
+                            set({
+                              handoverConsent: e.target.checked,
+                            })
+                        }
+                    />
+                    {" "}I authorize secure storage of this password.
+                  </label>
+              )}
+            </>
+        )}
+
+        {isCloud && !editing && (
+            <div className={styles.drivePickerNotice}>
+              <strong>Choose your file securely from Google Drive</strong>
+              <p>After you click “Select Drive File &amp; Add”, sign in to Google,
+                then choose the file in Google Picker. You no longer need to paste a File ID.</p>
+              <p>LegacyVault only verifies access; it does not store a copy of the file.</p>
+            </div>
+        )}
+
+        <label className={styles.label}>Description</label>
+        <textarea
+            className={styles.textarea}
+            value={form.description || ""}
             onChange={(e) =>
-              set({ fileId: e.target.value })
+                set({ description: e.target.value })
             }
-            placeholder="Google Drive File ID"
-          />
-        </>
-      )}
-
-      <label className={styles.label}>Description</label>
-      <textarea
-        className={styles.textarea}
-        value={form.description || ""}
-        onChange={(e) =>
-          set({ description: e.target.value })
-        }
-        placeholder="Optional notes about this asset"
-      />
-    </>
+            placeholder="Optional notes about this asset"
+        />
+      </>
   );
 }
 
 export function isAssetFormDirty(form) {
   return Boolean(
-    (form.name || "").trim() ||
-    (form.description || "").trim() ||
-    form.expectedIdentifier ||
-    form.handoverPassword ||
-    form.fileId ||
-    form.file
+      (form.name || "").trim() ||
+      (form.description || "").trim() ||
+      form.expectedIdentifier ||
+      form.handoverPassword ||
+      form.fileId ||
+      form.file
   );
 }
 
@@ -272,7 +263,7 @@ export function AssetFileField({ form, setForm }) {
       }));
     } catch (err) {
       setFileError(
-        err.message || "Could not read this file"
+          err.message || "Could not read this file"
       );
     } finally {
       setReading(false);
@@ -282,23 +273,23 @@ export function AssetFileField({ form, setForm }) {
   if (form.type !== "Document") return null;
 
   return (
-    <>
-      <label className={styles.label}>
-        Upload Document (PDF / JPG / PNG)
-      </label>
+      <>
+        <label className={styles.label}>
+          Upload Document (PDF / JPG / PNG)
+        </label>
 
-      <input
-        ref={inputRef}
-        type="file"
-        style={{ display: "none" }}
-        onChange={handleChange}
-      />
+        <input
+            ref={inputRef}
+            type="file"
+            style={{ display: "none" }}
+            onChange={handleChange}
+        />
 
-      {form.file ? (
-        <div className={styles.fileRow}>
+        {form.file ? (
+            <div className={styles.fileRow}>
           <span
-            className={styles.fileName}
-            title={form.file.name}
+              className={styles.fileName}
+              title={form.file.name}
           >
             {form.file.name}{" "}
             <span className={styles.fileMeta}>
@@ -306,49 +297,49 @@ export function AssetFileField({ form, setForm }) {
             </span>
           </span>
 
-          <button
-            type="button"
-            className={styles.toggleBtn}
-            onClick={() => inputRef.current?.click()}
-          >
-            Replace
-          </button>
+              <button
+                  type="button"
+                  className={styles.toggleBtn}
+                  onClick={() => inputRef.current?.click()}
+              >
+                Replace
+              </button>
 
-          <button
-            type="button"
-            className={styles.toggleBtn}
-            onClick={() =>
-              setForm((prev) => ({
-                ...prev,
-                file: null,
-              }))
-            }
-          >
-            Remove
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={styles.fileBtn}
-          disabled={reading}
-          onClick={() => inputRef.current?.click()}
+              <button
+                  type="button"
+                  className={styles.toggleBtn}
+                  onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        file: null,
+                      }))
+                  }
+              >
+                Remove
+              </button>
+            </div>
+        ) : (
+            <button
+                type="button"
+                className={styles.fileBtn}
+                disabled={reading}
+                onClick={() => inputRef.current?.click()}
+            >
+              {reading ? "Reading file..." : "Choose file"}
+            </button>
+        )}
+
+        <p
+            className={styles.assetDesc}
+            style={{ margin: "0 0 14px" }}
         >
-          {reading ? "Reading file..." : "Choose file"}
-        </button>
-      )}
+          Maximum file size: {formatBytes(MAX_FILE_BYTES)}.
+        </p>
 
-      <p
-        className={styles.assetDesc}
-        style={{ margin: "0 0 14px" }}
-      >
-        Maximum file size: {formatBytes(MAX_FILE_BYTES)}.
-      </p>
-
-      {fileError && (
-        <p className={styles.error}>{fileError}</p>
-      )}
-    </>
+        {fileError && (
+            <p className={styles.error}>{fileError}</p>
+        )}
+      </>
   );
 }
 
@@ -403,8 +394,8 @@ export default function Assets() {
       setAssets(await getAssets(user?.id));
 
       getWills()
-        .then((w) => setLocks(buildAssetLocks(w)))
-        .catch(() => setLocks(new Map()));
+          .then((w) => setLocks(buildAssetLocks(w)))
+          .catch(() => setLocks(new Map()));
     } catch (err) {
       setAssets([]);
       setError(err.message || "Could not load assets");
@@ -496,8 +487,8 @@ export default function Assets() {
       name: asset.name,
       type: asset.type,
       accountType:
-        asset.accountType ||
-        (asset.type === "Document" ? "LOCAL_DOCUMENT" : "GMAIL"),
+          asset.accountType ||
+          (asset.type === "Document" ? "LOCAL_DOCUMENT" : "GMAIL"),
       description: asset.description || "",
       expectedIdentifier: "",
       handoverPassword: "",
@@ -635,8 +626,8 @@ export default function Assets() {
 
     if (locks.has(selectedAsset.id)) {
       setDetailError(
-        `This asset is used in will "${locks.get(selectedAsset.id).willName}". ` +
-        "Remove it from the will before deleting."
+          `This asset is used in will "${locks.get(selectedAsset.id).willName}". ` +
+          "Remove it from the will before deleting."
       );
       return;
     }
@@ -665,8 +656,8 @@ export default function Assets() {
       setShowPinModal(false);
       setPinAction(null);
       setDetailError(
-        err.message ||
-        "Cannot delete this asset. It may be linked to a Will."
+          err.message ||
+          "Cannot delete this asset. It may be linked to a Will."
       );
     } finally {
       setDeleting(false);
@@ -697,7 +688,7 @@ export default function Assets() {
       await load();
     } catch (err) {
       setDetailError(
-        err.message || "Could not verify this asset"
+          err.message || "Could not verify this asset"
       );
     } finally {
       setVerifying(false);
@@ -725,10 +716,10 @@ export default function Assets() {
 
     try {
       const updated = await updateAsset(
-        user?.id,
-        selectedAsset.id,
-        detailForm,
-        editPinGrant
+          user?.id,
+          selectedAsset.id,
+          detailForm,
+          editPinGrant
       );
 
       ++secretRequest.current;
@@ -752,13 +743,13 @@ export default function Assets() {
       if (err?.status === 423) {
         setEditPinGrant(null);
         setDetailError(
-          "PIN verification expired. Please re-verify PIN to save."
+            "PIN verification expired. Please re-verify PIN to save."
         );
       } else {
         setDetailError(
-          err instanceof ApiError
-            ? err.message
-            : err.message || "Could not update asset"
+            err instanceof ApiError
+                ? err.message
+                : err.message || "Could not update asset"
         );
       }
     } finally {
@@ -776,552 +767,552 @@ export default function Assets() {
   // RENDER
   // ==========================================
   return (
-    <div className={styles.page}>
-      <h1 className={styles.title}>My Digital Assets</h1>
-      <p className={styles.subtitle}>
-        Manage the assets included in your wills.
-      </p>
-
-      <button className={styles.addBtn} onClick={openModal}>
-        + Add Asset
-      </button>
-
-      {error && !showModal && (
-        <p role="alert" className={styles.muted}>
-          {error}
+      <div className={styles.page}>
+        <h1 className={styles.title}>My Digital Assets</h1>
+        <p className={styles.subtitle}>
+          Manage the assets included in your wills.
         </p>
-      )}
 
-      {/* ASSET LIST */}
-      {isLoading ? (
-        <p className={styles.muted}>Loading assets...</p>
-      ) : assets.length === 0 ? (
-        <p className={styles.muted}>
-          No assets yet. Add your first digital asset above.
-        </p>
-      ) : (
-        <div className={styles.list}>
-          {assets.map((asset) => (
-            <div
-              key={asset.id}
-              className={styles.assetCard}
-              onClick={() => openDetail(asset)}
-              style={{ cursor: "pointer" }}
-            >
-              <div>
-                <h3 className={styles.assetName}>
-                  {asset.name}
-                </h3>
+        <button className={styles.addBtn} onClick={openModal}>
+          + Add Asset
+        </button>
 
-                <p className={styles.assetType}>
-                  Type: {asset.type}
-                  {asset.type === "Online Account" && asset.accountType
-                    ? ` · ${providerLabel(asset.accountType)}`
-                    : ""}
-                </p>
+        {error && !showModal && (
+            <p role="alert" className={styles.muted}>
+              {error}
+            </p>
+        )}
 
-                {asset.description && (
-                  <p className={styles.assetDesc}>
-                    {asset.description}
-                  </p>
+        {/* ASSET LIST */}
+        {isLoading ? (
+            <p className={styles.muted}>Loading assets...</p>
+        ) : assets.length === 0 ? (
+            <p className={styles.muted}>
+              No assets yet. Add your first digital asset above.
+            </p>
+        ) : (
+            <div className={styles.list}>
+              {assets.map((asset) => (
+                  <div
+                      key={asset.id}
+                      className={styles.assetCard}
+                      onClick={() => openDetail(asset)}
+                      style={{ cursor: "pointer" }}
+                  >
+                    <div>
+                      <h3 className={styles.assetName}>
+                        {asset.name}
+                      </h3>
+
+                      <p className={styles.assetType}>
+                        Type: {asset.type}
+                        {asset.type === "Online Account" && asset.accountType
+                            ? ` · ${providerLabel(asset.accountType)}`
+                            : ""}
+                      </p>
+
+                      {asset.description && (
+                          <p className={styles.assetDesc}>
+                            {asset.description}
+                          </p>
+                      )}
+
+                      <p
+                          className={styles.assetDesc}
+                          title={verificationInfo(asset).hint}
+                      >
+                        {verificationInfo(asset).label}
+
+                        {locks.has(asset.id)
+                            ? ` · 🔒 Used in will "${locks.get(asset.id).willName}"`
+                            : ""}
+                      </p>
+                    </div>
+                  </div>
+              ))}
+            </div>
+        )}
+
+        {/* ADD ASSET */}
+        {showModal && (
+            <div className={styles.overlay} {...addBackdrop}>
+              <form
+                  className={styles.modal}
+                  onClick={(e) => e.stopPropagation()}
+                  onSubmit={handleAdd}
+              >
+                <h2 className={styles.modalTitle}>Add Asset</h2>
+
+                <AssetFields form={form} setForm={setForm} />
+                <AssetFileField form={form} setForm={setForm} />
+
+                {error && (
+                    <p className={styles.error}>{error}</p>
                 )}
 
-                <p
-                  className={styles.assetDesc}
-                  title={verificationInfo(asset).hint}
-                >
-                  {verificationInfo(asset).label}
-
-                  {locks.has(asset.id)
-                    ? ` · 🔒 Used in will "${locks.get(asset.id).willName}"`
-                    : ""}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ADD ASSET */}
-      {showModal && (
-        <div className={styles.overlay} {...addBackdrop}>
-          <form
-            className={styles.modal}
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={handleAdd}
-          >
-            <h2 className={styles.modalTitle}>Add Asset</h2>
-
-            <AssetFields form={form} setForm={setForm} />
-            <AssetFileField form={form} setForm={setForm} />
-
-            {error && (
-              <p className={styles.error}>{error}</p>
-            )}
-
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={() => setShowModal(false)}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className={styles.primaryBtn}
-                disabled={saving}
-              >
-                {saving ? "Adding..." : "Add Asset"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showModal && showDiscard && (
-        <ConfirmDiscardDialog
-          onConfirm={confirmDiscard}
-          onCancel={() => setShowDiscard(false)}
-        />
-      )}
-
-      {/* ASSET DETAIL */}
-      {selectedAsset && (
-        <div className={styles.overlay} onClick={closeDetail}>
-          {detailMode === "view" ? (
-            <div
-              className={styles.modal}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className={styles.modalTitle}>
-                {selectedAsset.name}
-              </h2>
-
-              <label className={styles.label}>Asset Type</label>
-              <p
-                className={styles.assetType}
-                style={{ marginBottom: 14 }}
-              >
-                {selectedAsset.type}
-              </p>
-
-              {selectedAsset.type === "Online Account" && (
-                <>
-                  <label className={styles.label}>
-                    Account Type
-                  </label>
-                  <p
-                    className={styles.assetType}
-                    style={{ marginBottom: 14 }}
-                  >
-                    {providerLabel(selectedAsset.accountType) || "—"}
-                  </p>
-                </>
-              )}
-
-              <label className={styles.label}>Description</label>
-              <p
-                className={styles.assetDesc}
-                style={{ marginBottom: 14 }}
-              >
-                {selectedAsset.description || "—"}
-              </p>
-
-              {!["Document", "Other"].includes(
-                selectedAsset.type
-              ) ? (
-                <>
-                  <label className={styles.label}>
-                    Username / Account
-                  </label>
-                  <p
-                    className={styles.assetDesc}
-                    style={{ marginBottom: 14 }}
-                  >
-                    {secretLoading
-                      ? "Unlocking..."
-                      : secret?.verifiedAccountIdentifier ||
-                        secret?.handoverUsername ||
-                        secret?.username ||
-                        "Protected"}
-                  </p>
-
-                  <label className={styles.label}>
-                    Password
-                  </label>
-
-                  <div
-                    className={styles.passwordRow}
-                    style={{ marginBottom: 14 }}
-                  >
-                    <p
-                      className={styles.assetDesc}
-                      style={{ margin: 0, flex: 1 }}
-                    >
-                      {secretLoading
-                        ? "Unlocking..."
-                        : showDetailPassword
-                          ? secret?.handoverPassword ||
-                            secret?.password ||
-                            "No password saved"
-                          : "••••••••"}
-                    </p>
-
-                    <button
+                <div className={styles.modalActions}>
+                  <button
                       type="button"
-                      className={styles.toggleBtn}
-                      disabled={secretLoading}
-                      onClick={handlePasswordToggle}
-                    >
-                      {showDetailPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <label className={styles.label}>
-                    Stored content
-                  </label>
-                  <p
-                    className={styles.assetDesc}
-                    style={{ marginBottom: 14 }}
+                      className={styles.secondaryBtn}
+                      onClick={() => setShowModal(false)}
                   >
-                    {secretLoading
-                      ? "Unlocking..."
-                      : showDetailPassword
-                        ? secret?.content || "—"
-                        : "Protected"}
-                  </p>
+                    Cancel
+                  </button>
 
                   <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    disabled={secretLoading}
-                    onClick={handlePasswordToggle}
-                    style={{ marginBottom: 14 }}
+                      type="submit"
+                      className={styles.primaryBtn}
+                      disabled={saving}
                   >
-                    {showDetailPassword
-                      ? "Lock content"
-                      : "Unlock with PIN"}
+                    {saving ? "Adding..." : form.type === "Cloud Storage" ? "Select Drive File & Add" : "Add Asset"}
                   </button>
-                </>
-              )}
+                </div>
+              </form>
+            </div>
+        )}
 
-              {/* ATTACHED FILE */}
-              {secret?.fileData && (
-                <>
-                  <label className={styles.label}>
-                    Attached file
-                  </label>
+        {showModal && showDiscard && (
+            <ConfirmDiscardDialog
+                onConfirm={confirmDiscard}
+                onCancel={() => setShowDiscard(false)}
+            />
+        )}
+
+        {/* ASSET DETAIL */}
+        {selectedAsset && (
+            <div className={styles.overlay} onClick={closeDetail}>
+              {detailMode === "view" ? (
                   <div
-                    className={styles.fileRow}
-                    style={{ marginBottom: 14 }}
+                      className={styles.modal}
+                      onClick={(e) => e.stopPropagation()}
                   >
+                    <h2 className={styles.modalTitle}>
+                      {selectedAsset.name}
+                    </h2>
+
+                    <label className={styles.label}>Asset Type</label>
+                    <p
+                        className={styles.assetType}
+                        style={{ marginBottom: 14 }}
+                    >
+                      {selectedAsset.type}
+                    </p>
+
+                    {selectedAsset.type === "Online Account" && (
+                        <>
+                          <label className={styles.label}>
+                            Account Type
+                          </label>
+                          <p
+                              className={styles.assetType}
+                              style={{ marginBottom: 14 }}
+                          >
+                            {providerLabel(selectedAsset.accountType) || "—"}
+                          </p>
+                        </>
+                    )}
+
+                    <label className={styles.label}>Description</label>
+                    <p
+                        className={styles.assetDesc}
+                        style={{ marginBottom: 14 }}
+                    >
+                      {selectedAsset.description || "—"}
+                    </p>
+
+                    {!["Document", "Other"].includes(
+                        selectedAsset.type
+                    ) ? (
+                        <>
+                          <label className={styles.label}>
+                            Username / Account
+                          </label>
+                          <p
+                              className={styles.assetDesc}
+                              style={{ marginBottom: 14 }}
+                          >
+                            {secretLoading
+                                ? "Unlocking..."
+                                : secret?.verifiedAccountIdentifier ||
+                                secret?.handoverUsername ||
+                                secret?.username ||
+                                "Protected"}
+                          </p>
+
+                          <label className={styles.label}>
+                            Password
+                          </label>
+
+                          <div
+                              className={styles.passwordRow}
+                              style={{ marginBottom: 14 }}
+                          >
+                            <p
+                                className={styles.assetDesc}
+                                style={{ margin: 0, flex: 1 }}
+                            >
+                              {secretLoading
+                                  ? "Unlocking..."
+                                  : showDetailPassword
+                                      ? secret?.handoverPassword ||
+                                      secret?.password ||
+                                      "No password saved"
+                                      : "••••••••"}
+                            </p>
+
+                            <button
+                                type="button"
+                                className={styles.toggleBtn}
+                                disabled={secretLoading}
+                                onClick={handlePasswordToggle}
+                            >
+                              {showDetailPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </>
+                    ) : (
+                        <>
+                          <label className={styles.label}>
+                            Stored content
+                          </label>
+                          <p
+                              className={styles.assetDesc}
+                              style={{ marginBottom: 14 }}
+                          >
+                            {secretLoading
+                                ? "Unlocking..."
+                                : showDetailPassword
+                                    ? secret?.content || "—"
+                                    : "Protected"}
+                          </p>
+
+                          <button
+                              type="button"
+                              className={styles.toggleBtn}
+                              disabled={secretLoading}
+                              onClick={handlePasswordToggle}
+                              style={{ marginBottom: 14 }}
+                          >
+                            {showDetailPassword
+                                ? "Lock content"
+                                : "Unlock with PIN"}
+                          </button>
+                        </>
+                    )}
+
+                    {/* ATTACHED FILE */}
+                    {secret?.fileData && (
+                        <>
+                          <label className={styles.label}>
+                            Attached file
+                          </label>
+                          <div
+                              className={styles.fileRow}
+                              style={{ marginBottom: 14 }}
+                          >
                     <span
-                      className={styles.fileName}
-                      title={secret.fileName}
+                        className={styles.fileName}
+                        title={secret.fileName}
                     >
                       {secret.fileName || "file"}
 
                       {secret.fileSize ? (
-                        <span className={styles.fileMeta}>
+                          <span className={styles.fileMeta}>
                           {" "}({formatBytes(Number(secret.fileSize))})
                         </span>
                       ) : null}
                     </span>
 
-                    <button
-                      type="button"
-                      className={styles.toggleBtn}
-                      onClick={() => downloadAssetFile(secret)}
-                    >
-                      Download
-                    </button>
-                  </div>
-                </>
-              )}
+                            <button
+                                type="button"
+                                className={styles.toggleBtn}
+                                onClick={() => downloadAssetFile(secret)}
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </>
+                    )}
 
-              <label className={styles.label}>Status</label>
-              <p
-                className={styles.assetDesc}
-                style={{ marginBottom: 14 }}
-              >
-                {selectedAsset.status}
-              </p>
-
-              <label className={styles.label}>
-                Verification
-              </label>
-              <p
-                className={styles.assetDesc}
-                style={{ marginBottom: 6 }}
-              >
-                {verificationInfo(selectedAsset).label}
-              </p>
-              <p
-                className={styles.assetDesc}
-                style={{ margin: "0 0 14px" }}
-              >
-                {verificationInfo(selectedAsset).hint}
-              </p>
-
-              {isVerifiable(selectedAsset.type) &&
-                ![
-                  "GMAIL",
-                  "GITHUB",
-                  "GOOGLE_DRIVE",
-                  "LOCAL_DOCUMENT",
-                ].includes(
-                  String(selectedAsset.accountType).toUpperCase()
-                ) && (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.toggleBtn}
-                      disabled={verifying || secretLoading}
-                      onClick={handleVerify}
-                      style={{ marginBottom: 14 }}
-                    >
-                      {verifying
-                        ? "Verifying..."
-                        : "Verify with provider"}
-                    </button>
+                    <label className={styles.label}>Status</label>
                     <p
-                      className={styles.assetDesc}
-                      style={{ margin: "0 0 14px" }}
+                        className={styles.assetDesc}
+                        style={{ marginBottom: 14 }}
                     >
-                      Demo check: credentials are compared with
-                      the mock provider accounts, not with the
-                      real service.
+                      {selectedAsset.status}
                     </p>
-                  </>
-                )}
 
-              {/* DOCUMENT INTEGRITY & DOWNLOAD */}
-              {selectedAsset.assetType === "DOCUMENT" &&
-                String(selectedAsset.accountType).toUpperCase() ===
-                  "LOCAL_DOCUMENT" && (
-                  <div
-                    className={styles.fileRow}
-                    style={{ marginBottom: 14 }}
-                  >
-                    <button
-                      type="button"
-                      className={styles.toggleBtn}
-                      onClick={async () => {
-                        try {
-                          const result =
-                            await checkDocumentIntegrity(
-                              selectedAsset.id
-                            );
-                          setVerifyResult({
-                            ok: !!result.integrityVerified,
-                            text: result.integrityVerified
-                              ? "SHA-256 integrity verified"
-                              : "Integrity check failed",
-                          });
-                        } catch (err) {
-                          setDetailError(
-                            err.message || "Integrity check failed"
-                          );
-                        }
-                      }}
+                    <label className={styles.label}>
+                      Verification
+                    </label>
+                    <p
+                        className={styles.assetDesc}
+                        style={{ marginBottom: 6 }}
                     >
-                      Check SHA-256
-                    </button>
+                      {verificationInfo(selectedAsset).label}
+                    </p>
+                    <p
+                        className={styles.assetDesc}
+                        style={{ margin: "0 0 14px" }}
+                    >
+                      {verificationInfo(selectedAsset).hint}
+                    </p>
 
-                    <button
-                      type="button"
-                      className={styles.toggleBtn}
-                      onClick={async () => {
-                        try {
-                          await downloadDocument(selectedAsset.id);
-                        } catch (err) {
-                          setDetailError(
-                            err.message || "Download failed"
-                          );
-                        }
-                      }}
-                    >
-                      Download Document
-                    </button>
+                    {isVerifiable(selectedAsset.type) &&
+                        ![
+                          "GMAIL",
+                          "GITHUB",
+                          "GOOGLE_DRIVE",
+                          "LOCAL_DOCUMENT",
+                        ].includes(
+                            String(selectedAsset.accountType).toUpperCase()
+                        ) && (
+                            <>
+                              <button
+                                  type="button"
+                                  className={styles.toggleBtn}
+                                  disabled={verifying || secretLoading}
+                                  onClick={handleVerify}
+                                  style={{ marginBottom: 14 }}
+                              >
+                                {verifying
+                                    ? "Verifying..."
+                                    : "Verify with provider"}
+                              </button>
+                              <p
+                                  className={styles.assetDesc}
+                                  style={{ margin: "0 0 14px" }}
+                              >
+                                Demo check: credentials are compared with
+                                the mock provider accounts, not with the
+                                real service.
+                              </p>
+                            </>
+                        )}
+
+                    {/* DOCUMENT INTEGRITY & DOWNLOAD */}
+                    {selectedAsset.assetType === "DOCUMENT" &&
+                        String(selectedAsset.accountType).toUpperCase() ===
+                        "LOCAL_DOCUMENT" && (
+                            <div
+                                className={styles.fileRow}
+                                style={{ marginBottom: 14 }}
+                            >
+                              <button
+                                  type="button"
+                                  className={styles.toggleBtn}
+                                  onClick={async () => {
+                                    try {
+                                      const result =
+                                          await checkDocumentIntegrity(
+                                              selectedAsset.id
+                                          );
+                                      setVerifyResult({
+                                        ok: !!result.integrityVerified,
+                                        text: result.integrityVerified
+                                            ? "SHA-256 integrity verified"
+                                            : "Integrity check failed",
+                                      });
+                                    } catch (err) {
+                                      setDetailError(
+                                          err.message || "Integrity check failed"
+                                      );
+                                    }
+                                  }}
+                              >
+                                Check SHA-256
+                              </button>
+
+                              <button
+                                  type="button"
+                                  className={styles.toggleBtn}
+                                  onClick={async () => {
+                                    try {
+                                      await downloadDocument(selectedAsset.id);
+                                    } catch (err) {
+                                      setDetailError(
+                                          err.message || "Download failed"
+                                      );
+                                    }
+                                  }}
+                              >
+                                Download Document
+                              </button>
+                            </div>
+                        )}
+
+                    {verifyResult && (
+                        <p
+                            role="status"
+                            className={
+                              verifyResult.ok
+                                  ? styles.assetType
+                                  : styles.error
+                            }
+                            style={{ marginBottom: 14 }}
+                        >
+                          {verifyResult.text}
+                        </p>
+                    )}
+
+                    {locks.has(selectedAsset.id) && (
+                        <p
+                            className={styles.assetDesc}
+                            style={{ marginBottom: 14 }}
+                        >
+                          🔒 Used in will "
+                          {locks.get(selectedAsset.id).willName}".
+                        </p>
+                    )}
+
+                    {detailError && (
+                        <p role="alert" className={styles.error}>
+                          {detailError}
+                        </p>
+                    )}
+
+                    <div className={styles.modalActions}>
+                      <button
+                          type="button"
+                          className={styles.toggleBtn}
+                          disabled={deleting}
+                          onClick={requestDelete}
+                      >
+                        Delete Asset
+                      </button>
+
+                      <button
+                          type="button"
+                          className={styles.secondaryBtn}
+                          onClick={closeDetail}
+                      >
+                        Close
+                      </button>
+
+                      {/* EDIT CAN NHAP PIN */}
+                      <button
+                          type="button"
+                          className={styles.primaryBtn}
+                          onClick={requestEditWithPin}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
-                )}
-
-              {verifyResult && (
-                <p
-                  role="status"
-                  className={
-                    verifyResult.ok
-                      ? styles.assetType
-                      : styles.error
-                  }
-                  style={{ marginBottom: 14 }}
-                >
-                  {verifyResult.text}
-                </p>
-              )}
-
-              {locks.has(selectedAsset.id) && (
-                <p
-                  className={styles.assetDesc}
-                  style={{ marginBottom: 14 }}
-                >
-                  🔒 Used in will "
-                  {locks.get(selectedAsset.id).willName}".
-                </p>
-              )}
-
-              {detailError && (
-                <p role="alert" className={styles.error}>
-                  {detailError}
-                </p>
-              )}
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.toggleBtn}
-                  disabled={deleting}
-                  onClick={requestDelete}
-                >
-                  Delete Asset
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={closeDetail}
-                >
-                  Close
-                </button>
-
-                {/* EDIT CAN NHAP PIN */}
-                <button
-                  type="button"
-                  className={styles.primaryBtn}
-                  onClick={requestEditWithPin}
-                >
-                  Edit
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* EDIT ASSET */
-            <form
-              className={styles.modal}
-              onClick={(e) => e.stopPropagation()}
-              onSubmit={handleUpdate}
-            >
-              <h2 className={styles.modalTitle}>
-                Edit Asset
-              </h2>
-
-              <AssetFields
-                form={detailForm}
-                setForm={setDetailForm}
-                editing
-              />
-
-              {detailError && (
-                <p className={styles.error}>
-                  {detailError}
-                </p>
-              )}
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={cancelEdit}
-                >
-                  Cancel
-                </button>
-
-                {/* NHAP LAI PIN NEU GRANT HET HAN */}
-                {!editPinGrant && (
-                  <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    onClick={() => {
-                      setPinAction("edit");
-                      setShowPinModal(true);
-                    }}
+              ) : (
+                  /* EDIT ASSET */
+                  <form
+                      className={styles.modal}
+                      onClick={(e) => e.stopPropagation()}
+                      onSubmit={handleUpdate}
                   >
-                    Re-verify PIN
-                  </button>
-                )}
+                    <h2 className={styles.modalTitle}>
+                      Edit Asset
+                    </h2>
 
-                <button
-                  type="submit"
-                  className={styles.primaryBtn}
-                  disabled={detailSaving || !editPinGrant}
-                >
-                  {detailSaving
-                    ? "Saving..."
-                    : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      )}
+                    <AssetFields
+                        form={detailForm}
+                        setForm={setDetailForm}
+                        editing
+                    />
 
-      {/* DELETE ASSET: popup hoi chac chan truoc khi nhap PIN */}
-      {confirmDelete && selectedAsset && (
-        <div
-          className={styles.overlay}
-          style={{ zIndex: 60 }}
-          onClick={() => setConfirmDelete(false)}
-        >
-          <div
-            className={styles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Delete asset"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className={styles.modalTitle}>Delete this asset?</h2>
-            <p className={styles.assetDesc} style={{ marginBottom: 18 }}>
-              Are you sure you want to permanently delete{" "}
-              <strong>{selectedAsset.name}</strong>? This cannot be undone.
-              You will need to enter your Security PIN to confirm.
-            </p>
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={() => setConfirmDelete(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.primaryBtn}
-                style={{ background: "var(--bad)" }}
-                onClick={continueDeleteToPin}
-              >
-                Yes, continue
-              </button>
+                    {detailError && (
+                        <p className={styles.error}>
+                          {detailError}
+                        </p>
+                    )}
+
+                    <div className={styles.modalActions}>
+                      <button
+                          type="button"
+                          className={styles.secondaryBtn}
+                          onClick={cancelEdit}
+                      >
+                        Cancel
+                      </button>
+
+                      {/* NHAP LAI PIN NEU GRANT HET HAN */}
+                      {!editPinGrant && (
+                          <button
+                              type="button"
+                              className={styles.toggleBtn}
+                              onClick={() => {
+                                setPinAction("edit");
+                                setShowPinModal(true);
+                              }}
+                          >
+                            Re-verify PIN
+                          </button>
+                      )}
+
+                      <button
+                          type="submit"
+                          className={styles.primaryBtn}
+                          disabled={detailSaving || !editPinGrant}
+                      >
+                        {detailSaving
+                            ? "Saving..."
+                            : "Save Changes"}
+                      </button>
+                    </div>
+                  </form>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* ONE SECURITY PIN FOR SHOW, EDIT AND DELETE */}
-      {showPinModal && selectedAsset && (
-        <SecurityPinModal
-          scope={pinAction === "delete" ? "ASSET_DELETE" : "ASSET_SECRET"}
-          resourceId={selectedAsset.id}
-          onVerified={handleAssetPinVerified}
-          onClose={() => {
-            setShowPinModal(false);
-            setPinAction(null);
-          }}
-        />
-      )}
-    </div>
+        {/* DELETE ASSET: popup hoi chac chan truoc khi nhap PIN */}
+        {confirmDelete && selectedAsset && (
+            <div
+                className={styles.overlay}
+                style={{ zIndex: 60 }}
+                onClick={() => setConfirmDelete(false)}
+            >
+              <div
+                  className={styles.modal}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Delete asset"
+                  onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className={styles.modalTitle}>Delete this asset?</h2>
+                <p className={styles.assetDesc} style={{ marginBottom: 18 }}>
+                  Are you sure you want to permanently delete{" "}
+                  <strong>{selectedAsset.name}</strong>? This cannot be undone.
+                  You will need to enter your Security PIN to confirm.
+                </p>
+                <div className={styles.modalActions}>
+                  <button
+                      type="button"
+                      className={styles.secondaryBtn}
+                      onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                      type="button"
+                      className={styles.primaryBtn}
+                      style={{ background: "var(--bad)" }}
+                      onClick={continueDeleteToPin}
+                  >
+                    Yes, continue
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* ONE SECURITY PIN FOR SHOW, EDIT AND DELETE */}
+        {showPinModal && selectedAsset && (
+            <SecurityPinModal
+                scope={pinAction === "delete" ? "ASSET_DELETE" : "ASSET_SECRET"}
+                resourceId={selectedAsset.id}
+                onVerified={handleAssetPinVerified}
+                onClose={() => {
+                  setShowPinModal(false);
+                  setPinAction(null);
+                }}
+            />
+        )}
+      </div>
   );
 }

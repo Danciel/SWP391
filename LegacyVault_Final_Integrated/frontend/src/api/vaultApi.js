@@ -1,5 +1,5 @@
 import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
-import { request, BASE_URL, getToken } from "./client";
+import { request } from "./client";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
@@ -27,10 +27,10 @@ export const getExecutorProfile = async (accountId) => {
 };
 
 export const updateMyExecutorProfile = async ({
-  bio,
-  specialty,
-  experienceYears,
-}) => {
+                                                bio,
+                                                specialty,
+                                                experienceYears,
+                                              }) => {
   return r("/executors/me/profile", "PUT", {
     bio,
     specialty,
@@ -39,9 +39,9 @@ export const updateMyExecutorProfile = async ({
 };
 
 export const updateMyExecutorPricing = async ({
-  serviceFee,
-  currency = "VND",
-}) => {
+                                                serviceFee,
+                                                currency = "VND",
+                                              }) => {
   return r("/executors/me/pricing", "PUT", {
     serviceFee: Number(serviceFee),
     currency,
@@ -60,12 +60,12 @@ export const getAssetSecret = async (id, pinGrant) => {
   }
 
   const result = await r(
-    `/assets/${id}/secret`,
-    "GET",
-    undefined,
-    {
-      "X-Owner-Pin-Grant": pinGrant
-    }
+      `/assets/${id}/secret`,
+      "GET",
+      undefined,
+      {
+        "X-Owner-Pin-Grant": pinGrant
+      }
   );
 
   return result.secretData || {};
@@ -90,7 +90,7 @@ export async function addAsset(userId, form) {
   else throw new Error("Unsupported new Asset type. Use an existing legacy asset if required.");
   const assets = await getAssets();
   return assets.find(asset => asset.id === created.assetId || asset.id === created.id)
-    || mapAsset(created);
+      || mapAsset(created);
 }
 
 
@@ -102,28 +102,28 @@ export const updateAsset = async (userId, id, form, pinGrant) => {
   const originalType = TYPE_CODES[form.type] || form.type;
 
   const provider =
-    originalType === "DOCUMENT"
-      ? (form.accountType || "LOCAL_DOCUMENT")
-      : (
-          form.accountType ||
-          (originalType === "CLOUD_STORAGE" ? "GOOGLE_DRIVE" : "GMAIL")
-        );
+      originalType === "DOCUMENT"
+          ? (form.accountType || "LOCAL_DOCUMENT")
+          : (
+              form.accountType ||
+              (originalType === "CLOUD_STORAGE" ? "GOOGLE_DRIVE" : "GMAIL")
+          );
 
   const result = await r(
-    `/assets/${id}`,
-    "PUT",
-    {
-      name: form.name,
-      description: form.description || "",
-      assetType: originalType,
-      provider: String(provider).toUpperCase(),
-      secretData: null,
-      handoverPassword: form.handoverPassword || null,
-      handoverConsent: !!form.handoverConsent
-    },
-    {
-      "X-Owner-Pin-Grant": pinGrant
-    }
+      `/assets/${id}`,
+      "PUT",
+      {
+        name: form.name,
+        description: form.description || "",
+        assetType: originalType,
+        provider: String(provider).toUpperCase(),
+        secretData: null,
+        handoverPassword: form.handoverPassword || null,
+        handoverConsent: !!form.handoverConsent
+      },
+      {
+        "X-Owner-Pin-Grant": pinGrant
+      }
   );
 
   return mapAsset(result);
@@ -136,42 +136,42 @@ export const getWills = async () => {
   const summaries = await r("/wills");
 
   return Promise.all(
-    summaries.map(async (w) => {
-      // Draft van duoc doc chi tiet de Create Will hoat dong
-      if (w.status === "DRAFT") {
-        try {
-          return await getWill(null, w.id);
-        } catch {
-          // Fallback sang summary
+      summaries.map(async (w) => {
+        // Draft van duoc doc chi tiet de Create Will hoat dong
+        if (w.status === "DRAFT") {
+          try {
+            return await getWill(null, w.id);
+          } catch {
+            // Fallback sang summary
+          }
         }
-      }
 
-      // Will da Submit: khong tu dong lay chi tiet
-      return {
-        ...w,
-        name: w.title || "",
-        assets: null,
-        beneficiaries: null,
-        assignments: null,
-        executor: null,
-        dms: null,
-        payment: null
-      };
-    })
+        // Will da Submit: khong tu dong lay chi tiet
+        return {
+          ...w,
+          name: w.title || "",
+          assets: null,
+          beneficiaries: null,
+          assignments: null,
+          executor: null,
+          dms: null,
+          payment: null
+        };
+      })
   );
 };
 
 
 export const getWill = async (userId, id, pinGrant = null) => {
   const headers = pinGrant
-    ? { "X-Owner-Pin-Grant": pinGrant }
-    : undefined;
+      ? { "X-Owner-Pin-Grant": pinGrant }
+      : undefined;
 
   const result = await r(
-    `/wills/${id}`,
-    "GET",
-    undefined,
-    headers
+      `/wills/${id}`,
+      "GET",
+      undefined,
+      headers
   );
 
   return mapWill(result);
@@ -186,14 +186,8 @@ export async function saveWillDraft(userId, id, patch = {}) {
   if (patch.mainExecutorId !== undefined) {
     // One main executor accepts the will, is paid and hands everything over.
     if (patch.mainExecutorId && patch.mainExecutorId !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: patch.mainExecutorId });
-    // Specialists are optional per-asset suggestions that need no acceptance.
-    const wanted = new Map((patch.specialists || []).map(x => [x.willAssetId, x.executorId]));
-    for (const a of before.assets) {
-      const current = (before.assetExecutors || []).find(x => x.willAssetId === a.willAssetId)?.id;
-      const want = wanted.get(a.willAssetId);
-      if (want && want !== patch.mainExecutorId) { if (want !== current || current === before.executor?.id) await assignAssetExecutor(id, a.willAssetId, want); }
-      else if (current) await r(`/wills/${id}/assets/${a.willAssetId}/executor`, "DELETE");
-    }
+    // Legacy per-asset executor assignments are preserved for existing wills.
+    // Removing suggestions from the UI must not silently delete saved assignments.
   }
   if (patch.dms) await r(`/wills/${id}/dms`, "PUT", { enabled: true, checkInIntervalDays: patch.dms.checkInDays, reminderBeforeDays: patch.dms.reminderDays, maxMissedCheckIns: patch.dms.maxMissed });
   return getWill(userId, id);
@@ -209,60 +203,45 @@ export const checkInDms = async (userId, id, pinGrant = null) => {
   await r(`/wills/${id}/dms/check-in`, "POST");
   return getWill(userId, id, pinGrant);
 };
-// C6/C9: Owner presses "I'm alive" after the DMS triggered / a death handover was opened.
-// ASSUMED contract (agree with Cuong): POST /handover/{willId}/alive -> 204/200, cancels the death handover,
-// resets DMS to ACTIVE and clears the missed counter. Change this one path if BE uses another route.
-const OWNER_ALIVE_PATH = (willId) => `/handover/${willId}/alive`;
+export const cancelDeathHandover = unsupported("Cancel death handover");
 
-export const confirmOwnerAlive = async (userId, id, pinGrant = null) => {
-  await r(OWNER_ALIVE_PATH(id), "POST");
-  return getWill(userId, id, pinGrant);
-};
-export const cancelDeathHandover = confirmOwnerAlive; // old name, still used by OwnerDashboard/ownerApi
-
-// C2: sealed handover report (PDF). ASSUMED: GET /handover/{willId}/report -> application/pdf.
-export async function downloadHandoverReport(willId) {
-  const res = await fetch(`${BASE_URL}/handover/${willId}/report`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  if (!res.ok) {
-    let msg = `Could not download the report (${res.status}).`;
-    try { msg = (await res.json())?.message || msg; } catch { /* not json */ }
-    throw new Error(msg);
-  }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `handover-report-${willId}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-
+// Immediate Handover needs a fresh Security PIN grant (scope HANDOVER_START,
+// resource = Will ID). The optional detailGrant is the WILL_DETAIL grant used to
+// re-read the will afterwards.
 export const requestImmediateHandover = async (
-  userId,
-  id,
-  pinGrant = null
+    userId,
+    id,
+    handoverGrant,
+    detailGrant = null
 ) => {
-  const result = await r(`/handover/${id}/immediate`, "POST");
-
-  // Khi goi tu Will Detail, da co PIN Grant
-  if (pinGrant) {
-    return getWill(userId, id, pinGrant);
+  if (!handoverGrant) {
+    throw new Error("Security PIN is required.");
   }
 
-  // Khi goi tu My Wills, khong tu dong doc chi tiet
+  const result = await r(
+      `/handover/${id}/immediate`,
+      "POST",
+      undefined,
+      { "X-Owner-Pin-Grant": handoverGrant }
+  );
+
+  // Called from Will Detail: reload the will with its existing PIN grant.
+  if (detailGrant) {
+    return getWill(userId, id, detailGrant);
+  }
+
+  // Called from My Wills: the caller reloads the list itself.
   return result;
 };
 export const getHandover = (willId) => r(`/handover/${willId}`);
 
 export async function searchBeneficiaryAccount(q) { return r(`/accounts/search?${q.includes("@") ? "email" : "phone"}=${encodeURIComponent(q.trim())}`); }
-export const getInheritedWills = async () => [];
-export const getInheritedWill = unsupported("Inherited will details");
-export const issueClaimKey = unsupported("Claim key");
-export const confirmClaim = unsupported("Confirm claim");
+export {
+  getInheritedWills,
+  getInheritedWill,
+  claimInheritedItem,
+  revealInheritedSecret,
+} from "./inheritanceApi";
 export async function getOwnerDashboardData() { const [wills, assets] = await Promise.all([getWills(), getAssets()]); const main = wills.find(w => w.status === "ACTIVE") || wills[0]; const detail = main ? await getWill(null, main.id) : null; return { vaultStatus: detail?.status || "LOCKED", deadManSwitch: detail?.dms ? { enabled: detail.dms.enabled, willId: detail.id, checkInCycleDays: detail.dms.checkInDays, lastCheckIn: detail.dms.lastCheckIn, nextCheckInDue: detail.dms.nextCheckInAt, missedCount: detail.dms.missedCount, maxMissed: detail.dms.maxMissed, caseOpen: false } : { enabled: false }, assets: assets.map(a => ({ ...a, beneficiary: null })), executors: detail?.executor ? [{ id: detail.executor.id, name: detail.executor.name, status: detail.executor.status }] : [], beneficiaries: (detail?.beneficiaries || []).map(b => ({ id: b.id, name: b.fullName, assetsAssigned: (detail.assignments || []).filter(a => a.beneficiaryDesignationId === b.id).length })), recentActivity: [] }; }
 
 // ---- Owner: notifications, wallet, executor review ----

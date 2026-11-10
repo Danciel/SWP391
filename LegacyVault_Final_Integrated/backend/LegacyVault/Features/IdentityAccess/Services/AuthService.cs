@@ -1,7 +1,12 @@
 ﻿using LegacyVault.Features.IdentityAccess.Contracts;
 using LegacyVault.Features.IdentityAccess.DTOs;
 using LegacyVault.Features.IdentityAccess.Repositories;
+using LegacyVault.Features.WillManagement.Contracts;
 using LegacyVault.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using LegacyVault.Data;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace LegacyVault.Features.IdentityAccess.Services
 {
@@ -14,18 +19,27 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private readonly IPhoneOtpService _phoneOtpService;
         private readonly ISmsSender _smsSender;
         private readonly IPhoneOtpRepository _phoneOtpRepository;
-
+        private readonly LegacyVaultDbContext _db;
         private readonly IJwtTokenService _jwtTokenService;
+        private readonly IMemoryCache _cache;
+        private readonly IBeneficiaryAutoLinkService _beneficiaryAutoLink;
+
+        // Email OTP: at most 5 tries per code, and one new code per minute.
+        private const int MaxOtpAttempts = 5;
+        private static readonly object OtpAttemptLock = new();
 
         public AuthService(
-    IAccountRepository accountRepository,
-    IEmailOtpService emailOtpService,
-    IEmailSender emailSender,
-    IEmailOtpRepository emailOtpRepository,
-    IJwtTokenService jwtTokenService,
-    IPhoneOtpService phoneOtpService,
-    ISmsSender smsSender,
-    IPhoneOtpRepository phoneOtpRepository)
+        IAccountRepository accountRepository,
+        IEmailOtpService emailOtpService,
+        IEmailSender emailSender,
+        IEmailOtpRepository emailOtpRepository,
+        IJwtTokenService jwtTokenService,
+        IPhoneOtpService phoneOtpService,
+        ISmsSender smsSender,
+        IPhoneOtpRepository phoneOtpRepository,
+        LegacyVaultDbContext db,
+        IMemoryCache cache,
+        IBeneficiaryAutoLinkService beneficiaryAutoLink)
         {
             _accountRepository = accountRepository;
             _emailOtpService = emailOtpService;
@@ -35,6 +49,23 @@ namespace LegacyVault.Features.IdentityAccess.Services
             _phoneOtpService = phoneOtpService;
             _smsSender = smsSender;
             _phoneOtpRepository = phoneOtpRepository;
+            _db = db;
+            _cache = cache;
+            _beneficiaryAutoLink = beneficiaryAutoLink;
+        }
+
+        // A verified account whose email and name match a beneficiary designation
+        // joins that handover without the owner. Never blocks sign-in / verification.
+        private async Task TryAutoLinkBeneficiariesAsync(Guid accountId)
+        {
+            try
+            {
+                await _beneficiaryAutoLink.TryLinkAccountAsync(accountId);
+            }
+            catch (Exception)
+            {
+                // Linking is best effort: the owner can still link manually.
+            }
         }
 
         public async Task<AccountResponse> RegisterAsync(
@@ -168,7 +199,25 @@ namespace LegacyVault.Features.IdentityAccess.Services
                     "OTP has expired.");
             }
 
-            // 5. So sánh OTP user nhập với hash trong database
+            // 5. Giới hạn số lần thử: đếm TRƯỚC khi so sánh để các request song song
+            //    không vượt quá giới hạn.
+            var attemptsKey = $"email-otp-attempts:{account.Id}";
+            int attempts;
+
+            lock (OtpAttemptLock)
+            {
+                _cache.TryGetValue(attemptsKey, out attempts);
+                attempts++;
+                _cache.Set(attemptsKey, attempts, TimeSpan.FromMinutes(15));
+            }
+
+            if (attempts > MaxOtpAttempts)
+            {
+                throw new InvalidOperationException(
+                    "Too many invalid attempts. Please request a new code.");
+            }
+
+            // 6. So sánh OTP user nhập với hash trong database
             var isValid =
                 BCrypt.Net.BCrypt.Verify(
                     request.Otp,
@@ -176,19 +225,34 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
             if (!isValid)
             {
+                if (attempts >= MaxOtpAttempts)
+                {
+                    // Hết lượt: mã này không dùng được nữa.
+                    emailOtp.UsedAt = DateTimeOffset.UtcNow;
+                    await _accountRepository.SaveChangesAsync();
+
+                    throw new InvalidOperationException(
+                        "Too many invalid attempts. Please request a new code.");
+                }
+
                 throw new InvalidOperationException(
                     "Invalid OTP.");
             }
 
-            // 6. OTP đúng → xác nhận email
+            _cache.Remove(attemptsKey);
+
+            // 7. OTP đúng → xác nhận email
             account.EmailVerified = true;
             account.UpdatedAt = DateTimeOffset.UtcNow;
 
-            // 7. Đánh dấu OTP đã được sử dụng
+            // 8. Đánh dấu OTP đã được sử dụng
             emailOtp.UsedAt = DateTimeOffset.UtcNow;
 
             // Account và EmailOtp đang được cùng DbContext theo dõi
             await _accountRepository.SaveChangesAsync();
+
+            // 9. Email đã xác minh: gắn vào các bàn giao đang chạy (nếu khớp)
+            await TryAutoLinkBeneficiariesAsync(account.Id);
         }
 
         public async Task ResendEmailOtpAsync(
@@ -213,12 +277,26 @@ namespace LegacyVault.Features.IdentityAccess.Services
                     "Email is already verified.");
             }
 
-            // 3. Sinh OTP mới và lưu hash xuống database
+            // 3. Chờ 1 phút giữa hai lần gửi để không bị spam email
+            var cooldownKey = $"email-otp-resend:{account.Id}";
+
+            if (_cache.TryGetValue(cooldownKey, out _))
+            {
+                throw new InvalidOperationException(
+                    "Please wait a minute before requesting another code.");
+            }
+
+            _cache.Set(cooldownKey, true, TimeSpan.FromMinutes(1));
+
+            // Mã mới => đếm lại số lần thử
+            _cache.Remove($"email-otp-attempts:{account.Id}");
+
+            // 4. Sinh OTP mới và lưu hash xuống database
             var otp =
                 await _emailOtpService
                     .GenerateAndSaveOtpAsync(account.Id);
 
-            // 4. Gửi OTP mới qua Gmail
+            // 5. Gửi OTP mới qua Gmail
             await _emailSender.SendOtpAsync(
                 account.Email,
                 otp);
@@ -257,16 +335,25 @@ namespace LegacyVault.Features.IdentityAccess.Services
                     "Email is not verified.");
             }
 
+            // Đã xác minh email: gắn vào bàn giao đang chạy nếu có (best effort)
+            await TryAutoLinkBeneficiariesAsync(account.Id);
+
+            if (account.IdentityStatus == "LOCKED")
+                throw new UnauthorizedAccessException("This account is locked. Please contact support.");
+
             // 4. Tạo JWT
             var token =
                 _jwtTokenService.GenerateToken(
                     account,
                     request.RememberMe);
 
+            var refreshToken = await GenerateRefreshTokenAsync(account.Id);
+
             // 5. Trả token + thông tin user
             return new LoginResponse
             {
                 Token = token,
+                RefreshToken = refreshToken.Token,
 
                 User = new AccountResponse
                 {
@@ -283,6 +370,66 @@ namespace LegacyVault.Features.IdentityAccess.Services
             };
         }
 
+        public async Task<RefreshToken> GenerateRefreshTokenAsync(Guid accountId)
+        {
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                AccountId = accountId,
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(7), // Long-lived
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _db.RefreshTokens.Add(refreshToken);
+            await _db.SaveChangesAsync();
+            return refreshToken;
+        }
+
+        public async Task<LoginResponse> RefreshTokenAsync(string token)
+        {
+            var existing = await _db.RefreshTokens
+                .Include(x => x.Account)
+                .FirstOrDefaultAsync(x => x.Token == token);
+
+            if (existing == null || existing.IsRevoked || existing.ExpiresAt < DateTimeOffset.UtcNow)
+                throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+
+            // TOKEN ROTATION: Revoke the old one, issue a new one
+            existing.IsRevoked = true;
+            existing.RevokedAt = DateTimeOffset.UtcNow;
+
+            var newRefreshToken = await GenerateRefreshTokenAsync(existing.AccountId);
+            var newJwt = _jwtTokenService.GenerateToken(existing.Account, false);
+
+            return new LoginResponse
+            {
+                Token = newJwt,
+                RefreshToken = newRefreshToken.Token,
+                User = new AccountResponse
+                {
+                    Id = existing.Account.Id,
+                    FullName = existing.Account.FullName,
+                    Email = existing.Account.Email,
+                    PhoneNumber = existing.Account.Phone,
+                    Role = existing.Account.Role,
+                    EmailVerified = existing.Account.EmailVerified,
+                    PhoneVerified = existing.Account.PhoneVerified,
+                    IdentityStatus = existing.Account.IdentityStatus,
+                    CreatedAt = existing.Account.CreatedAt
+                }
+            };
+        }
+
+        public async Task RevokeTokenAsync(string token)
+        {
+            var existing = await _db.RefreshTokens.FirstOrDefaultAsync(x => x.Token == token);
+            if (existing != null && !existing.IsRevoked)
+            {
+                existing.IsRevoked = true;
+                existing.RevokedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
 
         public async Task SendPhoneOtpAsync(Guid accountId)
         {

@@ -7,7 +7,8 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task<LegalCaseSummaryResponse> SubmitAsync(
             Guid executorAccountId,
             Guid willId,
-            IFormFile file);
+            IFormFile file,
+            string? certificateData = null);
 
         Task<List<LegalCaseSummaryResponse>> ListAsync(
             Guid accountId,

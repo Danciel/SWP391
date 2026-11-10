@@ -232,53 +232,6 @@ export default function Profile() {
               </span>
             </div>
 
-            <section className={styles.reviewSection}>
-              <h3 className={styles.reviewTitle}>
-                Customer Reviews
-              </h3>
-
-              {Array.isArray(executorProfile.recentReviews) &&
-                executorProfile.recentReviews.length > 0 ? (
-                <div className={styles.reviewList}>
-                  {executorProfile.recentReviews.map((review) => (
-                    <div
-                      key={review.id}
-                      className={styles.reviewItem}
-                    >
-                      <div className={styles.reviewHeader}>
-                        <strong>
-                          {review.ownerName || "Anonymous Owner"}
-                        </strong>
-
-                        <span className={styles.reviewRating}>
-                          {"★".repeat(
-                            Math.max(0, Math.min(5, Number(review.rating) || 0))
-                          )}
-                          {" "}
-                          {review.rating}/5
-                        </span>
-                      </div>
-
-                      <p className={styles.reviewComment}>
-                        {review.comment?.trim() || "No comment provided."}
-                      </p>
-
-                      <time className={styles.reviewDate}>
-                        {review.createdAt &&
-                          !Number.isNaN(new Date(review.createdAt).getTime())
-                          ? new Date(review.createdAt).toLocaleDateString()
-                          : "Date unavailable"}
-                      </time>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.muted}>
-                  No reviews yet.
-                </p>
-              )}
-            </section>
-
             {editingExecutorProfile ? (
               <div className={styles.executorForm}>
                 <label className={styles.label} htmlFor="executor-bio">

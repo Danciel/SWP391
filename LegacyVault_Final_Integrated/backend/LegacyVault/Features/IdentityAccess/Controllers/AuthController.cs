@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting; // Fixes EnableRateLimiting error
 
 namespace LegacyVault.Features.IdentityAccess.Controllers
 {
@@ -85,6 +86,7 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
             }
         }
         [HttpPost("login")]
+        [EnableRateLimiting("StrictPolicy")]
         public async Task<IActionResult> Login(
     [FromBody] LoginRequest request)
         {
@@ -173,6 +175,7 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
         }
 
         [HttpPost("forgot-password")]
+        [EnableRateLimiting("StrictPolicy")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             try
@@ -200,6 +203,28 @@ namespace LegacyVault.Features.IdentityAccess.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+        {
+            try { return Ok(await _authService.RefreshTokenAsync(request.RefreshToken)); }
+            catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
+        {
+            await _authService.RevokeTokenAsync(request.RefreshToken);
+            return Ok(new { message = "Logged out successfully." });
+        }
+
+        [HttpPost("revoke")]
+        [Authorize]
+        public async Task<IActionResult> Revoke([FromBody] RefreshRequest request)
+        {
+            await _authService.RevokeTokenAsync(request.RefreshToken);
+            return Ok(new { message = "Token revoked successfully." });
         }
     }
 }

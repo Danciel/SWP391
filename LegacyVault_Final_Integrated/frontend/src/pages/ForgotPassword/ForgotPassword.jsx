@@ -5,7 +5,6 @@ import { useAuth } from "../../context/AuthContext";
 import { validateEmail } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
-import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./ForgotPassword.module.css";
 
 export default function ForgotPassword() {
@@ -36,7 +35,7 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     try {
       await requestPasswordReset({ email });
-      navigate("/reset-password", { state: { email } });
+      navigate("/verify-otp", { state: { email, purpose: "reset" } });
     } catch (err) {
       setSubmitError(
         err instanceof ApiError ? err.message : "Could not send verification code, please try again"
@@ -47,7 +46,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <AuthShell>
+    <div className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Forgot Password?</h1>
@@ -75,6 +74,6 @@ export default function ForgotPassword() {
           <Link to="/login">← Back to Login</Link>
         </p>
       </form>
-    </AuthShell>
+    </div>
   );
 }

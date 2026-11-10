@@ -63,7 +63,7 @@
 }
 
 .idp-lookup-field input:focus {
-  border-color: var(--vault);
+  border-color: #1677ff;
   box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
 }
 
@@ -72,7 +72,7 @@
   padding: 12px;
   border: none;
   border-radius: 8px;
-  background: var(--vault);
+  background: #1677ff;
   color: #ffffff;
   font-size: 15px;
   font-weight: 600;
@@ -92,7 +92,7 @@
 }
 
 .idp-lookup-footer a {
-  color: var(--vault);
+  color: #1677ff;
   font-weight: 600;
   text-decoration: none;
 }

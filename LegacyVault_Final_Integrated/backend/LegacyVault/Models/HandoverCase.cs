@@ -22,6 +22,9 @@ namespace LegacyVault.Models
         public string Status { get; set; } = "PENDING"; // PENDING | DELIVERED
         public DateTimeOffset? DeliveredAt { get; set; }
         public Guid? DeliveredByAccountId { get; set; }
+        // Beneficiary confirmed receipt (PIN + face scan).
+        public DateTimeOffset? ClaimedAt { get; set; }
+        public Guid? ClaimedByAccountId { get; set; }
         public HandoverCase? HandoverCase { get; set; }
         public AssetAssignment? AssetAssignment { get; set; }
     }

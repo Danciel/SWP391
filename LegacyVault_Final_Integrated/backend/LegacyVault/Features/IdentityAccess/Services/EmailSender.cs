@@ -106,6 +106,116 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 """);
         }
 
+        public Task SendPinLockedEmailAsync(
+            string toEmail,
+            string fullName,
+            DateTimeOffset lockedUntil)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(fullName);
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - Your Security PIN is locked",
+                $"""
+                <h2>Security PIN locked</h2>
+
+                <p>Hello {name},</p>
+
+                <p>A wrong Security PIN was entered 3 times in a row, so the PIN
+                is locked until <b>{lockedUntil:yyyy-MM-dd HH:mm} UTC</b>.</p>
+
+                <p>If this was you, wait until then and try again, or use
+                "Forgot PIN" to reset it with a code sent to this email.</p>
+
+                <p>If this was <b>not</b> you, someone may know your password:
+                change it now and reset your PIN.</p>
+                """);
+        }
+
+        public Task SendHandoverCodeEmailAsync(
+            string toEmail,
+            string recipientName,
+            string ownerName,
+            string code)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(recipientName);
+            var owner = System.Net.WebUtility.HtmlEncode(ownerName);
+            var safeCode = System.Net.WebUtility.HtmlEncode(code);
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - Your handover access code",
+                $"""
+                <h2>Your handover access code</h2>
+
+                <p>Hello {name},</p>
+
+                <p>{owner}'s Executor has handed assets over to you.
+                To receive them, sign in to LegacyVault, open the inherited will
+                and enter this code:</p>
+
+                <h1 style="letter-spacing:2px;font-family:monospace">{safeCode}</h1>
+
+                <p>The code only works with your own account. You will also be asked
+                for your Security PIN and a face scan.</p>
+
+                <p>3 wrong codes lock it for 15 minutes. Never share it with anyone;
+                LegacyVault staff will never ask for it.</p>
+                """);
+        }
+
+        public Task SendHandoverCodeLockedEmailAsync(
+            string toEmail,
+            string recipientName,
+            string beneficiaryName,
+            DateTimeOffset lockedUntil,
+            bool toOwner)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(recipientName);
+            var who = System.Net.WebUtility.HtmlEncode(beneficiaryName);
+
+            var message = toOwner
+                ? $"<p>{who} entered a wrong handover access code 3 times, so it is locked until <b>{lockedUntil:yyyy-MM-dd HH:mm} UTC</b>. If you do not expect this, tell your Executor.</p>"
+                : $"<p>A wrong handover access code was entered 3 times, so it is locked until <b>{lockedUntil:yyyy-MM-dd HH:mm} UTC</b>. After that you can try again, or ask for a new code on the inherited will page.</p>";
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - Handover access code locked",
+                $"""
+                <h2>Access code locked</h2>
+
+                <p>Hello {name},</p>
+
+                {message}
+                """);
+        }
+
+        public Task SendHandoverSupportRequestEmailAsync(
+            string toEmail,
+            string toName,
+            string recipientName,
+            string willTitle)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(toName);
+            var who = System.Net.WebUtility.HtmlEncode(recipientName);
+            var title = System.Net.WebUtility.HtmlEncode(willTitle);
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - A recipient needs help with an access code",
+                $"""
+                <h2>A recipient needs help</h2>
+
+                <p>Hello {name},</p>
+
+                <p><b>{who}</b> cannot enter the handover access code for
+                <b>{title}</b> (the limit of new codes was reached, or the code is locked).</p>
+
+                <p>Open the Handovers card in LegacyVault and press <b>Send a new code</b>
+                next to this recipient, or contact the support team.</p>
+                """);
+        }
+
         private async Task SendAsync(
             string toEmail,
             string subject,

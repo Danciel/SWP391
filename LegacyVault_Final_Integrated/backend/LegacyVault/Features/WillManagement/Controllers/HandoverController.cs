@@ -13,21 +13,26 @@ namespace LegacyVault.Features.WillManagement.Controllers
     public class HandoverController : ControllerBase
     {
         private readonly IHandoverService _service;
+        private readonly IHandoverCodeService _codes;
         private readonly ICurrentUserService _user;
 
         public HandoverController(
             IHandoverService service,
+            IHandoverCodeService codes,
             ICurrentUserService user)
         {
             _service = service;
+            _codes = codes;
             _user = user;
         }
 
         // LV-32: Owner, still alive, presses Immediate Handover.
-        [HttpPost("{willId:guid}/immediate")]
-        public Task<IActionResult> Immediate(Guid willId)
+        // The PIN filter reads the route value named "id" (= Will ID).
+        [HttpPost("{id:guid}/immediate")]
+        [RequireOwnerPin(OwnerPinScopes.HandoverStart)]
+        public Task<IActionResult> Immediate(Guid id)
             => Run(() => _service.StartImmediateAsync(
-                willId, _user.GetRequiredAccountId()));
+                id, _user.GetRequiredAccountId()));
 
         // LV-33: Executor starts handover after legal approval.
         [HttpPost("{willId:guid}/start")]
@@ -40,6 +45,61 @@ namespace LegacyVault.Features.WillManagement.Controllers
         public Task<IActionResult> Get(Guid willId)
             => Run(() => _service.GetAsync(
                 willId, _user.GetRequiredAccountId()));
+
+        // Executor hands over everything that is still pending in one go.
+        // Every recipient gets their own access code by email.
+        [HttpPost("{willId:guid}/deliver-all")]
+        public Task<IActionResult> DeliverAll(Guid willId)
+            => Run(() => _service.DeliverAllAsync(
+                willId, _user.GetRequiredAccountId()));
+
+        // Executor sends a NEW access code to one recipient (5 min cooldown).
+        // The old code stops working. The code only ever goes to the recipient's email.
+        [HttpPost("{willId:guid}/recipients/{designationId:guid}/resend-code")]
+        public async Task<IActionResult> ResendCode(Guid willId, Guid designationId)
+        {
+            var result = await _codes.ResendByExecutorAsync(
+                willId, designationId, _user.GetRequiredAccountId(),
+                HttpContext.RequestAborted);
+
+            return result.Success
+                ? Ok(new { message = result.Message })
+                : StatusCode(result.StatusCode, new
+                {
+                    message = result.Message,
+                    lockedUntil = result.LockedUntil
+                });
+        }
+
+        // C2: minutes (content, hash, signature status) of the latest handover.
+        [HttpGet("{willId:guid}/minutes")]
+        public Task<IActionResult> GetMinutes(Guid willId)
+            => Run(() => _service.GetMinutesAsync(
+                willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN")));
+
+        // C2: sealed PDF. Owner, Executor and Admin only.
+        [HttpGet("{willId:guid}/minutes/pdf")]
+        public async Task<IActionResult> GetMinutesPdf(Guid willId)
+        {
+            try
+            {
+                var file = await _service.GetMinutesPdfAsync(
+                    willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN"));
+
+                Response.Headers["X-Content-SHA256"] = file.Sha256;
+                return File(file.Pdf, "application/pdf", file.FileName);
+            }
+            catch (KeyNotFoundException ex)
+            { return NotFound(new { message = ex.Message }); }
+        }
+
+        // C3: the Executor signs. Without it no item can be delivered (C4).
+        [HttpPost("{willId:guid}/minutes/executor-sign")]
+        public Task<IActionResult> ExecutorSign(Guid willId)
+            => Run(() => _service.SignAsExecutorAsync(
+                willId,
+                _user.GetRequiredAccountId(),
+                HttpContext.Connection.RemoteIpAddress?.ToString()));
 
         // Executor marks one asset-to-beneficiary item as delivered.
         [HttpPost("items/{itemId:guid}/deliver")]
