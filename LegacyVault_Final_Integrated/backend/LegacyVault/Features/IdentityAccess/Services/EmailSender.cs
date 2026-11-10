@@ -216,6 +216,102 @@ namespace LegacyVault.Features.IdentityAccess.Services
                 """);
         }
 
+        public Task SendDeathCertificateSubmittedEmailAsync(
+            string toEmail,
+            string recipientName,
+            string ownerName,
+            string willTitle,
+            bool toOwner)
+        {
+            var name = System.Net.WebUtility.HtmlEncode(recipientName);
+            var owner = System.Net.WebUtility.HtmlEncode(ownerName);
+            var title = System.Net.WebUtility.HtmlEncode(willTitle);
+
+            var body = toOwner
+                ? $"""
+                <h2>A death certificate was submitted for you</h2>
+
+                <p>Hello {name},</p>
+
+                <p>Your Executor submitted a death certificate for the will
+                "{title}". If you are alive, sign in now and choose
+                "I'm alive" on this will to cancel it.</p>
+                """
+                : $"""
+                <h2>New death certificate to review</h2>
+
+                <p>Hello {name},</p>
+
+                <p>A death certificate was submitted for {owner}
+                (will "{title}"). Please review it in the Legal Verify screen.</p>
+                """;
+
+            return SendAsync(
+                toEmail,
+                toOwner
+                    ? "LegacyVault - A death certificate was submitted"
+                    : "LegacyVault - Death certificate waiting for review",
+                body);
+        }
+
+        public Task SendLegalDecisionEmailAsync(
+            string toEmail,
+            string executorName,
+            string ownerName,
+            string willTitle,
+            bool approved,
+            string? note)
+        {
+            var exec = System.Net.WebUtility.HtmlEncode(executorName);
+            var owner = System.Net.WebUtility.HtmlEncode(ownerName);
+            var title = System.Net.WebUtility.HtmlEncode(willTitle);
+            var text = System.Net.WebUtility.HtmlEncode(note ?? string.Empty);
+
+            var result = approved
+                ? "was APPROVED. You can now start the handover."
+                : "was REJECTED. You may submit a new certificate.";
+
+            return SendAsync(
+                toEmail,
+                approved
+                    ? "LegacyVault - Death certificate approved"
+                    : "LegacyVault - Death certificate rejected",
+                $"""
+                <h2>Death certificate review</h2>
+
+                <p>Hello {exec},</p>
+
+                <p>The death certificate for {owner} (will "{title}")
+                {result}</p>
+
+                <p>{text}</p>
+                """);
+        }
+
+        public Task SendOwnerAliveConfirmedEmailAsync(
+            string toEmail,
+            string executorName,
+            string ownerName,
+            string willTitle)
+        {
+            var exec = System.Net.WebUtility.HtmlEncode(executorName);
+            var owner = System.Net.WebUtility.HtmlEncode(ownerName);
+            var title = System.Net.WebUtility.HtmlEncode(willTitle);
+
+            return SendAsync(
+                toEmail,
+                "LegacyVault - Owner confirmed they are alive",
+                $"""
+                <h2>No action needed</h2>
+
+                <p>Hello {exec},</p>
+
+                <p>{owner} confirmed they are alive for the will "{title}".
+                The DMS is active again and any death certificate for this
+                will was cancelled.</p>
+                """);
+        }
+
         private async Task SendAsync(
             string toEmail,
             string subject,

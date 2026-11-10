@@ -80,6 +80,97 @@ namespace LegacyVault.Features.WillManagement.Services
             return linked;
         }
 
+        public async Task ConfirmByExecutorAsync(
+            Guid willId,
+            Guid designationId,
+            Guid executorAccountId,
+            string note,
+            CancellationToken cancellationToken = default)
+        {
+            var isExecutor = await _db.ExecutorAssignments.AnyAsync(x =>
+                x.WillId == willId &&
+                x.ExecutorAccountId == executorAccountId &&
+                x.Status == "ACCEPTED", cancellationToken);
+
+            if (!isExecutor)
+                throw new KeyNotFoundException("Handover not found.");
+
+            var running = await _db.HandoverCases.AnyAsync(c =>
+                c.WillId == willId &&
+                (c.Status == "IN_PROGRESS" || c.Status == "PAUSED"), cancellationToken);
+
+            if (!running)
+            {
+                throw new WillConflictException(
+                    "The handover is not running, so a beneficiary cannot be linked.");
+            }
+
+            var cleanNote = (note ?? string.Empty).Trim();
+            if (cleanNote.Length < 5)
+            {
+                throw new InvalidOperationException(
+                    "Write why you confirm this person (at least 5 characters).");
+            }
+
+            var designation = await _db.BeneficiaryDesignations
+                .FirstOrDefaultAsync(x =>
+                    x.Id == designationId && x.WillId == willId, cancellationToken)
+                ?? throw new KeyNotFoundException("Beneficiary not found.");
+
+            if (designation.BeneficiaryAccountId != null)
+                throw new InvalidOperationException(
+                    "This beneficiary is already linked to an account.");
+
+            var email = designation.Email.Trim().ToLower();
+
+            var account = await _db.Accounts.AsNoTracking()
+                .Where(x => x.EmailVerified && x.Email.ToLower() == email)
+                .Select(x => new { x.Id, x.FullName })
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "No account with this verified email exists yet.");
+
+            // The Executor must not link themselves or the Owner as a beneficiary.
+            var ownerId = await _db.Wills.AsNoTracking()
+                .Where(x => x.Id == willId)
+                .Select(x => x.OwnerAccountId)
+                .FirstAsync(cancellationToken);
+
+            if (account.Id == executorAccountId || account.Id == ownerId)
+            {
+                throw new InvalidOperationException(
+                    "This account cannot be linked as a beneficiary of this will.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            designation.BeneficiaryAccountId = account.Id;
+            designation.UpdatedAt = now;
+
+            _db.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorAccountId = executorAccountId,
+                Action = "BENEFICIARY_LINKED_BY_EXECUTOR",
+                EntityType = "BeneficiaryDesignation",
+                EntityId = designation.Id,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    willId,
+                    accountId = account.Id,
+                    designationName = designation.FullName,
+                    accountName = account.FullName,
+                    namesMatch = NamesMatch(account.FullName, designation.FullName),
+                    note = cleanNote
+                }),
+                CreatedAt = now
+            });
+
+            await _db.SaveChangesAsync(cancellationToken);
+
+            // Assets already delivered to this person? Their access code goes out now.
+            await _codes.IssueForWillAsync(willId, cancellationToken);
+        }
+
         private async Task<int> LinkAsync(
             Guid accountId, string accountName,
             List<BeneficiaryDesignation> designations,

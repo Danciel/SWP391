@@ -66,6 +66,15 @@ namespace LegacyVault.Data
             @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_HandoverSignatures_Beneficiary""
                 ON ""HandoverSignatures"" (""MinutesId"", ""BeneficiaryDesignationId"") WHERE ""Role"" = 'BENEFICIARY'",
 
+            // s12 (C8): death certificates are encrypted at rest.
+            @"DO $$
+              BEGIN
+                  IF to_regclass('public.""LegalCases""') IS NOT NULL THEN
+                      ALTER TABLE ""LegalCases"" ADD COLUMN IF NOT EXISTS ""FileSha256"" varchar(64) NULL;
+                      ALTER TABLE ""LegalCases"" ADD COLUMN IF NOT EXISTS ""IsEncrypted"" boolean NOT NULL DEFAULT false;
+                  END IF;
+              END $$",
+
             // Step 4: THRESHOLD_REACHED was the old name of TRIGGERED.
             @"UPDATE ""DmsConfigurations"" SET ""Status"" = 'TRIGGERED' WHERE ""Status"" = 'THRESHOLD_REACHED'"
         };

@@ -77,10 +77,30 @@ namespace LegacyVault.Features.WillManagement.Controllers
             {
                 var f = await _service.GetCertificateAsync(
                     id, _user.GetRequiredAccountId(), IsLegal);
-                return PhysicalFile(f.Path, f.ContentType, f.FileName);
+                // C8: sensitive document, never cached or sniffed.
+                Response.Headers["Cache-Control"] = "no-store";
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                return File(f.Content, f.ContentType, f.FileName);
             }
             catch (KeyNotFoundException ex)
             { return NotFound(new { message = ex.Message }); }
+            catch (InvalidOperationException ex)
+            { return StatusCode(500, new { message = ex.Message }); }
+        }
+
+        // C9: the Executor withdraws a pending case.
+        [HttpPost("{id:guid}/withdraw")]
+        public async Task<IActionResult> Withdraw(Guid id)
+        {
+            try
+            {
+                return Ok(await _service.WithdrawAsync(
+                    id, _user.GetRequiredAccountId()));
+            }
+            catch (KeyNotFoundException ex)
+            { return NotFound(new { message = ex.Message }); }
+            catch (WillConflictException ex)
+            { return Conflict(new { message = ex.Message }); }
         }
 
         [HttpPost("{id:guid}/decision")]

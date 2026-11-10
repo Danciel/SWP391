@@ -12,5 +12,14 @@ namespace LegacyVault.Features.WillManagement.Contracts
 
         // A handover just started: link designations whose account already exists.
         Task<int> TryLinkWillAsync(Guid willId, CancellationToken cancellationToken = default);
+
+        // C7: the account email matches but the NAME differs. The Executor of the
+        // will checks the person and links them by hand (a written reason is kept).
+        Task ConfirmByExecutorAsync(
+            Guid willId,
+            Guid designationId,
+            Guid executorAccountId,
+            string note,
+            CancellationToken cancellationToken = default);
     }
 }

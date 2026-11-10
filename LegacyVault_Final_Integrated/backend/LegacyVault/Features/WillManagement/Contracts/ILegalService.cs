@@ -20,11 +20,17 @@ namespace LegacyVault.Features.WillManagement.Contracts
             Guid accountId,
             bool isLegalVerifier);
 
-        Task<(string Path, string ContentType, string FileName)>
+        // C8: the decrypted file (checked against its stored SHA-256).
+        Task<(byte[] Content, string ContentType, string FileName)>
             GetCertificateAsync(
                 Guid caseId,
                 Guid accountId,
                 bool isLegalVerifier);
+
+        // C9: the Executor withdraws a PENDING case (wrong file, etc.).
+        Task<LegalCaseDetailResponse> WithdrawAsync(
+            Guid caseId,
+            Guid executorAccountId);
 
         Task<LegalCaseDetailResponse> DecideAsync(
             Guid caseId,

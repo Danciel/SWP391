@@ -15,15 +15,18 @@ namespace LegacyVault.Features.WillManagement.Controllers
         private readonly IHandoverService _service;
         private readonly IHandoverCodeService _codes;
         private readonly ICurrentUserService _user;
+        private readonly IBeneficiaryAutoLinkService _autoLink;
 
         public HandoverController(
             IHandoverService service,
             IHandoverCodeService codes,
-            ICurrentUserService user)
+            ICurrentUserService user,
+            IBeneficiaryAutoLinkService autoLink)
         {
             _service = service;
             _codes = codes;
             _user = user;
+            _autoLink = autoLink;
         }
 
         // LV-32: Owner, still alive, presses Immediate Handover.
@@ -70,6 +73,33 @@ namespace LegacyVault.Features.WillManagement.Controllers
                     lockedUntil = result.LockedUntil
                 });
         }
+
+        // C9: the Executor's handovers, each with the next step to take.
+        [HttpGet("mine")]
+        public Task<IActionResult> Mine()
+            => Run(() => _service.GetExecutorHandoversAsync(
+                _user.GetRequiredAccountId()));
+
+        // C9: the Executor cancels a death handover that delivered nothing yet.
+        [HttpPost("{willId:guid}/cancel")]
+        public Task<IActionResult> Cancel(
+            Guid willId, [FromBody] HandoverReasonRequest request)
+            => Run(() => _service.CancelDeathHandoverAsync(
+                willId, _user.GetRequiredAccountId(), request.Reason.Trim()));
+
+        // C7: the account email matches but the name differs; the Executor links
+        // the person by hand, with a written reason.
+        [HttpPost("{willId:guid}/recipients/{designationId:guid}/confirm-link")]
+        public Task<IActionResult> ConfirmLink(
+            Guid willId, Guid designationId,
+            [FromBody] ConfirmRecipientLinkRequest request)
+            => Run(async () =>
+            {
+                var me = _user.GetRequiredAccountId();
+                await _autoLink.ConfirmByExecutorAsync(
+                    willId, designationId, me, request.Note);
+                return await _service.GetAsync(willId, me);
+            });
 
         // C2: minutes (content, hash, signature status) of the latest handover.
         [HttpGet("{willId:guid}/minutes")]
