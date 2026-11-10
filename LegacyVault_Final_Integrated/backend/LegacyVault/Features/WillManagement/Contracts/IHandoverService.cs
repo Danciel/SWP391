@@ -39,6 +39,14 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task<HandoverResponse> ReopenItemAsync(
             Guid itemId, Guid adminAccountId, string reason);
 
+        // C9: the Executor cancels a death handover that delivered nothing yet.
+        Task<HandoverResponse> CancelDeathHandoverAsync(
+            Guid willId, Guid executorAccountId, string reason);
+
+        // C9: the Executor's list of handovers with the next step.
+        Task<List<ExecutorHandoverSummaryResponse>> GetExecutorHandoversAsync(
+            Guid executorAccountId);
+
         // C2: minutes of the running / latest handover. Owner, Executor and
         // Admin see everything; a beneficiary sees only own lines.
         Task<HandoverMinutesResponse> GetMinutesAsync(

@@ -674,7 +674,7 @@ namespace LegacyVault.Features.WillManagement.Services
             {
                 throw new InvalidOperationException(
                     "The DMS was triggered and your Executor was notified. " +
-                    "Contact support to cancel it.");
+                    "Use \"I'm alive\" (POST /api/wills/{id}/dms/im-alive) to cancel it.");
             }
 
             if (dms.Status != "ACTIVE")
