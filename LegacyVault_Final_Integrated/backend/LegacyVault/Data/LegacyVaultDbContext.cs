@@ -71,6 +71,8 @@ namespace LegacyVault.Data
 
         public DbSet<ExecutorPricingRule> ExecutorPricingRules { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
@@ -110,6 +112,23 @@ namespace LegacyVault.Data
 
                 entity.Property(x => x.ExternalIdentityId)
                     .HasMaxLength(255);
+            });
+
+            // =========================
+            // REFRESH TOKENS
+            // =========================
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.ToTable("RefreshTokens");
+                entity.HasKey(x => x.Id);
+
+                entity.HasIndex(x => x.Token).IsUnique();
+                entity.Property(x => x.Token).HasMaxLength(256).IsRequired();
+
+                entity.HasOne(x => x.Account)
+                    .WithMany()
+                    .HasForeignKey(x => x.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // =========================

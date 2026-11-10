@@ -29,18 +29,17 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private static readonly object OtpAttemptLock = new();
 
         public AuthService(
-    IAccountRepository accountRepository,
-    IEmailOtpService emailOtpService,
-    IEmailSender emailSender,
-    IEmailOtpRepository emailOtpRepository,
-    IJwtTokenService jwtTokenService,
-    IPhoneOtpService phoneOtpService,
-    ISmsSender smsSender,
-    IPhoneOtpRepository phoneOtpRepository,
-    LegacyVaultDbContext db)
-    IPhoneOtpRepository phoneOtpRepository,
-    IMemoryCache cache,
-    IBeneficiaryAutoLinkService beneficiaryAutoLink)
+        IAccountRepository accountRepository,
+        IEmailOtpService emailOtpService,
+        IEmailSender emailSender,
+        IEmailOtpRepository emailOtpRepository,
+        IJwtTokenService jwtTokenService,
+        IPhoneOtpService phoneOtpService,
+        ISmsSender smsSender,
+        IPhoneOtpRepository phoneOtpRepository,
+        LegacyVaultDbContext db,
+        IMemoryCache cache,
+        IBeneficiaryAutoLinkService beneficiaryAutoLink)
         {
             _accountRepository = accountRepository;
             _emailOtpService = emailOtpService;
