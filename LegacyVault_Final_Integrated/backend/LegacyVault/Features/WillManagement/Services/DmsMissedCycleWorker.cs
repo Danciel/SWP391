@@ -54,6 +54,40 @@ namespace LegacyVault.Features.WillManagement.Services
             }
         }
 
+        // The ONE place that moves a DMS to TRIGGERED, whatever the source
+        // (missed check-ins, admin button). It never marks anyone deceased and
+        // never starts a handover (R04). The caller saves.
+        public static void MarkTriggered(
+            LegacyVaultDbContext db,
+            DmsConfiguration dms,
+            DateTimeOffset now,
+            string source,
+            Guid? actorAccountId,
+            string? reason)
+        {
+            dms.Status = "TRIGGERED";
+            dms.ThresholdReachedAt ??= now;
+            dms.ExecutorNotifiedAt = null;
+            dms.UpdatedAt = now;
+
+            db.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorAccountId = actorAccountId,
+                Action = "DMS_TRIGGERED",
+                EntityType = "DmsConfiguration",
+                EntityId = dms.WillId,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    source,
+                    reason,
+                    dms.MissedCheckIns,
+                    dms.MaxMissedCheckIns
+                }),
+                CreatedAt = now
+            });
+        }
+
         // Public so a test or an admin endpoint can call it directly.
         public static async Task EvaluateAsync(
             LegacyVaultDbContext db,
@@ -135,9 +169,8 @@ namespace LegacyVault.Features.WillManagement.Services
 
                 if (dms.MissedCheckIns >= dms.MaxMissedCheckIns)
                 {
-                    // D05: threshold reached -> review marker only.
-                    dms.Status = "TRIGGERED";
-                    dms.ThresholdReachedAt ??= now;
+                    // D05: threshold reached -> TRIGGERED (review marker only).
+                    MarkTriggered(db, dms, now, "MISSED_CHECK_INS", null, null);
                     await db.SaveChangesAsync(ct);
                     continue;
                 }
@@ -173,6 +206,17 @@ namespace LegacyVault.Features.WillManagement.Services
             }
         }
 
+        // Tells the Executor of ONE will (used right after an admin forces a trigger).
+        public static Task NotifyExecutorAsync(
+            LegacyVaultDbContext db,
+            IEmailSender email,
+            ILifeStatusClient lifeStatus,
+            ILogger logger,
+            Guid willId,
+            DateTimeOffset now,
+            CancellationToken ct) =>
+            EscalateAsync(db, email, lifeStatus, logger, now, ct, willId);
+
         // D05 + D06
         private static async Task EscalateAsync(
             LegacyVaultDbContext db,
@@ -180,7 +224,8 @@ namespace LegacyVault.Features.WillManagement.Services
             ILifeStatusClient lifeStatus,
             ILogger logger,
             DateTimeOffset now,
-            CancellationToken ct)
+            CancellationToken ct,
+            Guid? onlyWillId = null)
         {
             var configs = await db.DmsConfigurations
                 .Include(x => x.Will)
@@ -191,6 +236,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 .Where(x =>
                     x.Status == "TRIGGERED" &&
                     x.ExecutorNotifiedAt == null &&
+                    (onlyWillId == null || x.WillId == onlyWillId) &&
                     x.Will!.Status == "ACTIVE")
                 .ToListAsync(ct);
 

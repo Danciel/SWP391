@@ -116,7 +116,7 @@
     padding: 8px 12px;
     border: none;
     border-radius: 8px;
-    background: var(--vault);
+    background: #4f46e5;
     color: #fff;
     font-weight: 600;
     font-size: 13px;
@@ -125,7 +125,7 @@
 }
 
 .primaryBtn:hover {
-    background: var(--vault-hover);
+    background: #4338ca;
 }
 
 .primaryBtn:disabled {
@@ -262,7 +262,7 @@
 }
 
 .searchInput:focus {
-    border-color: var(--vault);
+    border-color: #4f46e5;
 }
 
 .accountToolbar {

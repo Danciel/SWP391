@@ -17,6 +17,11 @@ namespace LegacyVault.Features.WillManagement.Contracts
         Task<HandoverResponse> DeliverAsync(
             Guid itemId, Guid executorAccountId);
 
+        // Executor hands over EVERY pending item of the will's running handover
+        // at once. Each recipient receives their own access code by email.
+        Task<HandoverResponse> DeliverAllAsync(
+            Guid willId, Guid executorAccountId);
+
         // Admin: handover could not be completed -> refund the held fee.
         Task<HandoverResponse> AbortAsync(Guid willId, Guid adminAccountId);
 
@@ -33,6 +38,23 @@ namespace LegacyVault.Features.WillManagement.Contracts
         // H06 "revise": send one delivered item back to PENDING (paused only).
         Task<HandoverResponse> ReopenItemAsync(
             Guid itemId, Guid adminAccountId, string reason);
+
+        // C2: minutes of the running / latest handover. Owner, Executor and
+        // Admin see everything; a beneficiary sees only own lines.
+        Task<HandoverMinutesResponse> GetMinutesAsync(
+            Guid willId, Guid accountId, bool isAdmin);
+
+        // C2: sealed PDF (Owner, Executor, Admin only).
+        Task<(byte[] Pdf, string FileName, string Sha256)> GetMinutesPdfAsync(
+            Guid willId, Guid accountId, bool isAdmin);
+
+        // C3: the Executor signs the minutes (required before Deliver, C4).
+        Task<HandoverMinutesResponse> SignAsExecutorAsync(
+            Guid willId, Guid executorAccountId, string? ipAddress);
+
+        // C3: a Beneficiary confirms receipt after claiming all own assets.
+        Task<HandoverMinutesResponse> SignAsBeneficiaryAsync(
+            Guid willId, Guid beneficiaryAccountId, string? ipAddress);
 
         // H06 "reassign": new executor for an ACTIVE or paused will.
         Task<ExecutorReassignmentResponse> ReassignExecutorAsync(

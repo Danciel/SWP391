@@ -85,3 +85,6 @@ Kiểm tra:
 - Frontend đang chạy đúng port 5173 không.
 - `.env` có `VITE_API_URL=https://localhost:7015/api` không.
 - Sau khi sửa `.env`, restart `npm run dev`.
+
+## Step 4 / patches
+See `CHANGES_PATCHES_AND_STEP4.md` ("How to test").

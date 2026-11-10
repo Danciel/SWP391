@@ -245,3 +245,20 @@ export function setAccountStatus() {
     "Account status management is not supported by the current AccountsController API."
   );
 }
+
+/**
+ * Admin DMS tools (backend base route: /api/admin/dms)
+ */
+export const listAdminDms = () => request("/admin/dms");
+
+// Forces the trigger now (same state as missing all check-ins) and emails the Executor.
+// Does NOT mark the Owner deceased and does NOT start a handover.
+export const forceTriggerDms = (willId, reason) =>
+  request(`/admin/dms/${willId}/force-trigger`, {
+    method: "POST",
+    body: { reason },
+  });
+
+// Runs the hourly DMS job once, right now.
+export const runDmsEvaluation = () =>
+  request("/admin/dms/evaluate", { method: "POST", body: {} });

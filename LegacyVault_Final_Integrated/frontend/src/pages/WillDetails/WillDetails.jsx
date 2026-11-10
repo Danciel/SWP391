@@ -9,8 +9,7 @@ import {
   getWills,
   getAssets,
   checkInDms,
-  confirmOwnerAlive,
-  downloadHandoverReport,
+  cancelDeathHandover,
   requestImmediateHandover,
   getExecutors,
   getHandover,
@@ -37,13 +36,6 @@ const EXECUTOR_STATUS_LABEL = {
   PENDING: "Waiting for the executor to accept",
   ACCEPTED: "Accepted",
   DECLINED: "Declined",
-};
-
-const HANDOVER_ITEM_LABEL = {
-  PENDING: "Pending",
-  AWAITING_EXECUTOR_SIGNATURE: "Waiting for executor signature",
-  AWAITING_BENEFICIARY_SIGNATURE: "Waiting for beneficiary signature",
-  DELIVERED: "Delivered",
 };
 
 export default function WillDetails() {
@@ -74,17 +66,12 @@ export default function WillDetails() {
   const [confirmingHandover, setConfirmingHandover] =
     useState(false);
   const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverPinOpen, setHandoverPinOpen] = useState(false);
   const [handoverError, setHandoverError] = useState("");
 
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInError, setCheckInError] = useState("");
   const [checkInDone, setCheckInDone] = useState("");
-
-  // C6/C9: "I'm alive" after the DMS triggered; C2: sealed report download
-  const [aliveBusy, setAliveBusy] = useState(false);
-  const [aliveError, setAliveError] = useState("");
-  const [reportBusy, setReportBusy] = useState(false);
-  const [reportError, setReportError] = useState("");
 
   const [handover, setHandover] = useState(null);
 
@@ -312,68 +299,47 @@ export default function WillDetails() {
   }
 
   async function handleCancelHandover() {
-    if (aliveBusy) return;
-    setAliveBusy(true);
-    setAliveError("");
     setCheckInError("");
 
     try {
-      const updated = await confirmOwnerAlive(user?.id, will.id, pinGrant);
-      setWill(updated);
-      setCheckInDone("Welcome back. The handover was cancelled and your Dead Man's Switch is active again.");
-      loadHandover();
-    } catch (err) {
-      setAliveError(
-        err?.status === 409
-          ? err.message || "This handover can no longer be cancelled."
-          : err?.status === 423
-            ? "PIN access expired. Return to My Wills and unlock again, then retry."
-            : err.message || "Could not cancel handover"
+      setWill(
+        await cancelDeathHandover(user?.id, will.id)
       );
-    } finally {
-      setAliveBusy(false);
-    }
-  }
-
-  async function handleDownloadReport() {
-    setReportBusy(true);
-    setReportError("");
-    try {
-      await downloadHandoverReport(will.id);
     } catch (err) {
-      setReportError(err.message || "Could not download the report");
-    } finally {
-      setReportBusy(false);
+      setCheckInError(
+        err.message || "Could not cancel handover"
+      );
     }
   }
 
   // ==========================================
   // IMMEDIATE HANDOVER
   // ==========================================
-  async function handleConfirmImmediateHandover() {
-    setHandoverBusy(true);
+  // Step 1: "Yes, Send to Executor" only opens the PIN dialog.
+  function handleConfirmImmediateHandover() {
     setHandoverError("");
+    setConfirmingHandover(false);
+    setHandoverPinOpen(true);
+  }
+
+  // Step 2: PIN accepted -> backend gives a HANDOVER_START grant for this
+  // will; the handover starts only with that grant. Errors thrown here are
+  // shown inside the PIN dialog.
+  async function handleHandoverPinVerified(grant) {
+    await requestImmediateHandover(user?.id, will.id, grant);
+    setHandoverPinOpen(false);
 
     try {
-      const updated = await requestImmediateHandover(
-        user?.id,
-        will.id,
-        pinGrant
-      );
-
-      setWill(updated);
-      setConfirmingHandover(false);
-
-      loadHandover();
+      setWill(await getWill(user?.id, will.id, pinGrant));
     } catch (err) {
       setHandoverError(
         err?.status === 423
-          ? "PIN access expired while refreshing. Return to My Wills and unlock again. Check handover status before resubmitting."
-          : err.message || "Could not request immediate handover"
+          ? "Handover started. PIN access expired while refreshing: return to My Wills and unlock again."
+          : err.message || "Handover started, but the will could not be refreshed."
       );
-    } finally {
-      setHandoverBusy(false);
     }
+
+    loadHandover();
   }
 
   // ==========================================
@@ -539,18 +505,6 @@ export default function WillDetails() {
         </div>
       )}
 
-      {/* DMS TRIGGERED: Owner must be able to say "I'm alive" from anywhere on this page */}
-      {will.status === "PENDING_VERIFICATION" && (
-        <div className={styles.bannerDanger} role="alert">
-          Your Dead Man's Switch has triggered and your executor was notified. If you are alive,
-          cancel it now.{" "}
-          <button className={styles.linkBtn} disabled={aliveBusy} onClick={handleCancelHandover}>
-            {aliveBusy ? "Cancelling..." : "I'm alive — cancel handover"}
-          </button>
-          {aliveError && <div style={{ marginTop: 6 }}>{aliveError}</div>}
-        </div>
-      )}
-
       {/* DRAFT */}
       {isDraft && (
         <div className={styles.pendingNote}>
@@ -640,11 +594,24 @@ export default function WillDetails() {
               >
                 {handoverBusy
                   ? "Sending..."
-                  : "Yes, Send to Executor"}
+                  : "Yes, Enter PIN"}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {handoverError && !confirmingHandover && (
+        <p className={styles.errorText} role="alert">{handoverError}</p>
+      )}
+
+      {handoverPinOpen && (
+        <SecurityPinModal
+          scope="HANDOVER_START"
+          resourceId={will.id}
+          onVerified={handleHandoverPinVerified}
+          onClose={() => setHandoverPinOpen(false)}
+        />
       )}
 
       {/* OVERVIEW */}
@@ -1005,7 +972,7 @@ export default function WillDetails() {
                 </div>
 
                 <div className={styles.itemMeta}>
-                  {HANDOVER_ITEM_LABEL[it.status] || it.status}
+                  {it.status}
 
                   {it.deliveredAt
                     ? ` · ${fmtDate(
@@ -1017,40 +984,6 @@ export default function WillDetails() {
               </div>
             </div>
           ))}
-
-          {/* C1-C5: signatures + sealed report. Rendered only when the backend sends them. */}
-          {(handover.report || handover.signatures?.length > 0) && (
-            <>
-              <h3 className={styles.sectionTitle} style={{ fontSize: 15, marginTop: 16 }}>
-                Handover report
-              </h3>
-              {handover.report?.sha256 && (
-                <Row label="SHA-256" value={<code style={{ wordBreak: "break-all" }}>{handover.report.sha256}</code>} />
-              )}
-              {handover.report?.generatedAt && (
-                <Row label="Sealed at" value={fmtDate(handover.report.generatedAt, true)} />
-              )}
-              {(handover.signatures || []).map((sg, i) => (
-                <Row
-                  key={sg.id || i}
-                  label={sg.role === "EXECUTOR" ? "Executor" : "Beneficiary"}
-                  value={
-                    sg.signedAt
-                      ? `${sg.signerName || "—"} signed on ${fmtDate(sg.signedAt, true)}`
-                      : `${sg.signerName || "—"} — waiting for signature`
-                  }
-                />
-              ))}
-              {handover.report && (
-                <div className={styles.actions}>
-                  <button className={styles.primaryBtn} disabled={reportBusy} onClick={handleDownloadReport}>
-                    {reportBusy ? "Downloading..." : "Download sealed report (PDF)"}
-                  </button>
-                </div>
-              )}
-              {reportError && <p role="alert" className={styles.errorText}>{reportError}</p>}
-            </>
-          )}
         </section>
       )}
 
@@ -1239,14 +1172,12 @@ export default function WillDetails() {
                 <div className={styles.demoRow}>
                   <button
                     className={styles.primaryBtn}
-                    disabled={aliveBusy}
                     onClick={
                       handleCancelHandover
                     }
                   >
-                    {aliveBusy
-                      ? "Cancelling..."
-                      : "I'm Still Active / Cancel Handover"}
+                    I'm Still Active /
+                    Cancel Handover
                   </button>
                 </div>
               </div>

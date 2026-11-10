@@ -8,10 +8,7 @@ const money = (n, cur = "VND") => `${Number(n || 0).toLocaleString("en-US")} ${c
 
 export default function Wallet() {
   const { user } = useAuth();
-
-  const role = String(user?.role || "").toUpperCase();
-  const isUserWallet = role === "USER";
-  const isExecutorWallet = role === "EXECUTOR";
+  const canTopUp = user?.role?.toUpperCase() === "USER";
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,11 +58,7 @@ export default function Wallet() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Wallet</h1>
-      <p className={styles.muted}>
-        {isExecutorWallet
-          ? "View your available balance and pending incoming executor payments."
-          : "Manage your available balance and funds held for handover. No real bank is connected."}
-      </p>
+      <p className={styles.muted}>Simulated balance used to pay executor fees. No real bank is connected.</p>
 
       {error && <p role="alert" className={styles.error}>{error}</p>}
 
@@ -79,32 +72,28 @@ export default function Wallet() {
               </strong>
             </div>
 
-            {isUserWallet && (
-              <div className={`${styles.card} ${styles.cardHeld}`}>
-                <span className={styles.cardLabel}>Held for handover</span>
-                <strong className={styles.cardValue}>
-                  {money(wallet.heldAmount, wallet.currency)}
-                </strong>
-                <p className={styles.cardNote}>
-                  Locked until the handover is completed.
-                </p>
-              </div>
-            )}
+            <div className={`${styles.card} ${styles.cardHeld}`}>
+              <span className={styles.cardLabel}>Held for handover</span>
+              <strong className={styles.cardValue}>
+                {money(wallet.heldAmount, wallet.currency)}
+              </strong>
+              <p className={styles.cardNote}>
+                Locked until the handover is completed.
+              </p>
+            </div>
 
-            {isExecutorWallet && (
-              <div className={styles.card}>
-                <span className={styles.cardLabel}>Pending incoming</span>
-                <strong className={styles.cardValue}>
-                  {money(wallet.pendingIncoming, wallet.currency)}
-                </strong>
-                <p className={styles.cardNote}>
-                  Funds held for you as executor, awaiting release.
-                </p>
-              </div>
-            )}
+            <div className={styles.card}>
+              <span className={styles.cardLabel}>Pending incoming</span>
+              <strong className={styles.cardValue}>
+                {money(wallet.pendingIncoming, wallet.currency)}
+              </strong>
+              <p className={styles.cardNote}>
+                Funds held for you as executor, awaiting release.
+              </p>
+            </div>
           </div>
 
-          {isUserWallet  && (
+          {canTopUp && (
             <>
               <form className={styles.topup} onSubmit={handleTopUp}>
                 <input

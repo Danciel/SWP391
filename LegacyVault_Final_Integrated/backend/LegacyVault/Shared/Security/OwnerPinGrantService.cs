@@ -12,6 +12,12 @@ public static class OwnerPinScopes
     public const string WillDetail = "WILL_DETAIL";
     public const string AssetDelete = "ASSET_DELETE";
     public const string ExecutorRequestDelete = "EXECUTOR_REQUEST_DELETE";
+
+    // Owner presses "Immediate Handover" (resource = Will ID).
+    public const string HandoverStart = "HANDOVER_START";
+
+    // Beneficiary opens an inherited will (resource = Will ID).
+    public const string InheritanceView = "INHERITANCE_VIEW";
 }
 
 public sealed class OwnerPinGrantService
@@ -39,7 +45,9 @@ public sealed class OwnerPinGrantService
         return scope == OwnerPinScopes.AssetSecret
             || scope == OwnerPinScopes.WillDetail
             || scope == OwnerPinScopes.AssetDelete
-            || scope == OwnerPinScopes.ExecutorRequestDelete;
+            || scope == OwnerPinScopes.ExecutorRequestDelete
+            || scope == OwnerPinScopes.HandoverStart
+            || scope == OwnerPinScopes.InheritanceView;
     }
 
     // B3. Cap grant sau khi xac minh PIN thanh cong

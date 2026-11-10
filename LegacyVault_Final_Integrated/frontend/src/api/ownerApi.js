@@ -1,13 +1,12 @@
 
-import { request } from "./client";
+import { getToken, request } from "./client"; // Use your existing client helper
 import { getOwnerDashboardData, checkInDms, cancelDeathHandover, requestImmediateHandover } from "./vaultApi";
 
 export const getOwnerDashboard = getOwnerDashboardData;
 export const confirmStillActive = ({ userId, willId }) => checkInDms(userId, willId);
 export const cancelHandover = ({ userId, willId }) => cancelDeathHandover(userId, willId);
-export const requestHandover = ({ userId, willId }) => requestImmediateHandover(userId, willId);
+export const requestHandover = ({ userId, willId, pinGrant }) => requestImmediateHandover(userId, willId, pinGrant);
 
-// N6: one IdP identity can be linked to one account only. BE answers 409 (code IDP_ALREADY_LINKED).
 export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     if (!externalIdentityId) throw new Error("External Identity ID is required");
     if (!faceImageBlob) throw new Error("Face image is required");
@@ -16,7 +15,31 @@ export const linkIdp = async (externalIdentityId, faceImageBlob) => {
     form.append("ExternalIdentityId", externalIdentityId);
     form.append("FaceImage", faceImageBlob, "face.jpg");
 
-    // request() skips Content-Type for FormData, adds the JWT, refreshes it on 401 and
-    // surfaces 409/429 as ApiError(status, code, retryAfter).
-    return request("/accounts/link-idp", { method: "POST", body: form });
+    const headers = {};
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    // DO NOT set Content-Type header here. The browser will do it automatically.
+
+    // Use a relative URL so the Vite Proxy handles the backend routing
+    const url = `/api/accounts/link-idp`;
+
+    try {
+        const res = await fetch(url, { method: "POST", headers, body: form });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+            const error = new Error(
+                data?.message || data?.title || `Error ${res.status}`
+            );
+
+            error.status = res.status;
+            error.data = data;
+
+            throw error;
+        }
+        return data;
+    } catch (err) {
+        throw new Error(err.message || "Could not reach the server.");
+    }
 };

@@ -5,14 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import { validatePassword, validateConfirmPassword, runValidators } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
-import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./ResetPassword.module.css";
 
-const initialForm = {
-  otp: "",
-  newPassword: "",
-  confirmPassword: "",
-};
+const initialForm = { newPassword: "", confirmPassword: "" };
 
 export default function ResetPassword() {
   const { resetPassword } = useAuth();
@@ -20,6 +15,7 @@ export default function ResetPassword() {
   const location = useLocation();
 
   const email = location.state?.email || "";
+  const resetToken = location.state?.resetToken || "";
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -27,21 +23,14 @@ export default function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!email) {
+    if (!email || !resetToken) {
       navigate("/forgot-password", { replace: true });
     }
-  }, [email, navigate]);
+  }, [email, resetToken, navigate]);
 
   const fieldValidators = {
-    otp: () =>
-      !form.otp.trim()
-        ? "OTP is required"
-        : !/^\d{6}$/.test(form.otp.trim())
-          ? "OTP must contain 6 digits"
-          : "",
     newPassword: () => validatePassword(form.newPassword),
-    confirmPassword: () =>
-      validateConfirmPassword(form.newPassword, form.confirmPassword),
+    confirmPassword: () => validateConfirmPassword(form.newPassword, form.confirmPassword),
   };
 
   function handleChange(e) {
@@ -65,11 +54,7 @@ export default function ResetPassword() {
 
     setIsSubmitting(true);
     try {
-      await resetPassword({
-        email,
-        otp: form.otp.trim(),
-        newPassword: form.newPassword,
-      });
+      await resetPassword({ email, resetToken, newPassword: form.newPassword });
       navigate("/login", { state: { registeredEmail: email } });
     } catch (err) {
       setSubmitError(
@@ -81,23 +66,11 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell>
+    <div className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Reset Password</h1>
         <p className={styles.subtitle}>Create a new password for your account</p>
-
-        <FormField
-          label="Verification Code (OTP)"
-          type="text"
-          name="otp"
-          value={form.otp}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          error={errors.otp}
-          placeholder="Enter 6-digit OTP"
-          autoComplete="one-time-code"
-        />
 
         <FormField
           label="New Password"
@@ -131,6 +104,6 @@ export default function ResetPassword() {
           {isSubmitting ? "Updating..." : "Update Password"}
         </button>
       </form>
-    </AuthShell>
+    </div>
   );
 }

@@ -4,7 +4,7 @@
     display: grid;
     place-items: center;
     padding: 24px;
-    background: linear-gradient(rgba(14, 44, 38, 0.84), rgba(21, 59, 51, 0.8)), var(--photo-vault) center / cover fixed, var(--vault-deep);
+    background: #f3f5f9;
 }
 
 .idp-dashboard-card {
@@ -52,7 +52,7 @@
 }
 
 .idp-dashboard-action:hover {
-    background: var(--vault-soft);
+    background: #eff6ff;
     border-color: #bfdbfe;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(22, 119, 255, 0.08);

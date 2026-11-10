@@ -44,6 +44,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
             // First call loads the face models; do not let the UI hang forever if the IdP is stuck.
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
+
         }
 
         public async Task<IdpFaceResult> VerifyFaceAsync(Guid idpUserId, Stream faceImageStream, CancellationToken cancellationToken = default)

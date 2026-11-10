@@ -35,12 +35,13 @@ namespace LegacyVault.Features.WillManagement.Controllers
         [RequestSizeLimit(6 * 1024 * 1024)]
         public async Task<IActionResult> Submit(
             [FromForm] Guid willId,
-            IFormFile file)
+            IFormFile file,
+            [FromForm] string? certificateData = null)
         {
             try
             {
                 var result = await _service.SubmitAsync(
-                    _user.GetRequiredAccountId(), willId, file);
+                    _user.GetRequiredAccountId(), willId, file, certificateData);
                 return StatusCode(201, result);
             }
             catch (KeyNotFoundException ex)

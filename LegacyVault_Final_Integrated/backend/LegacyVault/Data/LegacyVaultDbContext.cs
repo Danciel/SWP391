@@ -53,6 +53,12 @@ namespace LegacyVault.Data
 
         public DbSet<HandoverItem> HandoverItems { get; set; }
 
+        public DbSet<HandoverAccessCode> HandoverAccessCodes { get; set; }
+
+        public DbSet<HandoverMinutes> HandoverMinutesDocs { get; set; }
+
+        public DbSet<HandoverSignature> HandoverSignatures { get; set; }
+
         public DbSet<Wallet> Wallets { get; set; }
 
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
@@ -571,6 +577,47 @@ namespace LegacyVault.Data
                     .WithMany()
                     .HasForeignKey(x => x.AssetAssignmentId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Sprint 10: per-recipient handover access code (hash only).
+            modelBuilder.Entity<HandoverAccessCode>(entity =>
+            {
+                entity.ToTable("HandoverAccessCodes");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => new { x.HandoverCaseId, x.BeneficiaryDesignationId })
+                    .IsUnique();
+                entity.Property(x => x.Salt).IsRequired();
+                entity.Property(x => x.CodeHash).IsRequired();
+            });
+
+            // C1: handover minutes + required signatures.
+            modelBuilder.Entity<HandoverMinutes>(entity =>
+            {
+                entity.ToTable("HandoverMinutes");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.HandoverCaseId).IsUnique();
+                entity.HasIndex(x => x.WillId);
+                entity.Property(x => x.Status).IsRequired();
+                entity.Property(x => x.ContentJson).IsRequired();
+                entity.Property(x => x.ContentSha256).HasMaxLength(64).IsRequired();
+                entity.Property(x => x.PdfSha256).HasMaxLength(64).IsRequired();
+                entity.HasOne(x => x.HandoverCase)
+                    .WithMany()
+                    .HasForeignKey(x => x.HandoverCaseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HandoverSignature>(entity =>
+            {
+                entity.ToTable("HandoverSignatures");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.MinutesId);
+                entity.Property(x => x.Role).IsRequired();
+                entity.Property(x => x.Status).IsRequired();
+                entity.HasOne(x => x.Minutes)
+                    .WithMany(x => x.Signatures)
+                    .HasForeignKey(x => x.MinutesId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Wallet>(entity =>
