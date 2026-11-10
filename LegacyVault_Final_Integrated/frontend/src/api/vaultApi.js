@@ -27,10 +27,10 @@ export const getExecutorProfile = async (accountId) => {
 };
 
 export const updateMyExecutorProfile = async ({
-  bio,
-  specialty,
-  experienceYears,
-}) => {
+                                                bio,
+                                                specialty,
+                                                experienceYears,
+                                              }) => {
   return r("/executors/me/profile", "PUT", {
     bio,
     specialty,
@@ -39,9 +39,9 @@ export const updateMyExecutorProfile = async ({
 };
 
 export const updateMyExecutorPricing = async ({
-  serviceFee,
-  currency = "VND",
-}) => {
+                                                serviceFee,
+                                                currency = "VND",
+                                              }) => {
   return r("/executors/me/pricing", "PUT", {
     serviceFee: Number(serviceFee),
     currency,
@@ -60,12 +60,12 @@ export const getAssetSecret = async (id, pinGrant) => {
   }
 
   const result = await r(
-    `/assets/${id}/secret`,
-    "GET",
-    undefined,
-    {
-      "X-Owner-Pin-Grant": pinGrant
-    }
+      `/assets/${id}/secret`,
+      "GET",
+      undefined,
+      {
+        "X-Owner-Pin-Grant": pinGrant
+      }
   );
 
   return result.secretData || {};
@@ -90,7 +90,7 @@ export async function addAsset(userId, form) {
   else throw new Error("Unsupported new Asset type. Use an existing legacy asset if required.");
   const assets = await getAssets();
   return assets.find(asset => asset.id === created.assetId || asset.id === created.id)
-    || mapAsset(created);
+      || mapAsset(created);
 }
 
 
@@ -102,28 +102,28 @@ export const updateAsset = async (userId, id, form, pinGrant) => {
   const originalType = TYPE_CODES[form.type] || form.type;
 
   const provider =
-    originalType === "DOCUMENT"
-      ? (form.accountType || "LOCAL_DOCUMENT")
-      : (
-          form.accountType ||
-          (originalType === "CLOUD_STORAGE" ? "GOOGLE_DRIVE" : "GMAIL")
-        );
+      originalType === "DOCUMENT"
+          ? (form.accountType || "LOCAL_DOCUMENT")
+          : (
+              form.accountType ||
+              (originalType === "CLOUD_STORAGE" ? "GOOGLE_DRIVE" : "GMAIL")
+          );
 
   const result = await r(
-    `/assets/${id}`,
-    "PUT",
-    {
-      name: form.name,
-      description: form.description || "",
-      assetType: originalType,
-      provider: String(provider).toUpperCase(),
-      secretData: null,
-      handoverPassword: form.handoverPassword || null,
-      handoverConsent: !!form.handoverConsent
-    },
-    {
-      "X-Owner-Pin-Grant": pinGrant
-    }
+      `/assets/${id}`,
+      "PUT",
+      {
+        name: form.name,
+        description: form.description || "",
+        assetType: originalType,
+        provider: String(provider).toUpperCase(),
+        secretData: null,
+        handoverPassword: form.handoverPassword || null,
+        handoverConsent: !!form.handoverConsent
+      },
+      {
+        "X-Owner-Pin-Grant": pinGrant
+      }
   );
 
   return mapAsset(result);
@@ -136,42 +136,42 @@ export const getWills = async () => {
   const summaries = await r("/wills");
 
   return Promise.all(
-    summaries.map(async (w) => {
-      // Draft van duoc doc chi tiet de Create Will hoat dong
-      if (w.status === "DRAFT") {
-        try {
-          return await getWill(null, w.id);
-        } catch {
-          // Fallback sang summary
+      summaries.map(async (w) => {
+        // Draft van duoc doc chi tiet de Create Will hoat dong
+        if (w.status === "DRAFT") {
+          try {
+            return await getWill(null, w.id);
+          } catch {
+            // Fallback sang summary
+          }
         }
-      }
 
-      // Will da Submit: khong tu dong lay chi tiet
-      return {
-        ...w,
-        name: w.title || "",
-        assets: null,
-        beneficiaries: null,
-        assignments: null,
-        executor: null,
-        dms: null,
-        payment: null
-      };
-    })
+        // Will da Submit: khong tu dong lay chi tiet
+        return {
+          ...w,
+          name: w.title || "",
+          assets: null,
+          beneficiaries: null,
+          assignments: null,
+          executor: null,
+          dms: null,
+          payment: null
+        };
+      })
   );
 };
 
 
 export const getWill = async (userId, id, pinGrant = null) => {
   const headers = pinGrant
-    ? { "X-Owner-Pin-Grant": pinGrant }
-    : undefined;
+      ? { "X-Owner-Pin-Grant": pinGrant }
+      : undefined;
 
   const result = await r(
-    `/wills/${id}`,
-    "GET",
-    undefined,
-    headers
+      `/wills/${id}`,
+      "GET",
+      undefined,
+      headers
   );
 
   return mapWill(result);
@@ -186,14 +186,8 @@ export async function saveWillDraft(userId, id, patch = {}) {
   if (patch.mainExecutorId !== undefined) {
     // One main executor accepts the will, is paid and hands everything over.
     if (patch.mainExecutorId && patch.mainExecutorId !== before.executor?.id) await r(`/wills/${id}/executor`, "POST", { executorAccountId: patch.mainExecutorId });
-    // Specialists are optional per-asset suggestions that need no acceptance.
-    const wanted = new Map((patch.specialists || []).map(x => [x.willAssetId, x.executorId]));
-    for (const a of before.assets) {
-      const current = (before.assetExecutors || []).find(x => x.willAssetId === a.willAssetId)?.id;
-      const want = wanted.get(a.willAssetId);
-      if (want && want !== patch.mainExecutorId) { if (want !== current || current === before.executor?.id) await assignAssetExecutor(id, a.willAssetId, want); }
-      else if (current) await r(`/wills/${id}/assets/${a.willAssetId}/executor`, "DELETE");
-    }
+    // Legacy per-asset executor assignments are preserved for existing wills.
+    // Removing suggestions from the UI must not silently delete saved assignments.
   }
   if (patch.dms) await r(`/wills/${id}/dms`, "PUT", { enabled: true, checkInIntervalDays: patch.dms.checkInDays, reminderBeforeDays: patch.dms.reminderDays, maxMissedCheckIns: patch.dms.maxMissed });
   return getWill(userId, id);
@@ -215,20 +209,20 @@ export const cancelDeathHandover = unsupported("Cancel death handover");
 // resource = Will ID). The optional detailGrant is the WILL_DETAIL grant used to
 // re-read the will afterwards.
 export const requestImmediateHandover = async (
-  userId,
-  id,
-  handoverGrant,
-  detailGrant = null
+    userId,
+    id,
+    handoverGrant,
+    detailGrant = null
 ) => {
   if (!handoverGrant) {
     throw new Error("Security PIN is required.");
   }
 
   const result = await r(
-    `/handover/${id}/immediate`,
-    "POST",
-    undefined,
-    { "X-Owner-Pin-Grant": handoverGrant }
+      `/handover/${id}/immediate`,
+      "POST",
+      undefined,
+      { "X-Owner-Pin-Grant": handoverGrant }
   );
 
   // Called from Will Detail: reload the will with its existing PIN grant.
