@@ -46,6 +46,29 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
+    // Add this block to send the countdown
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            // Send the Retry-After header (in seconds)
+            context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
+
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                message = $"Too many requests. Please try again in {Math.Ceiling(retryAfter.TotalSeconds)} seconds."
+            }, cancellationToken: token);
+        }
+        else
+        {
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                message = "Too many requests. Please try again later."
+            }, cancellationToken: token);
+        }
+    };
 });
 
 // Frontend (Vite) development CORS.
