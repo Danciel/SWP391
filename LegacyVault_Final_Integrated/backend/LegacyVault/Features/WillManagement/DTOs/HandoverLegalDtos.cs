@@ -36,6 +36,9 @@ namespace LegacyVault.Features.WillManagement.DTOs
         public int TotalItems { get; set; }
         public int DeliveredItems { get; set; }
         public List<HandoverItemResponse> Items { get; set; } = new();
+
+        // C1: state of the minutes / signatures (null for very old handovers).
+        public HandoverMinutesSummary? Minutes { get; set; }
     }
 
     public class LegalCaseSummaryResponse

@@ -33,19 +33,22 @@ namespace LegacyVault.Features.WillManagement.Controllers
         private readonly IIdpIntegrationService _idp;
         private readonly IAssetEncryptionService _encryption;
         private readonly IHandoverCodeService _codes;
+        private readonly IHandoverService _handover;
 
         public InheritanceController(
             LegacyVaultDbContext db,
             ICurrentUserService user,
             IIdpIntegrationService idp,
             IAssetEncryptionService encryption,
-            IHandoverCodeService codes)
+            IHandoverCodeService codes,
+            IHandoverService handover)
         {
             _db = db;
             _user = user;
             _idp = idp;
             _encryption = encryption;
             _codes = codes;
+            _handover = handover;
         }
 
         // Summary only: no asset names, no secrets (PIN not needed).
@@ -427,6 +430,33 @@ namespace LegacyVault.Features.WillManagement.Controllers
                     remainingAttempts = result.RemainingAttempts,
                     lockedUntil = result.LockedUntil
                 });
+
+        // C3: the minutes as this beneficiary may see them (own lines only).
+        [HttpGet("{id:guid}/minutes")]
+        [RequireOwnerPin(OwnerPinScopes.InheritanceView)]
+        public Task<IActionResult> Minutes(Guid id)
+            => RunMinutes(() => _handover.GetMinutesAsync(
+                id, _user.GetRequiredAccountId(), false));
+
+        // C3: the beneficiary signs after receiving ALL of their assets.
+        [HttpPost("{id:guid}/minutes/sign")]
+        [RequireOwnerPin(OwnerPinScopes.InheritanceView)]
+        public Task<IActionResult> SignMinutes(Guid id)
+            => RunMinutes(() => _handover.SignAsBeneficiaryAsync(
+                id,
+                _user.GetRequiredAccountId(),
+                HttpContext.Connection.RemoteIpAddress?.ToString()));
+
+        private async Task<IActionResult> RunMinutes<T>(Func<Task<T>> action)
+        {
+            try { return Ok(await action()); }
+            catch (KeyNotFoundException ex)
+            { return NotFound(new { message = ex.Message }); }
+            catch (Services.WillConflictException ex)
+            { return Conflict(new { message = ex.Message }); }
+            catch (InvalidOperationException ex)
+            { return BadRequest(new { message = ex.Message }); }
+        }
 
         // Credentials of a CLAIMED asset. Needs the Security PIN again.
         // Route value "id" = Will ID (used by the PIN filter).
