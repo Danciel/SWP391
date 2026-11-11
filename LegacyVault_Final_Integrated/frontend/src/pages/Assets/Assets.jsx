@@ -625,7 +625,7 @@ export default function Assets() {
 
     if (locks.has(selectedAsset.id)) {
       setDetailError(
-          `This asset is used in will "${locks.get(selectedAsset.id).willName}". ` +
+          "This asset is used in another will. " +
           "Remove it from the will before deleting."
       );
       return;
@@ -823,7 +823,7 @@ export default function Assets() {
                         {verificationInfo(asset).label}
 
                         {locks.has(asset.id)
-                            ? ` · 🔒 Used in will "${locks.get(asset.id).willName}"`
+                            ? " · 🔒 Used in another will"
                             : ""}
                       </p>
                     </div>
@@ -1159,8 +1159,7 @@ export default function Assets() {
                             className={styles.assetDesc}
                             style={{ marginBottom: 14 }}
                         >
-                          🔒 Used in will "
-                          {locks.get(selectedAsset.id).willName}".
+                          🔒 Used in another will.
                         </p>
                     )}
 
