@@ -54,30 +54,19 @@ namespace LegacyVault.Features.WillManagement.Controllers
         {
             try
             {
-                // B1. Lay danh sach Will cua Owner
-                var myWills = await _willService.GetMineAsync();
+                // B1. Load the will once. GetByIdAsync already throws
+                // KeyNotFoundException when it is not the caller's will, so the old
+                // "load every will of the Owner just to check ownership" query is gone.
+                var detail = await _willService.GetByIdAsync(id);
 
-                // B2. Tim Will duoc yeu cau
-                var summary = myWills.FirstOrDefault(
-                    w => w.Id == id
-                );
-
-                if (summary == null)
-                {
-                    return NotFound(new
-                    {
-                        message = "Will not found."
-                    });
-                }
-
-                // B3. Draft duoc doc de Create Will hoat dong
+                // B2. Draft duoc doc de Create Will hoat dong
                 bool isDraft = string.Equals(
-                    summary.Status,
+                    detail.Status,
                     "DRAFT",
                     StringComparison.OrdinalIgnoreCase
                 );
 
-                // B4. Will khong phai Draft phai xac minh PIN
+                // B3. Will khong phai Draft phai xac minh PIN
                 if (!isDraft)
                 {
                     Guid ownerId =
@@ -104,9 +93,6 @@ namespace LegacyVault.Features.WillManagement.Controllers
                         });
                     }
                 }
-
-                // B5. Chi tra chi tiet sau khi du dieu kien
-                var detail = await _willService.GetByIdAsync(id);
 
                 return Ok(detail);
             }

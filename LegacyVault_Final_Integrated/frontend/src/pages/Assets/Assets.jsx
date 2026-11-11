@@ -8,7 +8,7 @@ import {
   updateAsset,
   getAssetSecret,
   deleteAsset,
-  getWills,
+  getAssetLocks,
   checkDocumentIntegrity,
   downloadDocument,
 } from "../../api/vaultApi";
@@ -21,7 +21,6 @@ import {
   providerLabel,
   verificationInfo,
 } from "../../utils/assetCatalog";
-import { buildAssetLocks } from "../../utils/willHelpers";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
 import {
   MAX_FILE_BYTES,
@@ -393,8 +392,8 @@ export default function Assets() {
     try {
       setAssets(await getAssets(user?.id));
 
-      getWills()
-          .then((w) => setLocks(buildAssetLocks(w)))
+      getAssetLocks()
+          .then(setLocks)
           .catch(() => setLocks(new Map()));
     } catch (err) {
       setAssets([]);

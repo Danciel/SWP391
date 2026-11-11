@@ -15,6 +15,17 @@ export function buildAssetLocks(wills, exceptWillId = null) {
   return map;
 }
 
+// The list of wills carries no assets for a submitted will (its detail needs the Security PIN),
+// so buildAssetLocks alone misses them. GET /wills/locked-assets knows every asset that sits in
+// a not-cancelled will. Merge both: the name comes from a draft we could read, otherwise generic.
+export function mergeAssetLocks(lockedIds, namedLocks) {
+  const map = new Map();
+  (lockedIds || []).forEach((id) => {
+    map.set(id, (namedLocks && namedLocks.get(id)) || { willId: null, willName: "another will" });
+  });
+  return map;
+}
+
 export const RELATIONSHIPS = ["Daughter", "Son", "Spouse", "Parent", "Sibling", "Friend", "Other"];
 
 export const BENEFICIARY_STATUS_LABEL = {

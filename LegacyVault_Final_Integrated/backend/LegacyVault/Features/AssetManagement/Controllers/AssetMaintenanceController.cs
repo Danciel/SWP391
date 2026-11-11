@@ -1,4 +1,5 @@
 using LegacyVault.Data;
+using LegacyVault.Models;
 using LegacyVault.Features.AssetManagement.Contracts;
 using LegacyVault.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -22,14 +23,14 @@ public sealed class AssetMaintenanceController : ControllerBase
     public async Task<IActionResult> DeleteUnused(Guid id)
     {
         var owner = _currentUser.GetRequiredAccountId();
-        if (!await _db.Assets.AsNoTracking().AnyAsync(a => a.Id == id && a.OwnerAccountId == owner))
+        if (!await _db.Assets.AsNoTracking().AnyAsync(a => a.Id == id && a.OwnerAccountId == owner && a.Status != AssetStatuses.HandedOver))
             return NotFound(new { message = "Asset not found." });
         if (await _db.WillAssets.AsNoTracking().AnyAsync(wa => wa.AssetId == id))
             return Conflict(new { message = "This asset is used in a Will. Remove its Will references before deleting." });
         try
         {
             await using var transaction = await _db.Database.BeginTransactionAsync();
-            var asset = await _db.Assets.FirstAsync(a => a.Id == id && a.OwnerAccountId == owner);
+            var asset = await _db.Assets.FirstAsync(a => a.Id == id && a.OwnerAccountId == owner && a.Status != AssetStatuses.HandedOver);
             // Explicitly remove verification and secret rows for databases without cascade DDL.
             var verifications = await _db.AssetVerifications.Where(v => v.AssetId == id).ToListAsync();
             _db.AssetVerifications.RemoveRange(verifications);

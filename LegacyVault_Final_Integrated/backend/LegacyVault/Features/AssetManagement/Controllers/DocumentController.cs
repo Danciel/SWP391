@@ -108,7 +108,8 @@ public class DocumentController : ControllerBase
     {
         Guid ownerId = _currentUser.GetRequiredAccountId();
         var asset = await _db.Assets.AsNoTracking().FirstOrDefaultAsync(x =>
-            x.Id == id && x.OwnerAccountId == ownerId && x.AssetType == "DOCUMENT" && x.Provider == "LOCAL_DOCUMENT");
+            x.Id == id && x.OwnerAccountId == ownerId && x.Status != AssetStatuses.HandedOver &&
+            x.AssetType == "DOCUMENT" && x.Provider == "LOCAL_DOCUMENT");
         if (asset == null) return null;
         var secret = await _assets.RevealSecretAsync(id); // decrypt and authorize owner
         var d = secret.SecretData;

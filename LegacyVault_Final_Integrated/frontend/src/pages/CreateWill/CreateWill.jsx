@@ -11,10 +11,10 @@ import {
   submitWill,
   searchBeneficiaryAccount,
   getExecutors,
-  getWills,
+  getAssetLocks,
   getWallet,
 } from "../../api/vaultApi";
-import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, formatFee } from "../../utils/willHelpers";
+import { RELATIONSHIPS, INTERVAL_PRESETS, validateDms, formatFee } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
@@ -53,7 +53,7 @@ export default function CreateWill() {
       const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
       setAssets(assetsData);
       getExecutors().then(setExecutors).catch(console.error);
-      getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
+      getAssetLocks(willId).then(setLocks).catch(() => setLocks(new Map()));
       setProfile(profileData);
 
       let currentWill;
@@ -250,7 +250,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
   const attachedIds = new Set((will.assets || []).map((a) => a.assetId));
 
   function toggle(assetId) {
-    if (locks.has(assetId)) return;
+    if (locks.has(assetId) && !attachedIds.has(assetId)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(assetId)) next.delete(assetId);
@@ -302,8 +302,9 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
 
         <div className={styles.checkList}>
           {assets.map((asset) => {
-            const lock = locks.get(asset.id);
             const attached = attachedIds.has(asset.id);
+            // The asset of THIS will is also in the backend list: it is not locked for this will.
+            const lock = attached ? undefined : locks.get(asset.id);
             return (
                 <label key={asset.id} className={styles.checkRow} style={lock ? { opacity: 0.6 } : undefined}>
                   <input

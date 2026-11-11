@@ -35,7 +35,8 @@ namespace LegacyVault.Features.AssetManagement.Repositories
         {
             return await _context.Assets
                 .AsNoTracking()
-                .Where(x => x.OwnerAccountId == ownerAccountId)
+                .Where(x => x.OwnerAccountId == ownerAccountId &&
+                            x.Status != AssetStatuses.HandedOver)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
         }
@@ -54,7 +55,8 @@ namespace LegacyVault.Features.AssetManagement.Repositories
 
             return await query.FirstOrDefaultAsync(x =>
                 x.Id == assetId &&
-                x.OwnerAccountId == ownerAccountId);
+                x.OwnerAccountId == ownerAccountId &&
+                x.Status != AssetStatuses.HandedOver);
         }
 
         public async Task<AssetSecret?> GetSecretAsync(
