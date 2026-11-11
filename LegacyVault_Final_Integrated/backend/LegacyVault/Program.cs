@@ -86,6 +86,8 @@ builder.Services.AddScoped<ISmsSender, MockSmsSender>();
 // IDP Integration 
 builder.Services.AddHttpClient<IIdpIntegrationService, IdpIntegrationService>();
 
+builder.Services.AddScoped<IDmsRuleRepository, DmsRuleRepository>();
+builder.Services.AddScoped<IDmsRuleService, DmsRuleService>();
 
 // =========================
 // SHARED CURRENT USER

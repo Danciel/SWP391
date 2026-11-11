@@ -16,11 +16,13 @@ namespace LegacyVault.Features.WillManagement.Controllers
         private readonly IWillService _willService;
         private readonly ICurrentUserService _currentUser;
         private readonly OwnerPinGrantService _pinGrantService;
+        private readonly IDmsRuleService _dmsRuleService;
 
         public WillsController(
             IWillService willService,
             ICurrentUserService currentUser,
-            OwnerPinGrantService pinGrantService)
+            OwnerPinGrantService pinGrantService,
+            IDmsRuleService dmsRuleService)
         {
             _willService = willService;
             _currentUser = currentUser;
@@ -473,6 +475,28 @@ namespace LegacyVault.Features.WillManagement.Controllers
                 return BadRequest(
                     new { message = ex.Message });
             }
+        }
+
+        [HttpGet("dms-rule")]
+        public async Task<IActionResult> GetDmsRule(CancellationToken ct)
+        {
+            var rule = await _dmsRuleService.GetEffectiveAsync(ct);
+
+            if (rule == null)
+            {
+                return NotFound(new
+                {
+                    message = "DMS is not available. Please contact an administrator."
+                });
+            }
+
+            return Ok(new DmsRuleForOwnerResponse
+            {
+                ReminderBeforeDays = rule.ReminderBeforeDays,
+                MaxMissedCheckIns = rule.MaxMissedCheckIns,
+                MinCheckInIntervalDays = rule.MinCheckInIntervalDays,
+                MaxCheckInIntervalDays = rule.MaxCheckInIntervalDays
+            });
         }
     }
 }

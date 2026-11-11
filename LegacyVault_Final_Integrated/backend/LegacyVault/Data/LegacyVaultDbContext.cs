@@ -39,6 +39,8 @@ namespace LegacyVault.Data
 
         public DbSet<DmsConfiguration> DmsConfigurations { get; set; }
 
+        public DbSet<DmsRule> DmsRules { get; set; }
+
         public DbSet<DmsCheckIn> DmsCheckIns { get; set; }
 
         public DbSet<ExecutorReview> ExecutorReviews { get; set; }
@@ -506,6 +508,18 @@ namespace LegacyVault.Data
                     .HasForeignKey(x =>
                         x.DmsConfigurationId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<DmsRule>(entity =>
+            {
+                entity.ToTable("DmsRules");
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.ReminderBeforeDays).IsRequired();
+                entity.Property(x => x.MaxMissedCheckIns).IsRequired();
+                entity.Property(x => x.GraceDays).IsRequired();
+                entity.Property(x => x.MinCheckInIntervalDays).IsRequired();
+                entity.Property(x => x.MaxCheckInIntervalDays).IsRequired();
             });
 
             // =========================
