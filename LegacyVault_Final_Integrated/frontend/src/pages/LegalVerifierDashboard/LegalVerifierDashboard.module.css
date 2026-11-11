@@ -3,7 +3,7 @@
 }
 
 .header {
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto 24px;
   display: flex;
   align-items: flex-start;
@@ -35,13 +35,13 @@
 }
 
 .info {
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
   color: var(--muted);
 }
 
 .errorBox {
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto 16px;
   color: var(--bad);
   background: var(--bad-soft);
@@ -51,7 +51,7 @@
 }
 
 .toast {
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto 16px;
   background: var(--ok-soft);
   color: var(--ok);
@@ -63,7 +63,7 @@
 }
 
 .card {
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
   background: #fff;
   border-radius: 12px;

@@ -64,7 +64,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     function onSessionEnded(e) {
       clearLocalSession();
-      setSessionNotice(SESSION_NOTICE[e.detail?.reason] || SESSION_NOTICE.expired);
+      // A stale token found on app start is dropped silently; only a session that ends while in use is announced.
+      if (!e.detail?.quiet) setSessionNotice(SESSION_NOTICE[e.detail?.reason] || SESSION_NOTICE.expired);
     }
     window.addEventListener(SESSION_ENDED_EVENT, onSessionEnded);
     return () => window.removeEventListener(SESSION_ENDED_EVENT, onSessionEnded);
@@ -74,7 +75,7 @@ export function AuthProvider({ children }) {
   // here instead of waiting for the first random API call to fail.
   useEffect(() => {
     if (!getToken()) return;
-    request("/accounts/me")
+    request("/accounts/me", { quietExpiry: true })
       .then((me) => {
         setUser((prev) => {
           const merged = { ...(prev || {}), ...me };

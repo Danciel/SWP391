@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import FormField from "../../components/FormField/FormField";
 import { useAuth } from "../../context/AuthContext";
 import { validatePassword, validateConfirmPassword, runValidators } from "../../utils/validation";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./ResetPassword.module.css";
 
 const initialForm = { newPassword: "", confirmPassword: "" };
@@ -15,7 +16,7 @@ export default function ResetPassword() {
   const location = useLocation();
 
   const email = location.state?.email || "";
-  const resetToken = location.state?.resetToken || "";
+  const otp = location.state?.otp || "";
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -23,10 +24,10 @@ export default function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!email || !resetToken) {
+    if (!email || !otp) {
       navigate("/forgot-password", { replace: true });
     }
-  }, [email, resetToken, navigate]);
+  }, [email, otp, navigate]);
 
   const fieldValidators = {
     newPassword: () => validatePassword(form.newPassword),
@@ -54,7 +55,7 @@ export default function ResetPassword() {
 
     setIsSubmitting(true);
     try {
-      await resetPassword({ email, resetToken, newPassword: form.newPassword });
+      await resetPassword({ email, otp, newPassword: form.newPassword });
       navigate("/login", { state: { registeredEmail: email } });
     } catch (err) {
       setSubmitError(
@@ -66,7 +67,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
         <h1 className={styles.title}>Reset Password</h1>
@@ -99,11 +100,16 @@ export default function ResetPassword() {
         />
 
         {submitError && <p className={styles.submitError}>{submitError}</p>}
+        {/otp/i.test(submitError) && (
+          <p className={styles.footerText}>
+            <Link to="/verify-otp" state={{ email, purpose: "reset" }}>← Enter the code again</Link>
+          </p>
+        )}
 
         <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
           {isSubmitting ? "Updating..." : "Update Password"}
         </button>
       </form>
-    </div>
+    </AuthShell>
   );
 }

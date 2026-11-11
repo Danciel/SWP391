@@ -14,11 +14,10 @@ import {
   getWills,
   getWallet,
 } from "../../api/vaultApi";
-import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, executorForAsset, specialistFor, formatFee } from "../../utils/willHelpers";
+import { buildAssetLocks, RELATIONSHIPS, INTERVAL_PRESETS, validateDms, formatFee } from "../../utils/willHelpers";
 import { providerLabel, verificationInfo } from "../../utils/assetCatalog";
 import { ApiError } from "../../api/client";
 import { getExecutorReviews } from "../../api/executorApi";
-import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./CreateWill.module.css";
 import {AssetFields,AssetFileField,EMPTY_FORM,isAssetFormDirty} from "../Assets/Assets";
 import ConfirmDiscardDialog from "../../components/ConfirmDiscardDialog/ConfirmDiscardDialog";
@@ -51,23 +50,23 @@ export default function CreateWill() {
     setLoading(true);
     setLoadError("");
     try {
-    const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
-    setAssets(assetsData);
-    getExecutors().then(setExecutors).catch(console.error);
-    getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
-    setProfile(profileData);
+      const [assetsData, profileData] = await Promise.all([getAssets(user?.id), getProfile(user?.id, user)]);
+      setAssets(assetsData);
+      getExecutors().then(setExecutors).catch(console.error);
+      getWills().then((all) => setLocks(buildAssetLocks(all, willId))).catch(() => setLocks(new Map()));
+      setProfile(profileData);
 
-    let currentWill;
-    if (willId) {
-      try {
-        currentWill = await getWill(user?.id, willId);
-      } catch (err) {
-        throw new Error(`Could not load this will: ${err.message}`);
+      let currentWill;
+      if (willId) {
+        try {
+          currentWill = await getWill(user?.id, willId);
+        } catch (err) {
+          throw new Error(`Could not load this will: ${err.message}`);
+        }
+      } else {
+        currentWill = {id:null,name:"",description:"",assets:[],beneficiaries:[],executor:null,dms:null,status:"DRAFT"};
       }
-    } else {
-      currentWill = {id:null,name:"",description:"",assets:[],beneficiaries:[],executor:null,dms:null,status:"DRAFT"};
-    }
-    setWill(currentWill);
+      setWill(currentWill);
     } catch (err) {
       setLoadError(err.message || "Could not initialize will");
     } finally {
@@ -101,68 +100,68 @@ export default function CreateWill() {
   }
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.title}>Create New Will</h1>
-      <p className={styles.subtitle}>Set up your will and assign your digital assets.</p>
+      <div className={styles.page}>
+        <h1 className={styles.title}>Create New Will</h1>
+        <p className={styles.subtitle}>Set up your will and assign your digital assets.</p>
 
-      <div className={styles.stepper}>
-        {STEPS.map((label, idx) => (
-          <span key={label} className={styles.stepWrap}>
+        <div className={styles.stepper}>
+          {STEPS.map((label, idx) => (
+              <span key={label} className={styles.stepWrap}>
             <button
-              type="button"
-              className={idx === step ? styles.stepActive : styles.step}
-              onClick={() => setStep(idx)}
+                type="button"
+                className={idx === step ? styles.stepActive : styles.step}
+                onClick={() => setStep(idx)}
             >
               {label}
             </button>
-            {idx < STEPS.length - 1 && <span className={styles.stepDash}> — </span>}
+                {idx < STEPS.length - 1 && <span className={styles.stepDash}> — </span>}
           </span>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className={styles.card}>
-        {step === 0 && <InfoStep will={will} onSave={persist} onNext={goNext} userFullName={user?.fullName} />}
-        {step === 1 && (
-          <AssetsStep
-            will={will}
-            assets={assets}
-            locks={locks}
-            userId={user?.id}
-            onAssetsChanged={setAssets}
-            onSave={persist}
-            onNext={goNext}
-            onBack={goBack}
-          />
-        )}
-        {step === 2 && (
-          <BeneficiariesStep
-            will={will}
-            assets={assets}
-            profile={profile}
-            userId={user?.id}
-            willId={will.id}
-            onUpdated={setWill}
-            onNext={goNext}
-            onBack={goBack}
-          />
-        )}
-        {step === 3 && (
-          <ExecutorStep executors={executors} will={will} onSave={persist} onNext={goNext} onBack={goBack} />
-        )}
-        {step === 4 && <DmsStep will={will} onSave={persist} onNext={goNext} onBack={goBack} />}
-        {step === 5 && (
-          <ReviewStep
-            will={will}
-            assets={assets}
-            profile={profile}
-            executors={executors}
-            userId={user?.id}
-            onBack={goBack}
-            onSubmitted={() => navigate(`/dashboard/my-wills/${will.id}`, {replace:true})}
-          />
-        )}
+        <div className={styles.card}>
+          {step === 0 && <InfoStep will={will} onSave={persist} onNext={goNext} userFullName={user?.fullName} />}
+          {step === 1 && (
+              <AssetsStep
+                  will={will}
+                  assets={assets}
+                  locks={locks}
+                  userId={user?.id}
+                  onAssetsChanged={setAssets}
+                  onSave={persist}
+                  onNext={goNext}
+                  onBack={goBack}
+              />
+          )}
+          {step === 2 && (
+              <BeneficiariesStep
+                  will={will}
+                  assets={assets}
+                  profile={profile}
+                  userId={user?.id}
+                  willId={will.id}
+                  onUpdated={setWill}
+                  onNext={goNext}
+                  onBack={goBack}
+              />
+          )}
+          {step === 3 && (
+              <ExecutorStep executors={executors} will={will} onSave={persist} onNext={goNext} onBack={goBack} />
+          )}
+          {step === 4 && <DmsStep will={will} onSave={persist} onNext={goNext} onBack={goBack} />}
+          {step === 5 && (
+              <ReviewStep
+                  will={will}
+                  assets={assets}
+                  profile={profile}
+                  executors={executors}
+                  userId={user?.id}
+                  onBack={goBack}
+                  onSubmitted={() => navigate(`/dashboard/my-wills/${will.id}`, {replace:true})}
+              />
+          )}
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -187,32 +186,32 @@ function InfoStep({ will, onSave, onNext, userFullName }) {
   }
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Will Information</h2>
-      {error && <p className={styles.error} role="alert">{error}</p>}
-      <label className={styles.label}>Will Name</label>
-      <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Family Legacy 2026" />
+      <div>
+        <h2 className={styles.stepHeading}>Will Information</h2>
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        <label className={styles.label}>Will Name</label>
+        <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Family Legacy 2026" />
 
-      <label className={styles.label}>Description</label>
-      <textarea
-        className={styles.textarea}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Digital assets legacy..."
-      />
+        <label className={styles.label}>Description</label>
+        <textarea
+            className={styles.textarea}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Digital assets legacy..."
+        />
 
-      <label className={styles.label}>Created By</label>
-      <p className={styles.staticValue}>{userFullName || "—"}</p>
+        <label className={styles.label}>Created By</label>
+        <p className={styles.staticValue}>{userFullName || "—"}</p>
 
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} disabled={saving} onClick={handleSaveDraft}>
-          Save Draft
-        </button>
-        <button className={styles.primaryBtn} disabled={saving || !name.trim()} onClick={handleNext}>
-          Next →
-        </button>
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} disabled={saving} onClick={handleSaveDraft}>
+            Save Draft
+          </button>
+          <button className={styles.primaryBtn} disabled={saving || !name.trim()} onClick={handleNext}>
+            Next →
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -295,25 +294,25 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
   }
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Select Assets</h2>
-      <p className={styles.hint}>Select the assets you want to include in this will.</p>
+      <div>
+        <h2 className={styles.stepHeading}>Select Assets</h2>
+        <p className={styles.hint}>Select the assets you want to include in this will.</p>
 
-      {assets.length === 0 && <p className={styles.hint}>No assets yet — add one below.</p>}
+        {assets.length === 0 && <p className={styles.hint}>No assets yet — add one below.</p>}
 
-      <div className={styles.checkList}>
-        {assets.map((asset) => {
-          const lock = locks.get(asset.id);
-          const attached = attachedIds.has(asset.id);
-          return (
-            <label key={asset.id} className={styles.checkRow} style={lock ? { opacity: 0.6 } : undefined}>
-              <input
-                type="checkbox"
-                checked={selected.has(asset.id)}
-                disabled={Boolean(lock)}
-                onChange={() => toggle(asset.id)}
-              />
-              <span>
+        <div className={styles.checkList}>
+          {assets.map((asset) => {
+            const lock = locks.get(asset.id);
+            const attached = attachedIds.has(asset.id);
+            return (
+                <label key={asset.id} className={styles.checkRow} style={lock ? { opacity: 0.6 } : undefined}>
+                  <input
+                      type="checkbox"
+                      checked={selected.has(asset.id)}
+                      disabled={Boolean(lock)}
+                      onChange={() => toggle(asset.id)}
+                  />
+                  <span>
                 <strong>{asset.name}</strong>
                 <span className={styles.checkMeta}>
                   {asset.type}
@@ -324,47 +323,47 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
                   {attached ? " · In this will (untick to remove)" : ""}
                 </span>
               </span>
-            </label>
-          );
-        })}
-      </div>
-
-      <button type="button" className={styles.linkBtn} onClick={() => setShowModal(true)}>
-        + Add New Asset
-      </button>
-
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={onBack}>
-          ← Back
-        </button>
-        <button className={styles.primaryBtn} disabled={saving || selected.size === 0} onClick={handleNext}>
-          Next →
-        </button>
-      </div>
-
-      {showModal && (
-        <div className={styles.overlay} {...addBackdrop}>
-          <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleAddAsset}>
-            <h3 className={styles.modalTitle}>Add Asset</h3>
-            <AssetFields form={form} setForm={setForm} />
-            <AssetFileField form={form} setForm={setForm} />
-            {error && <p className={styles.error}>{error}</p>}
-            <div className={styles.actions}>
-              <button type="button" className={styles.secondaryBtn} onClick={() => setShowModal(false)}>
-                Cancel
-              </button>
-              <button type="submit" className={styles.primaryBtn} disabled={saving}>
-                {saving ? "Adding..." : "Add Asset"}
-              </button>
-            </div>
-          </form>
+                </label>
+            );
+          })}
         </div>
-      )}
 
-      {showModal && showDiscard && (
-        <ConfirmDiscardDialog onConfirm={confirmDiscard} onCancel={() => setShowDiscard(false)} />
-      )}
-    </div>
+        <button type="button" className={styles.linkBtn} onClick={() => setShowModal(true)}>
+          + Add New Asset
+        </button>
+
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={onBack}>
+            ← Back
+          </button>
+          <button className={styles.primaryBtn} disabled={saving || selected.size === 0} onClick={handleNext}>
+            Next →
+          </button>
+        </div>
+
+        {showModal && (
+            <div className={styles.overlay} {...addBackdrop}>
+              <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleAddAsset}>
+                <h3 className={styles.modalTitle}>Add Asset</h3>
+                <AssetFields form={form} setForm={setForm} />
+                <AssetFileField form={form} setForm={setForm} />
+                {error && <p className={styles.error}>{error}</p>}
+                <div className={styles.actions}>
+                  <button type="button" className={styles.secondaryBtn} onClick={() => setShowModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={styles.primaryBtn} disabled={saving}>
+                    {saving ? "Adding..." : form.type === "Cloud Storage" ? "Select Drive File & Add" : "Add Asset"}
+                  </button>
+                </div>
+              </form>
+            </div>
+        )}
+
+        {showModal && showDiscard && (
+            <ConfirmDiscardDialog onConfirm={confirmDiscard} onCancel={() => setShowDiscard(false)} />
+        )}
+      </div>
   );
 }
 
@@ -382,7 +381,7 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
   async function handleAssign(assetId, beneficiary) {
     try {
       if (!beneficiary) throw new Error("Removing beneficiaries requires a dedicated backend endpoint.");
-    const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary);
+      const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary, will);
       onUpdated(updated);
       setActiveAssetId(null);
     } catch(err) { throw err; }
@@ -390,74 +389,74 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
 
   if (!isVerified) {
     return (
-      <div>
-        <h2 className={styles.stepHeading}>Assign Beneficiaries</h2>
-        <div className={styles.warnBox}>
-          <h3 className={styles.warnTitle}>Identity Verification Required</h3>
-          <p className={styles.hint}>You must verify your identity before assigning beneficiaries.</p>
-          <div className={styles.actions}>
-            <button className={styles.secondaryBtn} onClick={onBack}>
-              ← Back
-            </button>
-            <a
-              className={styles.primaryBtn}
-              href={`/dashboard/verify-identity?returnTo=${encodeURIComponent(
-                `/dashboard/create-will?willId=${willId}`
-              )}`}
-            >
-              Verify Identity
-            </a>
+        <div>
+          <h2 className={styles.stepHeading}>Assign Beneficiaries</h2>
+          <div className={styles.warnBox}>
+            <h3 className={styles.warnTitle}>Identity Verification Required</h3>
+            <p className={styles.hint}>You must verify your identity before assigning beneficiaries.</p>
+            <div className={styles.actions}>
+              <button className={styles.secondaryBtn} onClick={onBack}>
+                ← Back
+              </button>
+              <a
+                  className={styles.primaryBtn}
+                  href={`/dashboard/verify-identity?returnTo=${encodeURIComponent(
+                      `/dashboard/create-will?willId=${willId}`
+                  )}`}
+              >
+                Verify Identity
+              </a>
+            </div>
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Assign Beneficiaries</h2>
-      <p className={styles.infoNote}>ℹ Beneficiaries will not be notified until the handover process is activated.</p>
+      <div>
+        <h2 className={styles.stepHeading}>Assign Beneficiaries</h2>
+        <p className={styles.infoNote}>ℹ Beneficiaries will not be notified until the handover process is activated.</p>
 
-      {willAssets.map((entry) => (
-        <div key={entry.assetId} className={styles.beneficiaryCard}>
-          <h4 className={styles.beneficiaryAssetName}>{assetName(entry.assetId)}</h4>
-          {entry.beneficiary ? (
-            <div className={styles.beneficiaryInfo}>
-              <p className={styles.beneficiaryName}>{entry.beneficiary.fullName}</p>
-              <p className={styles.beneficiaryMeta}>
-                {[entry.beneficiary.email, entry.beneficiary.phone, entry.beneficiary.relationship].filter(Boolean).join(" · ")}
-              </p>
-              <p className={styles.beneficiaryStatus}>
-                Status: {entry.beneficiary.beneficiaryAccountId ? "Designated (has account)" : "Designated (no account yet)"}
-              </p>
-              <button className={styles.linkBtn} onClick={() => setActiveAssetId(entry.assetId)}>
-                Change beneficiary
-              </button>
+        {willAssets.map((entry) => (
+            <div key={entry.assetId} className={styles.beneficiaryCard}>
+              <h4 className={styles.beneficiaryAssetName}>{assetName(entry.assetId)}</h4>
+              {entry.beneficiary ? (
+                  <div className={styles.beneficiaryInfo}>
+                    <p className={styles.beneficiaryName}>{entry.beneficiary.fullName}</p>
+                    <p className={styles.beneficiaryMeta}>
+                      {[entry.beneficiary.email, entry.beneficiary.phone, entry.beneficiary.relationship].filter(Boolean).join(" · ")}
+                    </p>
+                    <p className={styles.beneficiaryStatus}>
+                      Status: {entry.beneficiary.beneficiaryAccountId ? "Designated (has account)" : "Designated (no account yet)"}
+                    </p>
+                    <button className={styles.linkBtn} onClick={() => setActiveAssetId(entry.assetId)}>
+                      Change beneficiary
+                    </button>
+                  </div>
+              ) : (
+                  <button className={styles.linkBtn} onClick={() => setActiveAssetId(entry.assetId)}>
+                    + Add Beneficiary
+                  </button>
+              )}
             </div>
-          ) : (
-            <button className={styles.linkBtn} onClick={() => setActiveAssetId(entry.assetId)}>
-              + Add Beneficiary
-            </button>
-          )}
+        ))}
+
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={onBack}>
+            ← Back
+          </button>
+          <button className={styles.primaryBtn} disabled={!allAssigned} onClick={onNext}>
+            Next →
+          </button>
         </div>
-      ))}
 
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={onBack}>
-          ← Back
-        </button>
-        <button className={styles.primaryBtn} disabled={!allAssigned} onClick={onNext}>
-          Next →
-        </button>
+        {activeAssetId && (
+            <BeneficiaryModal
+                onClose={() => setActiveAssetId(null)}
+                onAssign={(beneficiary) => handleAssign(activeAssetId, beneficiary)}
+            />
+        )}
       </div>
-
-      {activeAssetId && (
-        <BeneficiaryModal
-          onClose={() => setActiveAssetId(null)}
-          onAssign={(beneficiary) => handleAssign(activeAssetId, beneficiary)}
-        />
-      )}
-    </div>
   );
 }
 
@@ -470,7 +469,32 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [lookupError,setLookupError]=useState("");
   const [searching,setSearching]=useState(false);
   const [assigning,setAssigning]=useState(false);
-  const backdrop = useBackdropClose(onClose);
+  const [showDiscard, setShowDiscard] = useState(false);
+
+  // Anything typed/changed counts as unsaved work worth protecting.
+  const isDirty =
+    query.trim() !== "" ||
+    newForm.fullName.trim() !== "" ||
+    newForm.email.trim() !== "" ||
+    newForm.phone.trim() !== "" ||
+    relationship !== "Daughter";
+
+  // Clicking outside / pressing Esc asks first when there is something to lose.
+  function requestClose() {
+    if (assigning) return;
+    if (isDirty) setShowDiscard(true);
+    else onClose();
+  }
+
+  const backdrop = useBackdropClose(requestClose);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape" && !showDiscard) requestClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
   const newEmailError = newForm.email ? validateEmail(newForm.email) : "";
 
   function handleQueryChange(value) { setQuery(value); setFound(undefined); setLookupError(""); }
@@ -489,117 +513,119 @@ function BeneficiaryModal({ onClose, onAssign }) {
   }
 
   return (
-    <div className={styles.overlay} {...backdrop}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.tabRow}>
-          <button
-            className={mode === "search" ? styles.tabActive : styles.tab}
-            onClick={() => setMode("search")}
-          >
-            Existing Account
-          </button>
-          <button className={mode === "new" ? styles.tabActive : styles.tab} onClick={() => setMode("new")}>
-            New Beneficiary
-          </button>
-        </div>
+    <>
+      <div className={styles.overlay} {...backdrop}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.tabRow}>
+            <button
+                className={mode === "search" ? styles.tabActive : styles.tab}
+                onClick={() => setMode("search")}
+            >
+              Existing Account
+            </button>
+            <button className={mode === "new" ? styles.tabActive : styles.tab} onClick={() => setMode("new")}>
+              New Beneficiary
+            </button>
+          </div>
 
-        {mode === "search" ? (
-          <>
-            <label className={styles.label}>Search Beneficiary</label>
-            <div className={styles.searchRow}>
-              <input
-                className={styles.input}
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
-                placeholder="Email or phone number"
-              />
-              <button type="button" className={styles.secondaryBtn} disabled={searching} onClick={handleSearch}>
-                Search
-              </button>
-            </div>
-            {lookupError && <p className={styles.error} role="alert">{lookupError}</p>}
-            {found === null && <p className={styles.hint}>No account found with that email or phone number.</p>}
-            {found && (
-              <div className={styles.foundCard}>
-                <p className={styles.beneficiaryName}>{found.fullName}</p>
-                <p className={styles.beneficiaryMeta}>
-                  {found.maskedEmail || found.email} · {found.maskedPhoneNumber || found.phone}
+          {mode === "search" ? (
+              <>
+                <label className={styles.label}>Search Beneficiary</label>
+                <div className={styles.searchRow}>
+                  <input
+                      className={styles.input}
+                      value={query}
+                      onChange={(e) => handleQueryChange(e.target.value)}
+                      placeholder="Email or phone number"
+                  />
+                  <button type="button" className={styles.secondaryBtn} disabled={searching} onClick={handleSearch}>
+                    Search
+                  </button>
+                </div>
+                {lookupError && <p className={styles.error} role="alert">{lookupError}</p>}
+                {found === null && <p className={styles.hint}>No account found with that email or phone number.</p>}
+                {found && (
+                    <div className={styles.foundCard}>
+                      <p className={styles.beneficiaryName}>{found.fullName}</p>
+                      <p className={styles.beneficiaryMeta}>
+                        {found.maskedEmail || found.email} · {found.maskedPhoneNumber || found.phone}
+                      </p>
+                      <label className={styles.label}>Relationship</label>
+                      <select className={styles.input} value={relationship} onChange={(e) => setRelationship(e.target.value)}>
+                        {RELATIONSHIPS.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                        ))}
+                      </select>
+                      <button
+                          className={styles.primaryBtn}
+                          onClick={() =>
+                              assign({ ...found, relationship, accountId: found.id })
+                          }
+                      >
+                        Select
+                      </button>
+                    </div>
+                )}
+              </>
+          ) : (
+              <>
+                <label className={styles.label}>Full Name</label>
+                <input
+                    className={styles.input}
+                    value={newForm.fullName}
+                    onChange={(e) => setNewForm({ ...newForm, fullName: e.target.value })}
+                />
+                <label className={styles.label}>Email</label>
+                <input className={styles.input} type="email" value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
+                {newEmailError && <p className={styles.error} role="alert">{newEmailError}</p>}
+                <label className={styles.label}>Phone Number (optional)</label>
+                <input className={styles.input} value={newForm.phone} onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })} />
+                <p className={styles.hint}>
+                  This person does not need a LegacyVault account yet. Email is required; phone is optional.
                 </p>
                 <label className={styles.label}>Relationship</label>
                 <select className={styles.input} value={relationship} onChange={(e) => setRelationship(e.target.value)}>
                   {RELATIONSHIPS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
                   ))}
                 </select>
-                <button
-                  className={styles.primaryBtn}
-                  onClick={() =>
-                    assign({ ...found, relationship, accountId: found.id })
-                  }
-                >
-                  Select
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <label className={styles.label}>Full Name</label>
-            <input
-              className={styles.input}
-              value={newForm.fullName}
-              onChange={(e) => setNewForm({ ...newForm, fullName: e.target.value })}
-            />
-            <label className={styles.label}>Email</label>
-            <input className={styles.input} type="email" value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
-            {newEmailError && <p className={styles.error} role="alert">{newEmailError}</p>}
-            <label className={styles.label}>Phone Number (optional)</label>
-            <input className={styles.input} value={newForm.phone} onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })} />
-            <p className={styles.hint}>
-              This person does not need a LegacyVault account yet. Email is required; phone is optional.
-            </p>
-            <label className={styles.label}>Relationship</label>
-            <select className={styles.input} value={relationship} onChange={(e) => setRelationship(e.target.value)}>
-              {RELATIONSHIPS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <div className={styles.actions}>
-              <button className={styles.secondaryBtn} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                className={styles.primaryBtn}
-                disabled={assigning || !newForm.fullName.trim() || !newForm.email || Boolean(validateEmail(newForm.email))}
-                onClick={() =>
-                  assign({ ...newForm, fullName: newForm.fullName.trim(), email: newForm.email.trim(), phone: newForm.phone.trim(), relationship, accountId: null })
-                }
-              >
-                Assign
-              </button>
-            </div>
-          </>
-        )}
+                <div className={styles.actions}>
+                  <button className={styles.secondaryBtn} onClick={onClose}>
+                    Cancel
+                  </button>
+                  <button
+                      className={styles.primaryBtn}
+                      disabled={assigning || !newForm.fullName.trim() || !newForm.email || Boolean(validateEmail(newForm.email))}
+                      onClick={() =>
+                          assign({ ...newForm, fullName: newForm.fullName.trim(), email: newForm.email.trim(), phone: newForm.phone.trim(), relationship, accountId: null })
+                      }
+                  >
+                    Assign
+                  </button>
+                </div>
+              </>
+          )}
+        </div>
       </div>
-    </div>
+
+      {showDiscard && (
+        <ConfirmDiscardDialog
+          title="Discard this beneficiary?"
+          onConfirm={() => { setShowDiscard(false); onClose(); }}
+          onCancel={() => setShowDiscard(false)}
+        />
+      )}
+    </>
   );
 }
 
 function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   const willAssets = will.assets || [];
   const [mainId, setMainId] = useState(will.executor?.id || "");
-  const [picks, setPicks] = useState(() => {
-    const init = {};
-    willAssets.forEach((a) => {
-      const e = specialistFor(will, a.willAssetId);
-      if (e) init[a.willAssetId] = e.id;
-    });
-    return init;
-  });
   const [saving, setSaving] = useState(false);
   const [error,setError]=useState("");
   const [review, setReview] = useState({ id: null, loading: false, items: [], message: "" });
@@ -621,10 +647,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   async function handleNext() {
     setSaving(true);
     try {
-      const specialists = willAssets
-        .filter((a) => picks[a.willAssetId] && picks[a.willAssetId] !== mainId)
-        .map((a) => ({ willAssetId: a.willAssetId, executorId: picks[a.willAssetId] }));
-      await onSave({ mainExecutorId: mainId, specialists });
+      await onSave({ mainExecutorId: mainId });
       setError("");
       onNext();
     } catch (err) { setError(err.message || "Could not assign executor"); }
@@ -632,99 +655,73 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
   }
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Choose your executor</h2>
-      <p className={styles.hint}>
-        Your main executor accepts the will, holds the booking fee and hands over every asset after you pass away.
-      </p>
-      {error && <p role="alert" className={styles.error}>{error}</p>}
-      {executors.length === 0 && <p className={styles.hint}>No executors available yet.</p>}
-      <div className={styles.executorList}>
-        {executors.map((ex) => (
-          <Fragment key={ex.id}>
-          <div className={styles.executorCard}>
-            <div>
-              <h4 className={styles.beneficiaryName}>{ex.name}</h4>
-              <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
-              <p className={styles.beneficiaryMeta}>
-                ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
-              </p>
-              <p className={styles.feeText}>
-                Booking fee: {formatFee(ex) || "Not set by this executor yet"}
-              </p>
-              <ExecutorFeeInsight executor={ex} />
-            </div>
-            <div className={styles.actions} style={{ marginTop: 0 }}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                aria-expanded={review.id === ex.id}
-                onClick={() => toggleReviews(ex.id)}
-              >
-                {review.id === ex.id ? "Hide reviews" : "View reviews"}
-              </button>
-              <button
-                type="button"
-                className={mainId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
-                aria-pressed={mainId === ex.id}
-                onClick={() => {
-                  setMainId(ex.id);
-                  setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([, id]) => id !== ex.id)));
-                }}
-              >
-                {mainId === ex.id ? "Main executor" : "Choose as main executor"}
-              </button>
-            </div>
-          </div>
-          {review.id === ex.id && (
-            <div className={styles.hint} role="status">
-              {review.loading && "Loading reviews..."}
-              {!review.loading && review.message}
-              {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
-              {!review.loading && review.items.map((r) => (
-                <p key={r.id} className={styles.beneficiaryMeta}>
-                  ⭐ {Number(r.rating || 0).toFixed(1)}{r.ownerName ? ` · ${r.ownerName}` : ""} — {r.comment}
-                </p>
-              ))}
-            </div>
-          )}
-          </Fragment>
-        ))}
-      </div>
-
-      <h3 className={styles.stepHeading}>Specialists for specific assets (optional)</h3>
-      <p className={styles.hint}>
-        A specialist is a recommendation for the main executor, for example someone who knows crypto wallets.
-        They do not need to accept, are not charged through LegacyVault, and the main executor still hands over the asset.
-      </p>
-      {willAssets.length === 0 && <p className={styles.hint}>Add assets in the previous steps first.</p>}
-      {willAssets.map((a) => (
-        <div key={a.willAssetId} className={styles.beneficiaryCard}>
-          <h4 className={styles.beneficiaryAssetName}>{a.assetName || "Asset"}</h4>
-          <select
-            className={styles.input}
-            aria-label={`Specialist for ${a.assetName || "asset"}`}
-            disabled={!mainId}
-            value={picks[a.willAssetId] || ""}
-            onChange={(e) => setPicks((prev) => ({ ...prev, [a.willAssetId]: e.target.value || undefined }))}
-          >
-            <option value="">No specialist: main executor handles it</option>
-            {executors.filter((ex) => ex.id !== mainId).map((ex) => (
-              <option key={ex.id} value={ex.id}>{ex.name}</option>
-            ))}
-          </select>
+      <div>
+        <h2 className={styles.stepHeading}>Choose your executor</h2>
+        <p className={styles.hint}>
+          Your main executor accepts the will, holds the booking fee and hands over every asset after you pass away.
+        </p>
+        {error && <p role="alert" className={styles.error}>{error}</p>}
+        {executors.length === 0 && <p className={styles.hint}>No executors available yet.</p>}
+        <div className={styles.executorList}>
+          {executors.map((ex) => (
+              <Fragment key={ex.id}>
+                <div className={styles.executorCard}>
+                  <div>
+                    <h4 className={styles.beneficiaryName}>{ex.name}</h4>
+                    <p className={styles.beneficiaryMeta}>{ex.bio || "No introduction provided."}</p>
+                    <p className={styles.beneficiaryMeta}>
+                      ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
+                    </p>
+                    <p className={styles.feeText}>
+                      Booking fee: {formatFee(ex) || "Not set by this executor yet"}
+                    </p>
+                  </div>
+                  <div className={styles.actions} style={{ marginTop: 0 }}>
+                    <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        aria-expanded={review.id === ex.id}
+                        onClick={() => toggleReviews(ex.id)}
+                    >
+                      {review.id === ex.id ? "Hide reviews" : "View reviews"}
+                    </button>
+                    <button
+                        type="button"
+                        className={mainId === ex.id ? styles.primaryBtn : styles.secondaryBtn}
+                        aria-pressed={mainId === ex.id}
+                        onClick={() => {
+                          setMainId(ex.id);
+                        }}
+                    >
+                      {mainId === ex.id ? "Main executor" : "Choose as main executor"}
+                    </button>
+                  </div>
+                </div>
+                {review.id === ex.id && (
+                    <div className={styles.hint} role="status">
+                      {review.loading && "Loading reviews..."}
+                      {!review.loading && review.message}
+                      {!review.loading && !review.message && review.items.length === 0 && "No reviews yet."}
+                      {!review.loading && review.items.map((r) => (
+                          <p key={r.id} className={styles.beneficiaryMeta}>
+                            ⭐ {Number(r.rating || 0).toFixed(1)}{r.ownerName ? ` · ${r.ownerName}` : ""} — {r.comment}
+                          </p>
+                      ))}
+                    </div>
+                )}
+              </Fragment>
+          ))}
         </div>
-      ))}
 
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={onBack}>
-          ← Back
-        </button>
-        <button className={styles.primaryBtn} disabled={!mainId || willAssets.length === 0 || saving} onClick={handleNext}>
-          Next →
-        </button>
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={onBack}>
+            ← Back
+          </button>
+          <button className={styles.primaryBtn} disabled={!mainId || willAssets.length === 0 || saving} onClick={handleNext}>
+            Next →
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -751,51 +748,51 @@ function DmsStep({ will, onSave, onNext, onBack }) {
   }
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Dead Man's Switch</h2>
-      {error && <p role="alert" className={styles.error}>{error}</p>}
+      <div>
+        <h2 className={styles.stepHeading}>Dead Man's Switch</h2>
+        {error && <p role="alert" className={styles.error}>{error}</p>}
 
-      <label className={styles.label}>Check-in Interval</label>
-      <select className={styles.input} value={intervalChoice} onChange={(e) => setIntervalChoice(e.target.value)}>
-        {INTERVAL_PRESETS.map((d) => (
-          <option key={d} value={d}>
-            {d === 1 ? "Every day" : `Every ${d} days`}
-          </option>
-        ))}
-        <option value="custom">Custom...</option>
-      </select>
-      {intervalChoice === "custom" && (
-        <input
-          className={styles.input}
-          type="number"
-          min={1}
-          max={3650}
-          value={customDays}
-          onChange={(e) => setCustomDays(e.target.value)}
-          placeholder="Number of days (1 - 3650)"
-        />
-      )}
+        <label className={styles.label}>Check-in Interval</label>
+        <select className={styles.input} value={intervalChoice} onChange={(e) => setIntervalChoice(e.target.value)}>
+          {INTERVAL_PRESETS.map((d) => (
+              <option key={d} value={d}>
+                {d === 1 ? "Every day" : `Every ${d} days`}
+              </option>
+          ))}
+          <option value="custom">Custom...</option>
+        </select>
+        {intervalChoice === "custom" && (
+            <input
+                className={styles.input}
+                type="number"
+                min={1}
+                max={3650}
+                value={customDays}
+                onChange={(e) => setCustomDays(e.target.value)}
+                placeholder="Number of days (1 - 3650)"
+            />
+        )}
 
-      <label className={styles.label}>Reminder Before Due Date (days)</label>
-      <input className={styles.input} type="number" min={0} value={reminderDays} onChange={(e) => setReminderDays(e.target.value)} />
+        <label className={styles.label}>Reminder Before Due Date (days)</label>
+        <input className={styles.input} type="number" min={0} value={reminderDays} onChange={(e) => setReminderDays(e.target.value)} />
 
-      <label className={styles.label}>Maximum Missed Check-ins</label>
-      <input className={styles.input} type="number" min={1} max={100} value={maxMissed} onChange={(e) => setMaxMissed(e.target.value)} />
+        <label className={styles.label}>Maximum Missed Check-ins</label>
+        <input className={styles.input} type="number" min={1} max={100} value={maxMissed} onChange={(e) => setMaxMissed(e.target.value)} />
 
-      <p className={styles.infoNote}>
-        ℹ You choose how often you check in. After the maximum number of missed check-ins your Executor is asked to
-        verify the situation. DMS does not authorize asset handover on its own.
-      </p>
+        <p className={styles.infoNote}>
+          ℹ You choose how often you check in. After the maximum number of missed check-ins your Executor is asked to
+          verify the situation. DMS does not authorize asset handover on its own.
+        </p>
 
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={onBack}>
-          ← Back
-        </button>
-        <button className={styles.primaryBtn} disabled={saving} onClick={handleNext}>
-          Next →
-        </button>
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={onBack}>
+            ← Back
+          </button>
+          <button className={styles.primaryBtn} disabled={saving} onClick={handleNext}>
+            Next →
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -830,91 +827,78 @@ function ReviewStep({ will, assets, profile, executors = [], userId, onBack, onS
   const isVerified = profile.identityStatus === "VERIFIED";
 
   return (
-    <div>
-      <h2 className={styles.stepHeading}>Review Your Will</h2>
-      <h3 className={styles.reviewWillName}>{will.name || "Untitled Will"}</h3>
+      <div>
+        <h2 className={styles.stepHeading}>Review Your Will</h2>
+        <h3 className={styles.reviewWillName}>{will.name || "Untitled Will"}</h3>
 
-      <div className={styles.reviewBlock}>
-        <p className={styles.reviewLabel}>Assets ({(will.assets || []).length})</p>
-        {(will.assets || []).map((a) => (
-          <p key={a.assetId} className={styles.reviewLine}>
-            {assetName(a.assetId)} → {a.beneficiary?.fullName || "—"}
-            {a.beneficiary?.relationship ? ` (${a.beneficiary.relationship})` : ""}
+        <div className={styles.reviewBlock}>
+          <p className={styles.reviewLabel}>Assets ({(will.assets || []).length})</p>
+          {(will.assets || []).map((a) => (
+              <p key={a.assetId} className={styles.reviewLine}>
+                {assetName(a.assetId)} → {a.beneficiary?.fullName || "—"}
+                {a.beneficiary?.relationship ? ` (${a.beneficiary.relationship})` : ""}
+              </p>
+          ))}
+        </div>
+
+        <div className={styles.reviewBlock}>
+          <p className={styles.reviewLabel}>Main executor</p>
+          <p className={styles.reviewLine}>{mainExecutor?.name || "—"}</p>
+          {mainFee && <p className={styles.feeText}>Booking fee: {mainFee}. It is held from your wallet when you submit.</p>}
+        </div>
+
+        <div className={styles.reviewBlock}>
+          <p className={styles.reviewLabel}>Dead Man's Switch</p>
+          <p className={styles.reviewLine}>
+            {will.dms?.enabled ? "Enabled" : "Disabled"} · Check-in every {will.dms?.checkInDays} days · Remind {will.dms?.reminderDays} days before · Max missed{" "}
+            {will.dms?.maxMissed}
           </p>
-        ))}
-      </div>
+        </div>
 
-      <div className={styles.reviewBlock}>
-        <p className={styles.reviewLabel}>Main executor</p>
-        <p className={styles.reviewLine}>{mainExecutor?.name || "—"}</p>
-        {mainFee && <p className={styles.feeText}>Booking fee: {mainFee}. It is held from your wallet when you submit.</p>}
-        {(will.assets || []).some((a) => specialistFor(will, a.willAssetId)) && (
-          <>
-            <p className={styles.reviewLabel} style={{ marginTop: 12 }}>Specialists (recommendations only)</p>
-            {(will.assets || []).map((a) => {
-              const sp = specialistFor(will, a.willAssetId);
-              return sp ? (
-                <p key={a.willAssetId || a.assetId} className={styles.reviewLine}>
-                  {assetName(a.assetId)} → {sp.name}
-                </p>
-              ) : null;
-            })}
-          </>
+        <div className={styles.reviewBlock}>
+          <p className={styles.reviewLabel}>Identity Verification</p>
+          <p className={isVerified ? styles.reviewOk : styles.reviewWarn}>{isVerified ? "✓ VERIFIED" : "⚠ NOT VERIFIED"}</p>
+        </div>
+
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={onBack}>
+            ← Back
+          </button>
+          <button
+              className={styles.primaryBtn}
+              disabled={!isVerified || !will.executor}
+              onClick={() => setShowPayment(true)}
+          >
+            Submit Will
+          </button>
+        </div>
+
+        {showPayment && (
+            <div className={styles.overlay} {...payBackdrop}>
+              <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h3 className={styles.modalTitle}>Confirm Will Submission</h3>
+                {submitError && <p className={styles.error} role="alert">{submitError}</p>}
+                <p className={styles.reviewLine}>Main executor: {mainExecutor?.name || "—"}</p>
+                {mainFee && <p className={styles.reviewLine}>Booking fee to hold: {mainFee}</p>}
+                {wallet && <p className={styles.reviewLine}>Wallet balance: {Number(wallet.balance).toLocaleString("en-US")} {wallet.currency}</p>}
+                {shortfall && (
+                    <p className={styles.error} role="alert">
+                      Your balance is below the booking fee. <Link to="/dashboard/wallet">Top up your wallet</Link> first.
+                    </p>
+                )}
+                <p className={styles.hint}>The fee is held when you confirm and released to the executor after the handover. Your will is then sent to the executor to accept.</p>
+                <div className={styles.actions}>
+                  <button className={styles.secondaryBtn} onClick={() => setShowPayment(false)}>
+                    Cancel
+                  </button>
+                  <button className={styles.primaryBtn} disabled={submitting} onClick={handleConfirmSubmit}>
+                    {submitting ? "Processing..." : "Confirm & Submit"}
+                  </button>
+                </div>
+              </div>
+            </div>
         )}
       </div>
-
-      <div className={styles.reviewBlock}>
-        <p className={styles.reviewLabel}>Dead Man's Switch</p>
-        <p className={styles.reviewLine}>
-          {will.dms?.enabled ? "Enabled" : "Disabled"} · Check-in every {will.dms?.checkInDays} days · Remind {will.dms?.reminderDays} days before · Max missed{" "}
-          {will.dms?.maxMissed}
-        </p>
-      </div>
-
-      <div className={styles.reviewBlock}>
-        <p className={styles.reviewLabel}>Identity Verification</p>
-        <p className={isVerified ? styles.reviewOk : styles.reviewWarn}>{isVerified ? "✓ VERIFIED" : "⚠ NOT VERIFIED"}</p>
-      </div>
-
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={onBack}>
-          ← Back
-        </button>
-        <button
-          className={styles.primaryBtn}
-          disabled={!isVerified || !will.executor}
-          onClick={() => setShowPayment(true)}
-        >
-          Submit Will
-        </button>
-      </div>
-
-      {showPayment && (
-        <div className={styles.overlay} {...payBackdrop}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Confirm Will Submission</h3>
-            {submitError && <p className={styles.error} role="alert">{submitError}</p>}
-            <p className={styles.reviewLine}>Main executor: {mainExecutor?.name || "—"}</p>
-            {mainFee && <p className={styles.reviewLine}>Booking fee to hold: {mainFee}</p>}
-            {wallet && <p className={styles.reviewLine}>Wallet balance: {Number(wallet.balance).toLocaleString("en-US")} {wallet.currency}</p>}
-            {shortfall && (
-              <p className={styles.error} role="alert">
-                Your balance is below the booking fee. <Link to="/dashboard/wallet">Top up your wallet</Link> first.
-              </p>
-            )}
-            <p className={styles.hint}>The fee is held when you confirm and released to the executor after the handover. Your will is then sent to the executor to accept.</p>
-            <div className={styles.actions}>
-              <button className={styles.secondaryBtn} onClick={() => setShowPayment(false)}>
-                Cancel
-              </button>
-              <button className={styles.primaryBtn} disabled={submitting} onClick={handleConfirmSubmit}>
-                {submitting ? "Processing..." : "Confirm & Submit"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -922,24 +906,24 @@ function ResultScreen({ will }) {
   const navigate = useNavigate();
 
   return (
-    <div className={styles.card}>
-      <div className={styles.resultCheck}>✓</div>
-      <h2 className={styles.stepHeading}>Will Submitted</h2>
-      <p className={styles.reviewWillName}>{will.name}</p>
-      <p className={styles.reviewLine}>Status: PENDING EXECUTOR ACCEPTANCE</p>
-      <p className={styles.reviewLine}>Executor: {will.executor?.name} — waiting for acceptance</p>
-      
-      <p className={styles.hint}>
-        {will.executor?.name} has been assigned this will and has
-        {will.hireRequest?.deadlineAt ? ` until ${new Date(will.hireRequest.deadlineAt).toLocaleDateString("en-US")}` : " time"}
-        {" "}to accept or decline. You'll see the outcome on this will's details page.
-      </p>
+      <div className={styles.card}>
+        <div className={styles.resultCheck}>✓</div>
+        <h2 className={styles.stepHeading}>Will Submitted</h2>
+        <p className={styles.reviewWillName}>{will.name}</p>
+        <p className={styles.reviewLine}>Status: PENDING EXECUTOR ACCEPTANCE</p>
+        <p className={styles.reviewLine}>Executor: {will.executor?.name} — waiting for acceptance</p>
 
-      <div className={styles.actions}>
-        <button className={styles.secondaryBtn} onClick={() => navigate("/dashboard/my-wills")}>
-          My Wills
-        </button>
+        <p className={styles.hint}>
+          {will.executor?.name} has been assigned this will and has
+          {will.hireRequest?.deadlineAt ? ` until ${new Date(will.hireRequest.deadlineAt).toLocaleDateString("en-US")}` : " time"}
+          {" "}to accept or decline. You'll see the outcome on this will's details page.
+        </p>
+
+        <div className={styles.actions}>
+          <button className={styles.secondaryBtn} onClick={() => navigate("/dashboard/my-wills")}>
+            My Wills
+          </button>
+        </div>
       </div>
-    </div>
   );
 }

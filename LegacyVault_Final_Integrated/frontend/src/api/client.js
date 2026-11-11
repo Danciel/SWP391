@@ -26,11 +26,11 @@ export function setRefreshToken(token) {
   else localStorage.removeItem(REFRESH_KEY);
 }
 
-export function endSession(reason) {
+export function endSession(reason, quiet = false) {
   setToken(null);
   setRefreshToken(null);
   setStoredUser(null);
-  window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: { reason } }));
+  window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: { reason, quiet } }));
 }
 
 // One refresh request at a time; parallel 401s share the same promise.
@@ -86,7 +86,7 @@ export function setStoredUser(user) {
 
 export async function request(
   path,
-  { method = "GET", body, auth = true, headers: extraHeaders, retried = false, handleSession = true } = {}
+  { method = "GET", body, auth = true, headers: extraHeaders, retried = false, handleSession = true, quietExpiry = false } = {}
 ) {
   const isFormData = body instanceof FormData;
   const headers = { ...(extraHeaders || {}) };
@@ -156,11 +156,11 @@ export async function request(
       } else if (res.status === 401 && !retried) {
         // N5: access token expired -> rotate once, then replay the request.
         if (await refreshAccessToken()) {
-          return request(path, { method, body, auth, headers: extraHeaders, retried: true, handleSession });
+          return request(path, { method, body, auth, headers: extraHeaders, retried: true, handleSession, quietExpiry });
         }
-        endSession("expired");
+        endSession("expired", quietExpiry);
       } else if (res.status === 401) {
-        endSession("expired");
+        endSession("expired", quietExpiry);
       }
     }
 

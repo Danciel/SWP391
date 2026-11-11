@@ -128,19 +128,44 @@ export default function VerifyIdentity() {
   async function handleAutoDetectIdp() {
     setIdentityError(""); setSearchingIdp(true);
     try {
-      // Search the IDP database using the logged-in user's email or phone
-      const res = await searchIdpUsers({ email: user?.email, phone: user?.phone });
+      // The Mock IDP accepts exactly ONE of email / phone per request, so try
+      // the email first and fall back to the phone number.
+      const attempts = [];
+      if (user?.email) attempts.push({ email: user.email });
+      if (user?.phone) attempts.push({ phone: user.phone });
 
-      // Depending on your API response structure, it might return an array or a single object
-      const idpUser = Array.isArray(res) ? res[0] : res;
+      if (attempts.length === 0) {
+        setIdentityError("Your account has no email or phone to look up. Please enter the UUID manually.");
+        return;
+      }
 
-      if (idpUser && idpUser.id) {
+      let idpUser = null;
+      let reachedIdp = false;
+      for (const query of attempts) {
+        try {
+          const res = await searchIdpUsers(query);
+          reachedIdp = true;
+          const found = Array.isArray(res) ? res[0] : res;
+          if (found?.id) { idpUser = found; break; }
+        } catch (err) {
+          if (err?.status === 404) { reachedIdp = true; continue; } // not found with this key, try the next
+          if (err?.status === 0) throw err; // IDP not reachable, no point retrying
+        }
+      }
+
+      if (idpUser) {
         setIdpUserId(idpUser.id);
+      } else if (reachedIdp) {
+        setIdentityError("No Identity Provider record matches your email or phone. Please enter the UUID manually.");
       } else {
-        setIdentityError("Could not auto-detect your Identity Provider ID. Please enter it manually.");
+        setIdentityError("Lookup failed. Please enter the UUID manually.");
       }
     } catch (err) {
-      setIdentityError("Lookup failed. Please enter the UUID manually.");
+      setIdentityError(
+        err?.status === 0
+          ? "Cannot reach the Mock IDP (port 5100). Start MockIdpApi, or enter the UUID manually."
+          : "Lookup failed. Please enter the UUID manually."
+      );
     } finally {
       setSearchingIdp(false);
     }
@@ -207,10 +232,7 @@ export default function VerifyIdentity() {
       const detail = (err?.message || "").trim();
       if (err?.status === 409 || err?.code === "IDP_ALREADY_LINKED") {
         // N6: this identity already belongs to another LegacyVault account.
-        setError(
-          detail ||
-            "This identity is already linked to another LegacyVault account. Use a different identity or contact support."
-        );
+        setError(detail || "This identity is already linked to another LegacyVault account.");
         return;
       }
       if (err?.status === 429) {

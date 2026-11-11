@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getWallet, topUpWallet } from "../../api/vaultApi";
+import { getWallet, topUpWallet, getMyPaymentDisputes } from "../../api/vaultApi";
 import { fmtDate } from "../../utils/willHelpers";
 import styles from "./Wallet.module.css";
 
@@ -15,12 +15,14 @@ export default function Wallet() {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
+  const [disputes, setDisputes] = useState([]);
 
   async function load() {
     setLoading(true);
     setError("");
     try {
       setWallet(await getWallet());
+      getMyPaymentDisputes().then(setDisputes).catch(() => setDisputes([]));
     } catch (err) {
       setError(err.message || "Could not load wallet");
     } finally {
@@ -134,6 +136,27 @@ export default function Wallet() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {disputes.length > 0 && (
+            <>
+              <h2 className={styles.sectionTitle}>My payment disputes</h2>
+              <table className={styles.table}>
+                <thead>
+                  <tr><th>Date</th><th>Reason</th><th>Status</th><th>Resolution</th></tr>
+                </thead>
+                <tbody>
+                  {disputes.map((d) => (
+                    <tr key={d.id}>
+                      <td>{fmtDate(d.createdAt, true)}</td>
+                      <td>{d.reason}</td>
+                      <td>{(d.status || "").replaceAll("_", " ")}</td>
+                      <td>{d.resolutionNote || d.resolutionAction || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </>
       )}

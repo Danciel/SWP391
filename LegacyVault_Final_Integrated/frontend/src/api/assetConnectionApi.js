@@ -1,4 +1,5 @@
 
+import { pickGoogleDriveFile } from "./googleDrivePicker";
 import {
   BASE_URL,
   ApiError,
@@ -27,7 +28,7 @@ const TYPES = {
 
 function backendOrigin() {
   return new URL(
-    import.meta.env.VITE_BACKEND_TARGET ||
+      import.meta.env.VITE_BACKEND_TARGET ||
       "https://localhost:7015"
   ).origin;
 }
@@ -38,22 +39,22 @@ function backendOrigin() {
 
 function openConnectionPopup() {
   const popup = window.open(
-    "about:blank",
-    "legacyvault_asset_oauth",
-    "width=570,height=720"
+      "about:blank",
+      "legacyvault_asset_oauth",
+      "width=570,height=720"
   );
 
   if (!popup) {
     throw new Error(
-      "Please allow popups for LegacyVault."
+        "Please allow popups for LegacyVault."
     );
   }
 
   popup.document.title =
-    "Connect account — LegacyVault";
+      "Connect account — LegacyVault";
 
   popup.document.body.textContent =
-    "Preparing secure provider sign-in...";
+      "Preparing secure provider sign-in...";
 
   return popup;
 }
@@ -76,8 +77,8 @@ function waitForTicket(popup, authorizationUrl) {
       settled = true;
 
       window.removeEventListener(
-        "message",
-        onMessage
+          "message",
+          onMessage
       );
 
       clearInterval(poll);
@@ -89,8 +90,8 @@ function waitForTicket(popup, authorizationUrl) {
 
     function onMessage(event) {
       if (
-        event.origin !== expectedOrigin ||
-        event.source !== popup
+          event.origin !== expectedOrigin ||
+          event.source !== popup
       ) {
         return;
       }
@@ -99,8 +100,8 @@ function waitForTicket(popup, authorizationUrl) {
       // not silently interpreted as a closed popup.
       if (event.data?.type === "LEGACYVAULT_OAUTH_ERROR") {
         const message = typeof event.data.message === "string"
-          ? event.data.message
-          : "Account verification failed.";
+            ? event.data.message
+            : "Account verification failed.";
         finish(new Error(message));
         return;
       }
@@ -112,11 +113,11 @@ function waitForTicket(popup, authorizationUrl) {
       const ticket = event.data.ticket;
 
       if (
-        typeof ticket !== "string" ||
-        !/^[\w-]{16,200}$/.test(ticket)
+          typeof ticket !== "string" ||
+          !/^[\w-]{16,200}$/.test(ticket)
       ) {
         finish(
-          new Error("Invalid OAuth ticket.")
+            new Error("Invalid OAuth ticket.")
         );
         return;
       }
@@ -127,35 +128,35 @@ function waitForTicket(popup, authorizationUrl) {
     poll = setInterval(() => {
       if (popup.closed) {
         finish(
-          new Error(
-            "The provider sign-in window was closed."
-          )
+            new Error(
+                "The provider sign-in window was closed."
+            )
         );
       }
     }, 400);
 
     timeout = setTimeout(() => {
       finish(
-        new Error(
-          "Verification expired after 10 minutes."
-        )
+          new Error(
+              "Verification expired after 10 minutes."
+          )
       );
     }, 10 * 60 * 1000);
 
     window.addEventListener(
-      "message",
-      onMessage
+        "message",
+        onMessage
     );
 
     try {
       popup.location.replace(
-        authorizationUrl
+          authorizationUrl
       );
     } catch {
       finish(
-        new Error(
-          "Could not open authorization page."
-        )
+          new Error(
+              "Could not open authorization page."
+          )
       );
     }
   });
@@ -168,51 +169,44 @@ function waitForTicket(popup, authorizationUrl) {
 
 export async function connectAccountAsset(form) {
   const permitted =
-    PROVIDERS[form.type] || [];
+      PROVIDERS[form.type] || [];
 
   const provider = String(
-    form.accountType || ""
+      form.accountType || ""
   ).toUpperCase();
 
   if (!permitted.includes(provider)) {
     throw new Error(
-      "Unsupported provider."
+        "Unsupported provider."
     );
   }
 
   if (!form.name?.trim()) {
     throw new Error(
-      "Asset name is required."
+        "Asset name is required."
     );
   }
 
-  // Google Drive: requires an accessible file
-  if (
-    provider === "GOOGLE_DRIVE" &&
-    !form.fileId?.trim()
-  ) {
-    throw new Error(
-      "Google Drive File ID is required."
-    );
-  }
+  // Drive file selection is performed in Google Picker after OAuth.
+  // Do not trust or request a pasted file ID.
 
   // Gmail / GitHub: declared account identity
   const needsIdentifier =
-    ["GMAIL", "GITHUB"].includes(provider);
+      ["GMAIL", "GITHUB"].includes(provider);
 
   const expectedIdentifier =
-    String(
-      form.expectedIdentifier || ""
-    ).trim();
+      String(
+          form.expectedIdentifier || ""
+      ).trim();
 
   if (
-    needsIdentifier &&
-    !expectedIdentifier
+      needsIdentifier &&
+      !expectedIdentifier
   ) {
     throw new Error(
-      provider === "GMAIL"
-        ? "Enter the Google account email address to verify."
-        : "Enter your GitHub username or verified email."
+        provider === "GMAIL"
+            ? "Enter the Google account email address to verify."
+            : "Enter your GitHub username or verified email."
     );
   }
 
@@ -223,21 +217,21 @@ export async function connectAccountAsset(form) {
 
   // Secure handover data
   const handoverPassword =
-    form.handoverPassword || "";
+      form.handoverPassword || "";
 
   if (
-    needsIdentifier &&
-    handoverPassword &&
-    !form.handoverConsent
+      needsIdentifier &&
+      handoverPassword &&
+      !form.handoverConsent
   ) {
     throw new Error(
-      "Please confirm authorization to store handover details."
+        "Please confirm authorization to store handover details."
     );
   }
 
   if (handoverPassword.length > 1024) {
     throw new Error(
-      "Handover data exceeds the size limit."
+        "Handover data exceeds the size limit."
     );
   }
 
@@ -250,33 +244,29 @@ export async function connectAccountAsset(form) {
     // ========================================
 
     const started = await request(
-      `/assets/connections/${provider.toLowerCase()}/start`,
-      {
-        method: "POST",
-        body: {
-          name: form.name.trim(),
+        `/assets/connections/${provider.toLowerCase()}/start`,
+        {
+          method: "POST",
+          body: {
+            name: form.name.trim(),
 
-          frontendOrigin: window.location.origin,
+            frontendOrigin: window.location.origin,
 
-          description:
-            form.description || "",
+            description:
+                form.description || "",
 
-          ...(needsIdentifier
-            ? { expectedIdentifier }
-            : {}),
+            ...(needsIdentifier
+                ? { expectedIdentifier }
+                : {}),
 
-          ...(provider === "GOOGLE_DRIVE"
-            ? {
-                fileId: form.fileId.trim()
-              }
-            : {})
+            // Picker selection is sent later to Complete().
+          }
         }
-      }
     );
 
     if (!started?.authorizationUrl) {
       throw new Error(
-        "Backend did not return an authorization URL."
+          "Backend did not return an authorization URL."
       );
     }
 
@@ -285,9 +275,20 @@ export async function connectAccountAsset(form) {
     // ========================================
 
     const ticket = await waitForTicket(
-      popup,
-      started.authorizationUrl
+        popup,
+        started.authorizationUrl
     );
+
+    // Picker uses the same short-lived Google OAuth grant. The server
+    // verifies the chosen File ID itself before creating any asset.
+    let selectedFile = null;
+    if (provider === "GOOGLE_DRIVE") {
+      const pickerSession = await request(
+          "/assets/connections/google_drive/picker-session",
+          { method: "POST", body: { ticket } }
+      );
+      selectedFile = await pickGoogleDriveFile(pickerSession);
+    }
 
     // ========================================
     // B5.3. COMPLETE & SAVE ASSET
@@ -298,21 +299,22 @@ export async function connectAccountAsset(form) {
     // over HTTPS after OAuth succeeds.
 
     const completed = await request(
-      "/assets/connections/complete",
-      {
-        method: "POST",
-        body: {
-          ticket,
+        "/assets/connections/complete",
+        {
+          method: "POST",
+          body: {
+            ticket,
+            ...(selectedFile ? { selectedFileId: selectedFile.id } : {}),
 
-          handoverPassword:
-            needsIdentifier
-              ? handoverPassword
-              : "",
+            handoverPassword:
+                needsIdentifier
+                    ? handoverPassword
+                    : "",
 
-          handoverConsent:
-            !!form.handoverConsent
+            handoverConsent:
+                !!form.handoverConsent
+          }
         }
-      }
     );
 
     // ========================================
@@ -325,9 +327,10 @@ export async function connectAccountAsset(form) {
       id: completed.assetId,
 
       name: form.name.trim(),
+      ...(selectedFile ? { selectedFileName: selectedFile.name } : {}),
 
       description:
-        form.description || "",
+          form.description || "",
 
       assetType: TYPES[form.type],
 
@@ -346,8 +349,8 @@ export async function connectAccountAsset(form) {
 // ========================================
 
 async function fileRequest(
-  path,
-  { method = "GET", body } = {}
+    path,
+    { method = "GET", body } = {}
 ) {
   const headers = {};
 
@@ -355,25 +358,25 @@ async function fileRequest(
 
   if (token) {
     headers.Authorization =
-      `Bearer ${token}`;
+        `Bearer ${token}`;
   }
 
   let response;
 
   try {
     response = await fetch(
-      `${BASE_URL}${path}`,
-      {
-        method,
-        headers,
-        body
-      }
+        `${BASE_URL}${path}`,
+        {
+          method,
+          headers,
+          body
+        }
     );
   } catch {
     throw new ApiError(
-      "Cannot connect to Backend.",
-      0,
-      null
+        "Cannot connect to Backend.",
+        0,
+        null
     );
   }
 
@@ -387,10 +390,10 @@ async function fileRequest(
     }
 
     throw new ApiError(
-      payload?.message ||
+        payload?.message ||
         `HTTP ${response.status}`,
-      response.status,
-      payload
+        response.status,
+        payload
     );
   }
 
@@ -404,7 +407,7 @@ async function fileRequest(
 export async function uploadDocumentAsset(form) {
   if (!form.name?.trim()) {
     throw new Error(
-      "Asset name is required."
+        "Asset name is required."
     );
   }
 
@@ -429,33 +432,33 @@ export async function uploadDocumentAsset(form) {
   }
   if (selectedFile.size > 2 * 1024 * 1024) {
     throw new Error(
-      "File must be smaller than 2 MB."
+        "File must be smaller than 2 MB."
     );
   }
 
   const data = new FormData();
 
   data.append(
-    "file",
-    selectedFile
+      "file",
+      selectedFile
   );
 
   data.append(
-    "name",
-    form.name.trim()
+      "name",
+      form.name.trim()
   );
 
   data.append(
-    "description",
-    form.description || ""
+      "description",
+      form.description || ""
   );
 
   const response = await fileRequest(
-    "/assets/documents/upload",
-    {
-      method: "POST",
-      body: data
-    }
+      "/assets/documents/upload",
+      {
+        method: "POST",
+        body: data
+      }
   );
 
   const result = await response.json();
@@ -468,7 +471,7 @@ export async function uploadDocumentAsset(form) {
     name: form.name.trim(),
 
     description:
-      form.description || "",
+        form.description || "",
 
     assetType: "DOCUMENT",
 
@@ -482,7 +485,7 @@ export async function uploadDocumentAsset(form) {
 
 export async function checkDocumentIntegrity(id) {
   return request(
-    `/assets/documents/${encodeURIComponent(id)}/integrity`
+      `/assets/documents/${encodeURIComponent(id)}/integrity`
   );
 }
 
@@ -492,25 +495,25 @@ export async function checkDocumentIntegrity(id) {
 
 export async function downloadDocument(id) {
   const response = await fileRequest(
-    `/assets/documents/${encodeURIComponent(id)}/download`
+      `/assets/documents/${encodeURIComponent(id)}/download`
   );
 
   const disposition =
-    response.headers.get(
-      "content-disposition"
-    ) || "";
+      response.headers.get(
+          "content-disposition"
+      ) || "";
 
   const match = disposition.match(
-    /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i
+      /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i
   );
 
   let fileName =
-    "legacyvault-document";
+      "legacyvault-document";
 
   try {
     if (match?.[1]) {
       fileName = decodeURIComponent(
-        match[1]
+          match[1]
       );
     }
   } catch {
@@ -520,18 +523,18 @@ export async function downloadDocument(id) {
   const blob = await response.blob();
 
   const url =
-    URL.createObjectURL(blob);
+      URL.createObjectURL(blob);
 
   try {
     const anchor =
-      document.createElement("a");
+        document.createElement("a");
 
     anchor.href = url;
 
     anchor.download = fileName;
 
     document.body.appendChild(
-      anchor
+        anchor
     );
 
     anchor.click();
@@ -539,8 +542,8 @@ export async function downloadDocument(id) {
 
   } finally {
     setTimeout(
-      () => URL.revokeObjectURL(url),
-      30000
+        () => URL.revokeObjectURL(url),
+        30000
     );
   }
 }
