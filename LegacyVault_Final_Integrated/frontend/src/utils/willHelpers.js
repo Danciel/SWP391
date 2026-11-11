@@ -76,32 +76,6 @@ export function validateDms({ checkInDays, reminderDays, maxMissed }) {
   return "";
 }
 
-// ---- Executor per asset (LV-19) ----
-// will.assetExecutors = [{ willAssetId, id, name, status }] (see mapAssetExecutors in vaultApi.js).
-export function executorForAsset(will, willAssetId) {
-  return (will?.assetExecutors || []).find((x) => x.willAssetId === willAssetId) || null;
-}
-
-export function uniqueExecutors(will) {
-  const map = new Map();
-  (will?.assetExecutors || []).forEach((x) => {
-    if (!map.has(x.id)) map.set(x.id, { id: x.id, name: x.name, status: x.status });
-  });
-  if (map.size === 0 && will?.executor) map.set(will.executor.id, will.executor);
-  return [...map.values()];
-}
-
-// A specialist is an optional per-asset suggestion: any asset executor who is not the main executor.
-export function specialistFor(will, willAssetId) {
-  const e = executorForAsset(will, willAssetId);
-  return e && e.id !== will?.executor?.id ? e : null;
-}
-
-export function allAssetsHaveExecutor(will) {
-  const assets = will?.assets || [];
-  return assets.length > 0 && assets.every((a) => executorForAsset(will, a.willAssetId));
-}
-
 // ---- Executor fee (LV-21) ----
 // executor.feeAmount / executor.feeCurrency come from GET /executors once the backend exposes them; null means "not set".
 export function formatFee(executor) {

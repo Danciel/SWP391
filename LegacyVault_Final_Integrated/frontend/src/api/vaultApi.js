@@ -1,22 +1,13 @@
 import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
-import { request } from "./client";
+import { request, BASE_URL, getToken } from "./client";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
 const TYPE_NAMES = Object.fromEntries(Object.entries(TYPE_CODES).map(([name, code]) => [code, name]));
 const mapAsset = a => ({ ...a, type: TYPE_NAMES[a.assetType] || a.assetType, accountType: a.provider || "" });
 const mapDms = d => d ? ({ ...d, checkInDays: d.checkInIntervalDays, reminderDays: d.reminderBeforeDays, maxMissed: d.maxMissedCheckIns, missedCount: d.missedCheckIns, lastCheckIn: d.lastCheckInAt }) : null;
-const mapAssetExecutors = w => {
-  const perAsset = Array.isArray(w.assetExecutors) ? w.assetExecutors : [];
-  return (w.assets || []).map(a => {
-    const x = perAsset.find(p => p.willAssetId === a.willAssetId);
-    if (x) return { willAssetId: a.willAssetId, id: x.executorAccountId, name: x.executorName, status: x.status };
-    if (w.executor) return { willAssetId: a.willAssetId, id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status };
-    return null;
-  }).filter(Boolean);
-};
-const mapWill = w => ({ ...w, name: w.title || "", assets: (w.assets || []).map(a => ({ assetId: a.assetId, willAssetId: a.willAssetId, assetName: a.assetName, assetType: a.assetType, beneficiary: (w.assignments || []).find(x => x.willAssetId === a.willAssetId) ? (w.beneficiaries || []).find(b => b.id === (w.assignments || []).find(x => x.willAssetId === a.willAssetId)?.beneficiaryDesignationId) : null })), beneficiaries: w.beneficiaries || [], assignments: w.assignments || [], executor: w.executor ? { id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status, } : null, dms: mapDms(w.dms), assetExecutors: mapAssetExecutors(w), payment: null });
-export const getExecutors = async () => (await r("/executors")).map(e => ({ ...e, id: e.accountId, name: e.fullName, specialization: e.bio || "", rating: e.rating || 0, experienceYears: e.experienceYears || 0, completedCases: e.completedCases || 0, feeAmount: e.serviceFee, feeCurrency: e.currency }));
+const mapWill = w => ({ ...w, name: w.title || "", assets: (w.assets || []).map(a => ({ assetId: a.assetId, willAssetId: a.willAssetId, assetName: a.assetName, assetType: a.assetType, beneficiary: (w.assignments || []).find(x => x.willAssetId === a.willAssetId) ? (w.beneficiaries || []).find(b => b.id === (w.assignments || []).find(x => x.willAssetId === a.willAssetId)?.beneficiaryDesignationId) : null })), beneficiaries: w.beneficiaries || [], assignments: w.assignments || [], executor: w.executor ? { id: w.executor.executorAccountId, name: w.executor.executorName, status: w.executor.status, } : null, dms: mapDms(w.dms), payment: null });
+export const getExecutors = async () => (await r("/executors")).map(e => ({ ...e, id: e.accountId, name: e.fullName, bio: e.bio || "", rating: e.rating || 0, experienceYears: e.experienceYears || 0, completedCases: e.completedCases || 0, feeAmount: e.serviceFee, feeCurrency: e.currency }));
 export const getProfile = async () => { const u = await r("/accounts/me"); return { ...u, phone: u.phoneNumber || "", identityNumber: null, faceVerified: null }; };
 export const getExecutorProfile = async (accountId) => {
   if (!accountId) {
@@ -28,12 +19,10 @@ export const getExecutorProfile = async (accountId) => {
 
 export const updateMyExecutorProfile = async ({
                                                 bio,
-                                                specialty,
                                                 experienceYears,
                                               }) => {
   return r("/executors/me/profile", "PUT", {
     bio,
-    specialty,
     experienceYears: Number(experienceYears),
   });
 };
@@ -69,9 +58,6 @@ export const getAssetSecret = async (id, pinGrant) => {
   );
 
   return result.secretData || {};
-};
-export const assignAssetExecutor = async (willId, willAssetId, executorAccountId) => {
-  return await r(`/wills/${willId}/assets/${willAssetId}/executor`, "POST", { executorAccountId });
 };
 export const deleteAsset = async (id, pinGrant) => {
   if (!pinGrant) {
@@ -194,7 +180,48 @@ export async function saveWillDraft(userId, id, patch = {}) {
 }
 export const deleteWillDraft = async (userId, id, declined = false) => r(declined ? `/will-maintenance/${id}/declined` : `/wills/${id}`, "DELETE");
 export const submitWill = async (userId, id) => r(`/wills/${id}/submit`, "POST");
-export async function updateWillBeneficiary(userId, id, assetId, person) { const w = await getWill(userId, id); const asset = w.assets.find(a => a.assetId === assetId); if (!asset) throw Error("Asset is not attached to the will"); const beneficiary = w.beneficiaries.find(b => person.accountId ? b.beneficiaryAccountId === person.accountId : b.email === person.email) || await r(`/wills/${id}/beneficiaries`, "POST", { beneficiaryAccountId: person.accountId || null, fullName: person.fullName, email: person.email, phone: person.phone, relationship: person.relationship }); await r(`/wills/${id}/assignments`, "POST", { willAssetId: asset.willAssetId, beneficiaryDesignationId: beneficiary.id }); return getWill(userId, id); }
+// Assign one beneficiary to one asset.
+// Speed: when the caller passes the will it already has on screen (currentWill), the initial GET is skipped, and
+// the result is merged locally instead of re-downloading the whole will. 4 sequential requests -> 2.
+// Logic is unchanged: reuse an existing beneficiary (same account / same email), otherwise create one, then assign.
+export async function updateWillBeneficiary(userId, id, assetId, person, currentWill = null) {
+  const w = currentWill && currentWill.id === id && Array.isArray(currentWill.assets)
+    ? currentWill
+    : await getWill(userId, id);
+  const asset = w.assets.find(a => a.assetId === assetId);
+  if (!asset) throw Error("Asset is not attached to the will");
+
+  const sameEmail = (x, y) => String(x || "").trim().toLowerCase() === String(y || "").trim().toLowerCase();
+  let beneficiary = (w.beneficiaries || []).find(b =>
+    person.accountId ? b.beneficiaryAccountId === person.accountId : sameEmail(b.email, person.email)
+  );
+  let created = null;
+  if (!beneficiary) {
+    created = await r(`/wills/${id}/beneficiaries`, "POST", {
+      beneficiaryAccountId: person.accountId || null,
+      fullName: person.fullName,
+      email: person.email,
+      phone: person.phone,
+      relationship: person.relationship,
+    });
+    beneficiary = created;
+  }
+
+  const assignment = await r(`/wills/${id}/assignments`, "POST", {
+    willAssetId: asset.willAssetId,
+    beneficiaryDesignationId: beneficiary.id,
+  });
+
+  // Same shape mapWill() produces: an asset shows the beneficiary of its first assignment.
+  return {
+    ...w,
+    beneficiaries: created ? [...(w.beneficiaries || []), created] : w.beneficiaries || [],
+    assignments: [...(w.assignments || []), assignment],
+    assets: w.assets.map(a =>
+      a.willAssetId === asset.willAssetId ? { ...a, beneficiary: a.beneficiary || beneficiary } : a
+    ),
+  };
+}
 export const updateWillOverview = (userId, id, patch) => saveWillDraft(userId, id, patch);
 export const changeWillExecutor = (userId, id, executor) => saveWillDraft(userId, id, { executor });
 export const updateWillDms = (userId, id, dms) => saveWillDraft(userId, id, { dms });
@@ -203,7 +230,42 @@ export const checkInDms = async (userId, id, pinGrant = null) => {
   await r(`/wills/${id}/dms/check-in`, "POST");
   return getWill(userId, id, pinGrant);
 };
-export const cancelDeathHandover = unsupported("Cancel death handover");
+// C6: Owner presses "I'm alive" after the DMS is TRIGGERED (will still ACTIVE).
+// POST /api/wills/{id}/dms/im-alive -> { willId, dmsStatus, nextCheckInAt, cancelledLegalCases, executorNotified }
+// 409 when a handover already started. Returns the refreshed will, or null when it cannot be re-read
+// (for example the PIN grant ran out) - the caller then patches its local copy.
+export const confirmOwnerAlive = async (userId, id, pinGrant = null) => {
+  await r(`/wills/${id}/dms/im-alive`, "POST");
+  try {
+    return await getWill(userId, id, pinGrant);
+  } catch {
+    return null;
+  }
+};
+export const cancelDeathHandover = confirmOwnerAlive; // old name, still used by ownerApi.cancelHandover
+
+// C2: handover minutes (content hash, signatures) and the sealed PDF. Owner, Executor and Admin can read them.
+export const getHandoverMinutes = (willId) => r(`/handover/${willId}/minutes`);
+
+export async function downloadHandoverMinutesPdf(willId) {
+  const res = await fetch(`${BASE_URL}/handover/${willId}/minutes/pdf`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) {
+    let msg = `Could not download the minutes (${res.status}).`;
+    try { msg = (await res.json())?.message || msg; } catch { /* not json */ }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `handover-minutes-${willId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 
 // Immediate Handover needs a fresh Security PIN grant (scope HANDOVER_START,
 // resource = Will ID). The optional detailGrant is the WILL_DETAIL grant used to
@@ -249,3 +311,9 @@ export const getDmsAlerts = () => r("/dms/alerts");
 export const getWallet = () => r("/wallet");
 export const topUpWallet = (amount) => r("/wallet/topup", "POST", { amount: Number(amount) }, { "Idempotency-Key": crypto.randomUUID() });
 export const createExecutorReview = (executorAccountId, { willId, rating, comment }) => r(`/executors/${executorAccountId}/reviews`, "POST", { willId, rating: Number(rating), comment: comment || null });
+// Owner: cancel a DRAFT / PENDING_EXECUTOR will (BE refunds a held executor fee).
+export const cancelWill = (id) => r(`/wills/${id}/cancel`, "POST");
+
+// F06: Owner or assigned Executor raises a payment dispute while the executor fee is HELD.
+export const openPaymentDispute = (willId, reason) => r("/wallet/disputes", "POST", { willId, reason });
+export const getMyPaymentDisputes = () => r("/wallet/disputes/mine");

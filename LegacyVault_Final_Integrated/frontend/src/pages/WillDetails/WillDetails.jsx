@@ -9,7 +9,11 @@ import {
   getWills,
   getAssets,
   checkInDms,
-  cancelDeathHandover,
+  confirmOwnerAlive,
+  downloadHandoverMinutesPdf,
+  cancelWill,
+  openPaymentDispute,
+  getHandoverMinutes,
   requestImmediateHandover,
   getExecutors,
   getHandover,
@@ -25,17 +29,28 @@ import {
   dmsMessage,
   dmsState,
   fmtDate,
-  specialistFor,
 } from "../../utils/willHelpers";
 
 import { useBackdropClose } from "../../utils/useBackdropClose";
-import ExecutorFeeInsight from "../../components/ExecutorFeeInsight/ExecutorFeeInsight";
 import styles from "./WillDetails.module.css";
 
 const EXECUTOR_STATUS_LABEL = {
   PENDING: "Waiting for the executor to accept",
   ACCEPTED: "Accepted",
   DECLINED: "Declined",
+};
+
+const HANDOVER_ITEM_LABEL = {
+  PENDING: "Pending",
+  AWAITING_EXECUTOR_SIGNATURE: "Waiting for executor signature",
+  AWAITING_BENEFICIARY_SIGNATURE: "Waiting for beneficiary signature",
+  DELIVERED: "Delivered",
+};
+
+const MINUTES_STATUS_LABEL = {
+  PENDING_SIGNATURES: "Waiting for signatures",
+  FULLY_SIGNED: "Fully signed",
+  VOID: "Void (handover cancelled)",
 };
 
 export default function WillDetails() {
@@ -72,6 +87,25 @@ export default function WillDetails() {
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInError, setCheckInError] = useState("");
   const [checkInDone, setCheckInDone] = useState("");
+
+  // C6/C9: "I'm alive" after the DMS triggered; C2: sealed report download
+  const [aliveBusy, setAliveBusy] = useState(false);
+  const [aliveError, setAliveError] = useState("");
+  const [minutes, setMinutes] = useState(null);
+
+  // Cancel a will that is still waiting for the executor
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+
+  // Payment dispute (executor fee on hold)
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeBusy, setDisputeBusy] = useState(false);
+  const [disputeError, setDisputeError] = useState("");
+  const [disputeDone, setDisputeDone] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const [handover, setHandover] = useState(null);
 
@@ -222,6 +256,10 @@ export default function WillDetails() {
         if (version === requestVersion.current) {
           setHandover(data);
         }
+        // C1-C5: minutes + signatures (404 when no handover exists yet)
+        return getHandoverMinutes(id)
+          .then((m) => version === requestVersion.current && setMinutes(m))
+          .catch(() => version === requestVersion.current && setMinutes(null));
       })
       .catch(() => {
         if (version === requestVersion.current) {
@@ -299,16 +337,83 @@ export default function WillDetails() {
   }
 
   async function handleCancelHandover() {
+    if (aliveBusy) return;
+    setAliveBusy(true);
+    setAliveError("");
     setCheckInError("");
 
     try {
+      const updated = await confirmOwnerAlive(user?.id, will.id, pinGrant);
       setWill(
-        await cancelDeathHandover(user?.id, will.id)
+        updated ||
+          ((w) => ({
+            ...w,
+            dms: { ...w.dms, status: "ACTIVE", missedCount: 0, missedCheckIns: 0 },
+          }))
       );
+      setCheckInDone("Welcome back. The handover was cancelled and your Dead Man's Switch is active again.");
+      loadHandover();
     } catch (err) {
-      setCheckInError(
-        err.message || "Could not cancel handover"
+      setAliveError(
+        err?.status === 409
+          ? err.message || "This handover can no longer be cancelled."
+          : err?.status === 423
+            ? "PIN access expired. Return to My Wills and unlock again, then retry."
+            : err.message || "Could not cancel handover"
       );
+    } finally {
+      setAliveBusy(false);
+    }
+  }
+
+  async function handleCancelWill() {
+    if (cancelBusy) return;
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      await cancelWill(will.id);
+      navigate("/dashboard/my-wills");
+    } catch (err) {
+      setCancelError(err.message || "Could not cancel this will");
+      setCancelBusy(false);
+    }
+  }
+
+  async function handleOpenDispute(e) {
+    e.preventDefault();
+    const reason = disputeReason.trim();
+    if (reason.length < 5) {
+      setDisputeError("Please describe the problem (at least 5 characters).");
+      return;
+    }
+    setDisputeBusy(true);
+    setDisputeError("");
+    setDisputeDone("");
+    try {
+      const res = await openPaymentDispute(will.id, reason);
+      setDisputeDone(
+        res?.handoverPaused
+          ? "Dispute sent. The handover is paused until an admin reviews it."
+          : "Dispute sent. An admin will review it."
+      );
+      setDisputeOpen(false);
+      setDisputeReason("");
+    } catch (err) {
+      setDisputeError(err.message || "Could not send the dispute");
+    } finally {
+      setDisputeBusy(false);
+    }
+  }
+
+  async function handleDownloadReport() {
+    setReportBusy(true);
+    setReportError("");
+    try {
+      await downloadHandoverMinutesPdf(will.id);
+    } catch (err) {
+      setReportError(err.message || "Could not download the report");
+    } finally {
+      setReportBusy(false);
     }
   }
 
@@ -426,6 +531,10 @@ export default function WillDetails() {
   // ==========================================
   const isDraft = will.status === "DRAFT";
   const dms = dmsState(will.dms);
+  // BE: I'm alive only works while the DMS is TRIGGERED and the will is still ACTIVE.
+  const dmsTriggered =
+    String(will.dms?.status || "").toUpperCase() === "TRIGGERED" &&
+    will.status === "ACTIVE";
   const banner = dmsMessage(dms);
 
   const executorProfile = will.executor
@@ -505,6 +614,18 @@ export default function WillDetails() {
         </div>
       )}
 
+      {/* DMS TRIGGERED: Owner must be able to say "I'm alive" from anywhere on this page */}
+      {dmsTriggered && (
+        <div className={styles.bannerDanger} role="alert">
+          Your Dead Man's Switch has triggered and your Executor was notified. If you are alive,
+          confirm it now.{" "}
+          <button className={styles.linkBtn} disabled={aliveBusy} onClick={handleCancelHandover}>
+            {aliveBusy ? "Confirming..." : "I'm alive"}
+          </button>
+          {aliveError && <div style={{ marginTop: 6 }}>{aliveError}</div>}
+        </div>
+      )}
+
       {/* DRAFT */}
       {isDraft && (
         <div className={styles.pendingNote}>
@@ -536,6 +657,100 @@ export default function WillDetails() {
             declined this will. You can delete it from
             My Wills and create a new one.
           </div>
+        )}
+
+      {/* CANCEL WILL (still waiting for the executor) */}
+      {will.status === "PENDING_EXECUTOR" && (
+        <div className={styles.demoRow}>
+          {!confirmingCancel ? (
+            <button
+              className={styles.secondaryBtn}
+              onClick={() => setConfirmingCancel(true)}
+            >
+              Cancel this will
+            </button>
+          ) : (
+            <>
+              <span className={styles.hintSmall}>
+                Cancel this will? Its assets are released and any executor fee on hold is refunded.
+              </span>
+              <button
+                className={styles.primaryBtn}
+                disabled={cancelBusy}
+                onClick={handleCancelWill}
+              >
+                {cancelBusy ? "Cancelling..." : "Yes, cancel will"}
+              </button>
+              <button
+                className={styles.secondaryBtn}
+                disabled={cancelBusy}
+                onClick={() => setConfirmingCancel(false)}
+              >
+                Keep it
+              </button>
+            </>
+          )}
+          {cancelError && (
+            <p role="alert" className={styles.errorText}>{cancelError}</p>
+          )}
+        </div>
+      )}
+
+      {/* EXECUTOR PAYMENT DISPUTE */}
+      {(will.status === "ACTIVE" || will.status === "HANDOVER_IN_PROGRESS") &&
+        will.executor && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Executor payment</h2>
+            <p className={styles.hintSmall}>
+              The executor fee stays on hold until the handover is completed. If something is
+              wrong, report it and an admin will review it. A running handover is paused while
+              the dispute is open.
+            </p>
+            {disputeDone && (
+              <p role="status" className={styles.hintSmall}>{disputeDone}</p>
+            )}
+            {!disputeOpen ? (
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => {
+                  setDisputeOpen(true);
+                  setDisputeDone("");
+                }}
+              >
+                Report a payment problem
+              </button>
+            ) : (
+              <form onSubmit={handleOpenDispute}>
+                <textarea
+                  className={styles.textarea}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="What went wrong?"
+                  value={disputeReason}
+                  onChange={(e) => setDisputeReason(e.target.value)}
+                />
+                <div className={styles.actions}>
+                  <button className={styles.primaryBtn} disabled={disputeBusy}>
+                    {disputeBusy ? "Sending..." : "Send dispute"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    disabled={disputeBusy}
+                    onClick={() => {
+                      setDisputeOpen(false);
+                      setDisputeError("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+            {disputeError && (
+              <p role="alert" className={styles.errorText}>{disputeError}</p>
+            )}
+          </section>
         )}
 
       {/* IMMEDIATE HANDOVER */}
@@ -774,23 +989,6 @@ export default function WillDetails() {
                         }`
                       : "No executor assigned."}
                   </p>
-
-                  {specialistFor(
-                    will,
-                    entry.willAssetId
-                  ) && (
-                    <p className={styles.itemMeta}>
-                      Suggested specialist:{" "}
-                      {
-                        specialistFor(
-                          will,
-                          entry.willAssetId
-                        ).name
-                      }{" "}
-                      (recommendation only, does not
-                      accept or get paid)
-                    </p>
-                  )}
                 </div>
               )}
             </div>
@@ -896,7 +1094,7 @@ export default function WillDetails() {
                 <Row
                   label="Introduction"
                   value={
-                    executorProfile.specialization ||
+                    executorProfile.bio ||
                     "—"
                   }
                 />
@@ -916,7 +1114,6 @@ export default function WillDetails() {
                     executorProfile.rating || 0
                   ).toFixed(1)}`}
                 />
-                <ExecutorFeeInsight executor={executorProfile} />
               </>
             )}
           </>
@@ -972,7 +1169,7 @@ export default function WillDetails() {
                 </div>
 
                 <div className={styles.itemMeta}>
-                  {it.status}
+                  {HANDOVER_ITEM_LABEL[it.status] || it.status}
 
                   {it.deliveredAt
                     ? ` · ${fmtDate(
@@ -984,6 +1181,42 @@ export default function WillDetails() {
               </div>
             </div>
           ))}
+
+          {/* C1-C5: handover minutes, signatures and sealed PDF (read-only for the Owner) */}
+          {minutes && (
+            <>
+              <h3 className={styles.sectionTitle} style={{ fontSize: 15, marginTop: 16 }}>
+                Handover minutes
+              </h3>
+              <Row
+                label="Status"
+                value={MINUTES_STATUS_LABEL[minutes.status] || minutes.status}
+              />
+              {minutes.contentSha256 && (
+                <Row label="Content SHA-256" value={<code style={{ wordBreak: "break-all" }}>{minutes.contentSha256}</code>} />
+              )}
+              {minutes.fullySignedAt && (
+                <Row label="Fully signed" value={fmtDate(minutes.fullySignedAt, true)} />
+              )}
+              {(minutes.signatures || []).map((sg) => (
+                <Row
+                  key={sg.id}
+                  label={sg.role === "EXECUTOR" ? "Executor" : "Beneficiary"}
+                  value={
+                    sg.status === "SIGNED" && sg.signedAt
+                      ? `${sg.signerName || "—"} signed on ${fmtDate(sg.signedAt, true)}`
+                      : `${sg.signerName || "—"} — waiting for signature`
+                  }
+                />
+              ))}
+              <div className={styles.actions}>
+                <button className={styles.primaryBtn} disabled={reportBusy} onClick={handleDownloadReport}>
+                  {reportBusy ? "Downloading..." : "Download minutes (PDF)"}
+                </button>
+              </div>
+              {reportError && <p role="alert" className={styles.errorText}>{reportError}</p>}
+            </>
+          )}
         </section>
       )}
 
@@ -1157,27 +1390,28 @@ export default function WillDetails() {
               </div>
             )}
 
-            {will.status ===
-              "PENDING_VERIFICATION" && (
+            {dmsTriggered && (
               <div
                 className={
                   styles.pendingNote
                 }
               >
                 Your Dead Man's Switch
-                has triggered and a
-                handover case is open
-                with your Executor.
+                has triggered and your
+                Executor was notified.
+                If you are alive, confirm below.
 
                 <div className={styles.demoRow}>
                   <button
                     className={styles.primaryBtn}
+                    disabled={aliveBusy}
                     onClick={
                       handleCancelHandover
                     }
                   >
-                    I'm Still Active /
-                    Cancel Handover
+                    {aliveBusy
+                      ? "Confirming..."
+                      : "I'm alive"}
                   </button>
                 </div>
               </div>

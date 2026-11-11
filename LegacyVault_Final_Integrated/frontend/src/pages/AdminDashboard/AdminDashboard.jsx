@@ -14,7 +14,6 @@ import {
   getAdminAuditLogs,
 } from "../../api/adminOperationsApi";
 
-import AdminPricingRules from "../../components/AdminPricingRules/AdminPricingRules";
 import AdminDmsTools from "../../components/AdminDmsTools/AdminDmsTools";
 import styles from "./AdminDashboard.module.css";
 
@@ -1001,8 +1000,6 @@ export default function AdminDashboard() {
           </section>
 
           <AdminDmsTools />
-
-          <AdminPricingRules />
 
           <section className={`${styles.card} ${styles.cardWide}`}>
 

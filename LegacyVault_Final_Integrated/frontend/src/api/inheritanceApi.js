@@ -63,3 +63,21 @@ export const revealInheritedSecret = (willId, itemId, pinGrant) => {
     headers: { [PIN_HEADER]: pinGrant },
   });
 };
+
+// C3: the minutes as this beneficiary may see them (only their own lines and signature).
+export const getInheritedMinutes = (willId, pinGrant) => {
+  if (!pinGrant) throw new Error("Security PIN is required.");
+  return request(`/inheritance/${willId}/minutes`, {
+    headers: { [PIN_HEADER]: pinGrant },
+  });
+};
+
+// C3: sign the minutes. Only possible after ALL of my assets were received
+// (access code + face scan). The last signature can complete the handover.
+export const signInheritedMinutes = (willId, pinGrant) => {
+  if (!pinGrant) throw new Error("Security PIN is required.");
+  return request(`/inheritance/${willId}/minutes/sign`, {
+    method: "POST",
+    headers: { [PIN_HEADER]: pinGrant },
+  });
+};

@@ -71,6 +71,8 @@ export const getExecutorDashboard = async () => {
                     deadlineAt: result.deadlineAt ?? null,
                     totalItems: result.totalItems ?? result.items?.length ?? 0,
                     deliveredItems: result.deliveredItems ?? 0,
+                    // C3/C4: { status, executorSigned, signedCount, totalSignatures } or null
+                    minutes: result.minutes ?? null,
                     assets: Array.isArray(result.items)
                         ? result.items.map((item) => ({
                             id: item.id ?? item.itemId,
@@ -209,6 +211,16 @@ export const getHandoverByWill = (willId) => {
     }
 
     return request(`/handover/${willId}`);
+};
+
+// C3: the Executor signs the handover minutes. Without this signature no asset
+// can be delivered (C4) and the handover cannot complete.
+export const signHandoverMinutesAsExecutor = (willId) => {
+    if (!willId) {
+        throw new Error("Missing Will ID.");
+    }
+
+    return request(`/handover/${willId}/minutes/executor-sign`, { method: "POST" });
 };
 
 // Executor hands one asset-to-beneficiary item over (LV-32/33).

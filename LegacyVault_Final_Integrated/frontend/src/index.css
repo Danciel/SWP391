@@ -36,6 +36,9 @@
   --radius-sm: 8px;
   --radius: 10px;
   --radius-lg: 16px;
+  --photo-vault: url("https://commons.wikimedia.org/wiki/Special:FilePath/Safe_deposit_vault_1908.jpg?width=1600");
+  --shadow-sm: none;
+  --shadow-md: none;
   --shadow-pop: 0 12px 32px rgba(21, 59, 51, 0.16);
 
   --font-body: "Be Vietnam Pro", "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -98,4 +101,56 @@ textarea {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---- Global polish (works across every CSS-module page) ---- */
+body {
+  background:
+    radial-gradient(1000px 520px at 100% -10%, rgba(226, 239, 233, 0.9), transparent 60%),
+    var(--paper);
+  background-attachment: fixed;
+}
+
+/* Cards: flat (no shadow), lift slightly on hover. List rows inside stay joined. */
+main [class*="Card"],
+main [class*="card"]:not([class*="cards"]) {
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+main [class*="Card"]:hover,
+main [class*="willCard"]:hover,
+main [class*="assetCard"]:hover {
+  border-color: var(--vault-line);
+  transform: translateY(-1px);
+}
+main [class*="listItem"],
+main [class*="panel"] {
+  box-shadow: none;
+}
+
+/* Page titles are now carried by the banner, so keep the in-page ones compact. */
+main h1[class*="title"] {
+  font-size: 24px !important;
+  margin-bottom: 2px !important;
+}
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+main thead th {
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+button { transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease; }
+button:active:not(:disabled) { transform: translateY(1px); }
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--vault) !important;
+  box-shadow: 0 0 0 3px rgba(31, 92, 77, 0.18) !important;
 }

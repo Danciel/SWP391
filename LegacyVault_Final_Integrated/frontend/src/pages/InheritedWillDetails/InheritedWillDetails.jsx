@@ -7,7 +7,10 @@ import {
   verifyAccessCode,
   resendAccessCode,
   requestAccessCodeHelp,
+  getInheritedMinutes,
+  signInheritedMinutes,
 } from "../../api/inheritanceApi";
+import HandoverMinutes from "../../components/HandoverMinutes/HandoverMinutes";
 import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import FaceCaptureModal from "../../components/FaceCaptureModal/FaceCaptureModal";
 import styles from "./InheritedWillDetails.module.css";
@@ -36,10 +39,25 @@ export default function InheritedWillDetails() {
   const [codeBusy, setCodeBusy] = useState(false);
   const [codeError, setCodeError] = useState("");
   const [codeNotice, setCodeNotice] = useState("");
+  // C3: handover minutes (only my own lines) + my signature
+  const [minutes, setMinutes] = useState(null);
+  const [minutesBusy, setMinutesBusy] = useState(false);
+  const [minutesError, setMinutesError] = useState("");
   const pendingRef = useRef(null); // action to run once a fresh PIN grant exists
 
   async function loadWill(g) {
-    setWill(await getInheritedWill(id, g));
+    const w = await getInheritedWill(id, g);
+    setWill(w);
+    // The minutes are only shown once the will content is unlocked (access code accepted).
+    if (w.contentLocked) {
+      setMinutes(null);
+      return;
+    }
+    try {
+      setMinutes(await getInheritedMinutes(id, g));
+    } catch {
+      setMinutes(null); // no minutes yet / not readable: the rest of the page still works
+    }
   }
 
   // Runs after the PIN is accepted (the modal shows any error thrown here).
@@ -162,6 +180,32 @@ export default function InheritedWillDetails() {
       setCodeBusy(false);
     }
   }
+
+  // C3: sign the minutes after ALL my assets were received. The last signature can
+  // complete the handover, so the will is reloaded afterwards.
+  async function submitSignMinutes(g) {
+    setMinutesError("");
+    setMinutesBusy(true);
+    try {
+      setMinutes(await signInheritedMinutes(id, g));
+      setNotice("Minutes signed. Thank you.");
+      try {
+        await loadWill(g);
+      } catch {
+        // the signature is saved; the status refreshes on the next visit
+      }
+    } catch (err) {
+      if (err?.status === 423 || !g) {
+        askPinThen((g2) => submitSignMinutes(g2));
+      } else {
+        setMinutesError(err.message || "Could not sign the minutes.");
+      }
+    } finally {
+      setMinutesBusy(false);
+    }
+  }
+
+  const handleSignMinutes = () => submitSignMinutes(grant);
 
   const handleVerifyCode = () => submitCode(grant, codeInput);
   const handleResendCode = () => submitResend(grant);
@@ -366,6 +410,32 @@ export default function InheritedWillDetails() {
                   >
                     Scan face to receive {ready.length === 1 ? "asset" : `${ready.length} assets`}
                   </button>
+                </>
+              )}
+
+              {minutes && (
+                <>
+                  <hr className={styles.divider} />
+                  <h2 className={styles.sectionTitle}>Handover minutes</h2>
+                  <p className={styles.hintSmall}>
+                    After you received all your assets, sign the minutes to confirm you received
+                    them. The handover is completed once everyone has signed.
+                  </p>
+                  <HandoverMinutes
+                    minutes={minutes}
+                    viewer="BENEFICIARY"
+                    confirmText="I confirm I received the assets listed for me and that these minutes are correct."
+                    canSign={allClaimed && will.handoverStatus === "IN_PROGRESS"}
+                    signHint={
+                      will.handoverStatus === "PAUSED"
+                        ? "This handover is paused while a problem is being reviewed."
+                        : "Receive all your assets (access code and face scan) before signing."
+                    }
+                    signLabel="Sign minutes"
+                    signBusy={minutesBusy}
+                    onSign={handleSignMinutes}
+                    error={minutesError}
+                  />
                 </>
               )}
             </>

@@ -3,13 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../api/client";
 import logo from "../../assets/logo.png";
+import AuthShell from "../../components/AuthShell/AuthShell";
 import styles from "./VerifyOtp.module.css";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 45;
 
 export default function VerifyOtp() {
-  const { verifyOtp, resendOtp } = useAuth();
+  const { verifyOtp, resendOtp, requestPasswordReset } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -75,16 +76,18 @@ export default function VerifyOtp() {
       return;
     }
 
+    // Password reset: the backend checks the code together with the new password
+    // (POST /auth/reset-password), so just carry the code to the next step.
+    // /auth/verify-otp is only for confirming a newly registered email.
+    if (purpose === "reset") {
+      navigate("/reset-password", { state: { email, otp } });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const data = await verifyOtp({ email, otp, purpose });
-      if (purpose === "reset") {
-        navigate("/reset-password", {
-          state: { email, resetToken: data?.resetToken },
-        });
-      } else {
-        navigate("/login", { state: { registeredEmail: email } });
-      }
+      await verifyOtp({ email, otp, purpose });
+      navigate("/login", { state: { registeredEmail: email } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Verification failed, please try again");
     } finally {
@@ -97,7 +100,8 @@ export default function VerifyOtp() {
     setError("");
     setIsResending(true);
     try {
-      await resendOtp({ email, purpose });
+      if (purpose === "reset") await requestPasswordReset({ email });
+      else await resendOtp({ email, purpose });
       setSecondsLeft(RESEND_SECONDS);
       setDigits(Array(OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
@@ -109,10 +113,10 @@ export default function VerifyOtp() {
   }
 
   return (
-    <div className={styles.page}>
+    <AuthShell>
       <form className={styles.card} onSubmit={handleSubmit} noValidate>
         <img src={logo} alt="LegacyVault" className={styles.logo} />
-        <h1 className={styles.title}>Verify your account</h1>
+        <h1 className={styles.title}>{purpose === "reset" ? "Enter verification code" : "Verify your account"}</h1>
         <p className={styles.subtitle}>
           We sent a 6-digit code to {email ? <strong>{email}</strong> : "your email"}
         </p>
@@ -136,7 +140,7 @@ export default function VerifyOtp() {
         {error && <p className={styles.submitError}>{error}</p>}
 
         <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-          {isSubmitting ? "Verifying..." : "Verify"}
+          {isSubmitting ? "Verifying..." : purpose === "reset" ? "Continue" : "Verify"}
         </button>
 
         <p className={styles.resendText}>
@@ -158,6 +162,6 @@ export default function VerifyOtp() {
           <Link to="/login">← Back to Login</Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

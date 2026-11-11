@@ -1,8 +1,9 @@
 import { Navigate } from "react-router-dom";
-import { getToken } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const isAuthenticated = !!getToken();
+  // Reads context (not localStorage) so a locked/expired session redirects immediately.
+  const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

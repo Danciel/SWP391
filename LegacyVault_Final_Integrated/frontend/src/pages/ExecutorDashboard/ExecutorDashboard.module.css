@@ -9,7 +9,7 @@
 
 /* ---------- Header ---------- */
 .header {
-  max-width: 1180px;
+  max-width: none;
   margin: 0 auto 28px;
   display: flex;
   align-items: flex-end;
@@ -66,13 +66,13 @@
 
 /* ---------- Messages ---------- */
 .info {
-  max-width: 1180px;
+  max-width: none;
   margin: 0 auto;
   color: var(--muted);
 }
 
 .errorBox {
-  max-width: 1180px;
+  max-width: none;
   margin: 0 auto 16px;
   color: var(--bad);
   background: var(--bad-soft);
@@ -111,7 +111,7 @@
 
 /* ---------- Grid & cards ---------- */
 .grid {
-  max-width: 1180px;
+  max-width: none;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

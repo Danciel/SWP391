@@ -381,7 +381,7 @@ function BeneficiariesStep({ will, assets, profile, userId, willId, onUpdated, o
   async function handleAssign(assetId, beneficiary) {
     try {
       if (!beneficiary) throw new Error("Removing beneficiaries requires a dedicated backend endpoint.");
-      const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary);
+      const updated = await updateWillBeneficiary(userId, willId, assetId, beneficiary, will);
       onUpdated(updated);
       setActiveAssetId(null);
     } catch(err) { throw err; }
@@ -469,7 +469,32 @@ function BeneficiaryModal({ onClose, onAssign }) {
   const [lookupError,setLookupError]=useState("");
   const [searching,setSearching]=useState(false);
   const [assigning,setAssigning]=useState(false);
-  const backdrop = useBackdropClose(onClose);
+  const [showDiscard, setShowDiscard] = useState(false);
+
+  // Anything typed/changed counts as unsaved work worth protecting.
+  const isDirty =
+    query.trim() !== "" ||
+    newForm.fullName.trim() !== "" ||
+    newForm.email.trim() !== "" ||
+    newForm.phone.trim() !== "" ||
+    relationship !== "Daughter";
+
+  // Clicking outside / pressing Esc asks first when there is something to lose.
+  function requestClose() {
+    if (assigning) return;
+    if (isDirty) setShowDiscard(true);
+    else onClose();
+  }
+
+  const backdrop = useBackdropClose(requestClose);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape" && !showDiscard) requestClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
   const newEmailError = newForm.email ? validateEmail(newForm.email) : "";
 
   function handleQueryChange(value) { setQuery(value); setFound(undefined); setLookupError(""); }
@@ -488,6 +513,7 @@ function BeneficiaryModal({ onClose, onAssign }) {
   }
 
   return (
+    <>
       <div className={styles.overlay} {...backdrop}>
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.tabRow}>
@@ -585,6 +611,15 @@ function BeneficiaryModal({ onClose, onAssign }) {
           )}
         </div>
       </div>
+
+      {showDiscard && (
+        <ConfirmDiscardDialog
+          title="Discard this beneficiary?"
+          onConfirm={() => { setShowDiscard(false); onClose(); }}
+          onCancel={() => setShowDiscard(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -633,7 +668,7 @@ function ExecutorStep({ will, onSave, onNext, onBack, executors }) {
                 <div className={styles.executorCard}>
                   <div>
                     <h4 className={styles.beneficiaryName}>{ex.name}</h4>
-                    <p className={styles.beneficiaryMeta}>{ex.specialization || "No introduction provided."}</p>
+                    <p className={styles.beneficiaryMeta}>{ex.bio || "No introduction provided."}</p>
                     <p className={styles.beneficiaryMeta}>
                       ⭐ {Number(ex.rating || 0).toFixed(1)} · {ex.experienceYears} years experience · {ex.completedCases} completed cases
                     </p>

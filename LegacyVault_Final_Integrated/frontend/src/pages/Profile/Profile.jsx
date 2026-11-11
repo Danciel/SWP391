@@ -26,7 +26,6 @@ export default function Profile() {
 
   const [executorForm, setExecutorForm] = useState({
     bio: "",
-    specialty: "",
     experienceYears: "0",
   });
 
@@ -64,7 +63,6 @@ export default function Profile() {
 
           setExecutorForm({
             bio: result.bio || "",
-            specialty: result.specialty || "",
             experienceYears: String(result.experienceYears ?? 0),
           });
         } else {
@@ -110,7 +108,6 @@ export default function Profile() {
     try {
       const updated = await updateMyExecutorProfile({
         bio: executorForm.bio.trim(),
-        specialty: executorForm.specialty.trim(),
         experienceYears: years,
       });
 
@@ -118,7 +115,6 @@ export default function Profile() {
 
       setExecutorForm({
         bio: updated.bio || "",
-        specialty: updated.specialty || "",
         experienceYears: String(updated.experienceYears ?? 0),
       });
 
@@ -252,24 +248,6 @@ export default function Profile() {
 
                 <label
                   className={styles.label}
-                  htmlFor="executor-specialty"
-                >
-                  Specialty
-                </label>
-                <input
-                  id="executor-specialty"
-                  maxLength={200}
-                  value={executorForm.specialty}
-                  onChange={(e) =>
-                    setExecutorForm((prev) => ({
-                      ...prev,
-                      specialty: e.target.value,
-                    }))
-                  }
-                />
-
-                <label
-                  className={styles.label}
                   htmlFor="executor-experience"
                 >
                   Experience (years)
@@ -297,7 +275,6 @@ export default function Profile() {
                     onClick={() => {
                       setExecutorForm({
                         bio: executorProfile.bio || "",
-                        specialty: executorProfile.specialty || "",
                         experienceYears: String(
                           executorProfile.experienceYears ?? 0
                         ),
@@ -325,13 +302,6 @@ export default function Profile() {
                   <span className={styles.label}>Introduction</span>
                   <span className={styles.value}>
                     {executorProfile.bio || "Not provided"}
-                  </span>
-                </div>
-
-                <div className={styles.row}>
-                  <span className={styles.label}>Specialty</span>
-                  <span className={styles.value}>
-                    {executorProfile.specialty || "Not provided"}
                   </span>
                 </div>
 

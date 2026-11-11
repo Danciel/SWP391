@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #f2f5f9;
+  background: linear-gradient(rgba(14, 44, 38, 0.84), rgba(21, 59, 51, 0.8)), var(--photo-vault) center / cover fixed, var(--vault-deep);
 }
 
 .face-enroll-card {
@@ -69,7 +69,7 @@
   border: none;
   border-radius: 8px;
   color: white;
-  background: #1677ff;
+  background: var(--vault);
   cursor: pointer;
 }
 
@@ -84,7 +84,7 @@
 }
 
 .face-enroll-card > a {
-  color: #1677ff;
+  color: var(--vault);
   text-decoration: none;
 }
 

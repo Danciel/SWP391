@@ -10,8 +10,15 @@ import {
   resendRecipientCode,
   startDeathHandover,
   deleteExecutorRequest,
+  signHandoverMinutesAsExecutor,
 } from "../../api/executorApi";
-import { getExecutorProfile ,updateMyExecutorPricing } from "../../api/vaultApi";
+import {
+  getExecutorProfile,
+  updateMyExecutorPricing,
+  getHandoverMinutes,
+  downloadHandoverMinutesPdf,
+} from "../../api/vaultApi";
+import HandoverMinutes from "../../components/HandoverMinutes/HandoverMinutes";
 import DeathCertificateModal from "../../components/DeathCertificate/DeathCertificateModal";
 import SecurityPinModal from "../../components/SecurityPinModal/SecurityPinModal";
 import { getStoredUser } from "../../api/client";
@@ -109,6 +116,13 @@ export default function ExecutorDashboard() {
   // Delete a declined request: 1) confirm popup  2) PIN popup
   const [deleteConfirmReq, setDeleteConfirmReq] = useState(null);
   const [deletePinReq, setDeletePinReq] = useState(null);
+  // C3: handover minutes panel (one open at a time, keyed by Will ID)
+  const [minutesWillId, setMinutesWillId] = useState(null);
+  const [minutesData, setMinutesData] = useState(null);
+  const [minutesLoading, setMinutesLoading] = useState(false);
+  const [minutesError, setMinutesError] = useState("");
+  const [minutesSigning, setMinutesSigning] = useState(false);
+  const [minutesPdfBusy, setMinutesPdfBusy] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -321,6 +335,53 @@ export default function ExecutorDashboard() {
       setError(err.message || "Could not deliver the assets");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  // C3: open / close the minutes of one handover.
+  async function handleToggleMinutes(willId) {
+    if (minutesWillId === willId) {
+      setMinutesWillId(null);
+      setMinutesData(null);
+      return;
+    }
+    setMinutesWillId(willId);
+    setMinutesData(null);
+    setMinutesError("");
+    setMinutesLoading(true);
+    try {
+      setMinutesData(await getHandoverMinutes(willId));
+    } catch (err) {
+      setMinutesError(err.message || "Could not load the handover minutes.");
+    } finally {
+      setMinutesLoading(false);
+    }
+  }
+
+  // C3: the Executor signs. Deliver / Deliver all stay disabled until this is done (C4).
+  async function handleSignMinutes(willId) {
+    setMinutesSigning(true);
+    setMinutesError("");
+    try {
+      setMinutesData(await signHandoverMinutesAsExecutor(willId));
+      showToast("Minutes signed. You can now deliver the assets.");
+      await load();
+    } catch (err) {
+      setMinutesError(err.message || "Could not sign the minutes.");
+    } finally {
+      setMinutesSigning(false);
+    }
+  }
+
+  async function handleMinutesPdf(willId) {
+    setMinutesPdfBusy(true);
+    setMinutesError("");
+    try {
+      await downloadHandoverMinutesPdf(willId);
+    } catch (err) {
+      setMinutesError(err.message || "Could not download the minutes.");
+    } finally {
+      setMinutesPdfBusy(false);
     }
   }
 
@@ -615,6 +676,59 @@ export default function ExecutorDashboard() {
                                     This handover is paused while a problem is being reviewed by Admin.
                                   </p>
                               )}
+                              {hr.minutes && (
+                                  <div className={styles.detailRow} style={{ flexWrap: "wrap" }}>
+                                    <span>
+                                      Handover minutes:{" "}
+                                      {hr.minutes.status === "FULLY_SIGNED"
+                                          ? "fully signed"
+                                          : hr.minutes.status === "VOID"
+                                              ? "void"
+                                              : `${hr.minutes.signedCount} / ${hr.minutes.totalSignatures} signatures`}
+                                      {hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned && (
+                                          <span className={styles.metaText} style={{ display: "block" }}>
+                                            Read and sign the minutes first. You cannot deliver any asset before you sign.
+                                          </span>
+                                      )}
+                                    </span>
+                                    <button
+                                        className={hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
+                                            ? styles.primaryBtn
+                                            : styles.secondaryBtn}
+                                        onClick={() => handleToggleMinutes(hr.willId)}
+                                    >
+                                      {minutesWillId === hr.willId
+                                          ? "Hide minutes"
+                                          : hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
+                                              ? "Review & sign minutes"
+                                              : "View minutes"}
+                                    </button>
+                                  </div>
+                              )}
+                              {minutesWillId === hr.willId && (
+                                  minutesLoading ? (
+                                      <p className={styles.mutedText}>Loading minutes...</p>
+                                  ) : (
+                                      <>
+                                        <HandoverMinutes
+                                            minutes={minutesData}
+                                            viewer="EXECUTOR"
+                                            confirmText="I have read these minutes. I confirm the assets listed are the ones I will hand over to the named beneficiaries."
+                                            canSign={hr.status === "IN_PROGRESS"}
+                                            signHint="The handover must be in progress to sign."
+                                            signLabel="Sign as Executor"
+                                            signBusy={minutesSigning}
+                                            onSign={() => handleSignMinutes(hr.willId)}
+                                            onDownloadPdf={() => handleMinutesPdf(hr.willId)}
+                                            pdfBusy={minutesPdfBusy}
+                                            error={minutesError}
+                                        />
+                                        {!minutesData && minutesError && (
+                                            <p className={styles.mutedText}>{minutesError}</p>
+                                        )}
+                                      </>
+                                  )
+                              )}
                               {hr.status === "IN_PROGRESS" &&
                                   (hr.assets || []).some((a) => a.status !== "DELIVERED") && (
                                       <div className={styles.detailRow}>
@@ -624,7 +738,8 @@ export default function ExecutorDashboard() {
                             </span>
                                         <button
                                             className={styles.primaryBtn}
-                                            disabled={busyId === hr.willId}
+                                            disabled={busyId === hr.willId || (hr.minutes && !hr.minutes.executorSigned)}
+                                            title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
                                             onClick={() => handleDeliverAll(hr.willId)}
                                         >
                                           {busyId === hr.willId ? "Delivering..." : "Deliver all"}
@@ -677,7 +792,12 @@ export default function ExecutorDashboard() {
                                       ) : (
                                           <button
                                               className={styles.primaryBtn}
-                                              disabled={busyId === a.id || hr.status !== "IN_PROGRESS"}
+                                              disabled={
+                                                  busyId === a.id ||
+                                                  hr.status !== "IN_PROGRESS" ||
+                                                  Boolean(hr.minutes && !hr.minutes.executorSigned)
+                                              }
+                                              title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
                                               onClick={() => handleDeliver(a.id)}
                                           >
                                             {busyId === a.id ? "Delivering..." : "Deliver"}
