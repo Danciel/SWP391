@@ -11,6 +11,9 @@ import {
   startDeathHandover,
   deleteExecutorRequest,
   signHandoverMinutesAsExecutor,
+  cancelDeathHandover,
+  withdrawExecutorLegalCase,
+  confirmBeneficiaryNameMismatch,
 } from "../../api/executorApi";
 import {
   getExecutorProfile,
@@ -91,7 +94,7 @@ function formatDeadline(deadlineAt) {
 
 function Badge({ status }) {
   return (
-      <span className={`${styles.badge} ${styles[status] || ""}`}>
+    <span className={`${styles.badge} ${styles[status] || ""}`}>
       {STATUS_LABEL[status] || status}
     </span>
   );
@@ -102,6 +105,8 @@ export default function ExecutorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [nameMismatchForm, setNameMismatchForm] = useState(null);
+  const [nameMismatchNote, setNameMismatchNote] = useState("");
   const [toast, setToast] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [fee, setFee] = useState(null);
@@ -144,7 +149,7 @@ export default function ExecutorDashboard() {
 
         setFee(currentFee);
         setFeeInput(
-            currentFee.fee != null ? String(currentFee.fee) : ""
+          currentFee.fee != null ? String(currentFee.fee) : ""
         );
       } else {
         setFee({ fee: null, currency: "VND", updatedAt: null });
@@ -306,9 +311,9 @@ export default function ExecutorDashboard() {
     try {
       const result = await deliverHandoverItem(itemId);
       showToast(
-          result?.status === "COMPLETED"
-              ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
-              : "Asset delivered to the beneficiary"
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "Asset delivered to the beneficiary"
       );
       await load();
     } catch (err) {
@@ -326,9 +331,9 @@ export default function ExecutorDashboard() {
     try {
       const result = await deliverAllHandover(willId);
       showToast(
-          result?.status === "COMPLETED"
-              ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
-              : "All pending assets delivered. Each beneficiary received an access code by email."
+        result?.status === "COMPLETED"
+          ? "All assets delivered. Handover completed and the remaining fee was released to your wallet."
+          : "All pending assets delivered. Each beneficiary received an access code by email."
       );
       await load();
     } catch (err) {
@@ -337,6 +342,93 @@ export default function ExecutorDashboard() {
       setBusyId(null);
     }
   }
+
+
+  // C9: Cancel death handover
+  async function handleCancelHandover(willId) {
+    const reason = window.prompt(
+      "Enter the reason for cancelling this handover:"
+    );
+
+    if (reason === null) return;
+
+    if (reason.trim().length < 3 || reason.trim().length > 500) {
+      setError("Reason must contain 3 to 500 characters.");
+      return;
+    }
+
+    setBusyId(willId);
+    setError("");
+
+    try {
+      await cancelDeathHandover(willId, reason.trim());
+      showToast("Handover cancelled successfully.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not cancel handover.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
+  // C9: Withdraw death certificate
+  async function handleWithdrawLegalCase(caseId) {
+    if (!window.confirm("Are you sure you want to withdraw this certificate?")) {
+      return;
+    }
+
+    setBusyId(caseId);
+    setError("");
+
+    try {
+      await withdrawExecutorLegalCase(caseId);
+      showToast("Death certificate withdrawn successfully.");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not withdraw certificate.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
+
+  // C7: Submit beneficiary name mismatch explanation
+  async function handleSubmitNameMismatch() {
+    if (!nameMismatchForm) return;
+
+    const { willId, designationId } = nameMismatchForm;
+    const note = nameMismatchNote.trim();
+
+    if (note.length < 5 || note.length > 500) {
+      setError("Explanation must contain 5 to 500 characters.");
+      return;
+    }
+
+    const key = `link:${designationId}`;
+    setBusyId(key);
+    setError("");
+
+    try {
+      await confirmBeneficiaryNameMismatch(
+        willId,
+        designationId,
+        note
+      );
+
+      showToast("Name mismatch explanation submitted successfully.");
+      setNameMismatchForm(null);
+      setNameMismatchNote("");
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not submit explanation.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
 
   // C3: open / close the minutes of one handover.
   async function handleToggleMinutes(willId) {
@@ -452,679 +544,811 @@ export default function ExecutorDashboard() {
 
   const dmsTriggers = data?.dmsTriggers ?? [];
   const stats = data
-      ? [
-        { label: "Pending requests", value: data.requests.filter((r) => r.status === "PENDING").length },
-        { label: "Active wills", value: data.activeWills.length },
-        { label: "Triggers", value: dmsTriggers.length },
-        { label: "Cases awaiting review", value: data.cases.filter((c) => c.status === "PENDING").length },
-      ]
-      : [];
+    ? [
+      { label: "Pending requests", value: data.requests.filter((r) => r.status === "PENDING").length },
+      { label: "Active wills", value: data.activeWills.length },
+      { label: "Triggers", value: dmsTriggers.length },
+      { label: "Cases awaiting review", value: data.cases.filter((c) => c.status === "PENDING").length },
+    ]
+    : [];
 
   return (
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Executor Dashboard</h1>
-            <p className={styles.subtitle}>
-              Manage requests from Owners, active wills, Dead Man's Switch triggers and legal cases.
-            </p>
-          </div>
-          {stats.length > 0 && !isLoading && (
-              <dl className={styles.stats}>
-                {stats.map((st) => (
-                    <div className={styles.stat} key={st.label}>
-                      <dd className={styles.statValue}>{st.value}</dd>
-                      <dt className={styles.statLabel}>{st.label}</dt>
-                    </div>
-                ))}
-              </dl>
-          )}
-        </header>
-
-        {toast && <div className={styles.toast}>{toast}</div>}
-        {isLoading && <p className={styles.info}>Loading data...</p>}
-        {error && <p className={styles.errorBox}>{error}</p>}
-
-        {data && !isLoading && (
-            <div className={styles.grid}>
-              <div className={styles.feeRow}>
-                <section className={`${styles.card} ${styles.feeCard}`}>
-                  <h2 className={styles.cardTitle}>My Service Fee</h2>
-                  {editingFee ? (
-                      <div>
-                        <input
-                            className={styles.feeInput}
-                            type="number"
-                            min="0"
-                            value={feeInput}
-                            onChange={(e) => setFeeInput(e.target.value)}
-                        />
-                        <div className={styles.actionRow} style={{ marginTop: 10 }}>
-                          <button
-                              className={styles.secondaryBtn}
-                              onClick={() => {
-                                setEditingFee(false);
-                                setFeeInput(fee?.fee != null ? String(fee.fee) : "");
-                              }}
-                          >
-                            Cancel
-                          </button>
-                          <button className={styles.primaryBtn} disabled={savingFee} onClick={handleSaveFee}>
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                  ) : (
-                      <div>
-                        <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
-                        <p className={styles.metaText}>
-                          {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
-                        </p>
-                        <div className={styles.feeActions}>
-                          <button className={styles.secondaryBtn} onClick={() => setEditingFee(true)}>
-                            Edit Fee
-                          </button>
-                        </div>
-                      </div>
-                  )}
-                </section>
-
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <h1 className={styles.title}>Executor Dashboard</h1>
+          <p className={styles.subtitle}>
+            Manage requests from Owners, active wills, Dead Man's Switch triggers and legal cases.
+          </p>
+        </div>
+        {stats.length > 0 && !isLoading && (
+          <dl className={styles.stats}>
+            {stats.map((st) => (
+              <div className={styles.stat} key={st.label}>
+                <dd className={styles.statValue}>{st.value}</dd>
+                <dt className={styles.statLabel}>{st.label}</dt>
               </div>
+            ))}
+          </dl>
+        )}
+      </header>
 
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>
-                  Requests from Owner <span className={styles.count}>{data.requests.length}</span>
-                </h2>
-                {data.requests.length === 0 ? (
-                    <p className={styles.mutedText}>No pending requests</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.requests.map((req) => {
-                        const deadline = req.status === "PENDING" ? formatDeadline(req.deadlineAt) : null;
-                        return (
-                            <li key={req.id} className={styles.listItemColumn}>
-                              <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                                <div>
-                                  <strong>{req.ownerName}</strong>
-                                  <div className={styles.metaText}>
-                                    Sent {formatDate(req.sentAt)}
-                                  </div>
-                                  {deadline && (
-                                      <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
-                                        {deadline.text}
-                                      </div>
-                                  )}
-                                </div>
-                                <div className={styles.itemRight}>
-                                  <Badge status={req.status} />
-                                  <button className={styles.linkBtn} onClick={() => toggleExpanded(req.id)}>
-                                    {expandedId === req.id ? "Hide Details" : "View Details"}
-                                  </button>
-                                </div>
-                              </div>
+      {toast && <div className={styles.toast}>{toast}</div>}
+      {isLoading && <p className={styles.info}>Loading data...</p>}
+      {error && <p className={styles.errorBox}>{error}</p>}
 
-                              {expandedId === req.id && (
-                                  <div className={styles.detailPanel}>
-                                    <div className={styles.detailRow}>
-                                      <span>Will Title</span>
-                                      <span>{req.willTitle || "—"}</span>
-                                    </div>
-                                    <div className={styles.detailRow}>
-                                      <span>Email</span>
-                                      <span>{req.ownerEmail || "—"}</span>
-                                    </div>
-                                    <div className={styles.detailRow}>
-                                      <span>Phone</span>
-                                      <span>{req.ownerPhone || "—"}</span>
-                                    </div>
-                                    <div className={styles.detailRow}>
-                                      <span>Assets</span>
-                                      <span>{req.assetsCount ?? "—"}</span>
-                                    </div>
-                                    <div className={styles.detailRow}>
-                                      <span>Proposed Fee</span>
-                                      <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
-                                    </div>
-                                    <div style={{ marginTop: 12 }}>
-                                      <strong>Assets ({req.assets?.length ?? 0})</strong>
-                                      {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
-                                          <ul style={{ paddingLeft: 18 }}>
-                                            {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
-                                              <strong>{a.assetName}</strong>
-                                              <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
-                                              <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
-                                            </li>)}
-                                          </ul>}
-                                    </div>
-                                    <div style={{ marginTop: 12 }}>
-                                      <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
-                                      {(req.beneficiaries || []).map(b =>
-                                          <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
-                                    </div>
-                                    {req.message && <p className={styles.metaText}>"{req.message}"</p>}
-                                  </div>
-                              )}
+      {data && !isLoading && (
+        <div className={styles.grid}>
+          <div className={styles.feeRow}>
+            <section className={`${styles.card} ${styles.feeCard}`}>
+              <h2 className={styles.cardTitle}>My Service Fee</h2>
+              {editingFee ? (
+                <div>
+                  <input
+                    className={styles.feeInput}
+                    type="number"
+                    min="0"
+                    value={feeInput}
+                    onChange={(e) => setFeeInput(e.target.value)}
+                  />
+                  <div className={styles.actionRow} style={{ marginTop: 10 }}>
+                    <button
+                      className={styles.secondaryBtn}
+                      onClick={() => {
+                        setEditingFee(false);
+                        setFeeInput(fee?.fee != null ? String(fee.fee) : "");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button className={styles.primaryBtn} disabled={savingFee} onClick={handleSaveFee}>
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className={styles.feeAmount}>{fee?.fee != null ? `${fee.fee.toLocaleString("vi-VN")} VND` : "Not configured"}</p>
+                  <p className={styles.metaText}>
+                    {fee?.updatedAt ? `Last updated ${formatDate(fee.updatedAt)}` : "This is the fee Owners see when hiring you"}
+                  </p>
+                  <div className={styles.feeActions}>
+                    <button className={styles.secondaryBtn} onClick={() => setEditingFee(true)}>
+                      Edit Fee
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
 
-                              {req.status === "DECLINED" && (
-                                  <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                                    <button
-                                        className={styles.dangerBtn}
-                                        onClick={() => startDeleteRequest(req)}
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
-                              )}
+          </div>
 
-                              {req.status === "PENDING" && (
-                                  <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                                    <button
-                                        className={styles.primaryBtn}
-                                        disabled={busyId === req.id || deadline?.overdue}
-                                        onClick={() => handleRequest(req.id, true)}
-                                        title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                                    >
-                                      Accept
-                                    </button>
-                                    <button
-                                        className={styles.secondaryBtn}
-                                        disabled={busyId === req.id || deadline?.overdue}
-                                        onClick={() => handleRequest(req.id, false)}
-                                        title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
-                                    >
-                                      Decline
-                                    </button>
-                                  </div>
-                              )}
-                            </li>
-                        );
-                      })}
-                    </ul>
-                )}
-              </section>
-
-              <section className={`${styles.card} ${styles.cardWide}`}>
-                <h2 className={styles.cardTitle}>
-                  Handovers <span className={styles.count}>{data.handoverRequests.length}</span>
-                </h2>
-                {data.handoverRequests.length === 0 ? (
-                    <p className={styles.mutedText}>No handover has been started yet</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.handoverRequests.map((hr) => (
-                          <li key={hr.id} className={styles.listItemColumn}>
-                            <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                              <div>
-                                <strong>{hr.ownerName}</strong>
-                                <div className={styles.metaText}>
-                                  {hr.willTitle} ·{" "}
-                                  {hr.type === "DEATH" ? "After death (certificate approved)" : "Immediate (Owner still alive)"} ·
-                                  Started {formatDate(hr.requestedAt)}
-                                </div>
-                                <div className={styles.metaText}>
-                                  {hr.deliveredItems} / {hr.totalItems} assets delivered
-                                </div>
-                              </div>
-                              <div className={styles.itemRight}>
-                                <Badge status={hr.status} />
-                              </div>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Requests from Owner <span className={styles.count}>{data.requests.length}</span>
+            </h2>
+            {data.requests.length === 0 ? (
+              <p className={styles.mutedText}>No pending requests</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.requests.map((req) => {
+                  const deadline = req.status === "PENDING" ? formatDeadline(req.deadlineAt) : null;
+                  return (
+                    <li key={req.id} className={styles.listItemColumn}>
+                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                        <div>
+                          <strong>{req.ownerName}</strong>
+                          <div className={styles.metaText}>
+                            Sent {formatDate(req.sentAt)}
+                          </div>
+                          {deadline && (
+                            <div className={deadline.overdue ? styles.deadlineOverdue : styles.metaText}>
+                              {deadline.text}
                             </div>
+                          )}
+                        </div>
+                        <div className={styles.itemRight}>
+                          <Badge status={req.status} />
+                          <button className={styles.linkBtn} onClick={() => toggleExpanded(req.id)}>
+                            {expandedId === req.id ? "Hide Details" : "View Details"}
+                          </button>
+                        </div>
+                      </div>
 
-                            <div className={styles.detailPanel}>
-                              {hr.status === "PAUSED" && (
-                                  <p className={styles.metaText}>
-                                    This handover is paused while a problem is being reviewed by Admin.
-                                  </p>
-                              )}
-                              {hr.minutes && (
-                                  <div className={styles.detailRow} style={{ flexWrap: "wrap" }}>
-                                    <span>
-                                      Handover minutes:{" "}
-                                      {hr.minutes.status === "FULLY_SIGNED"
-                                          ? "fully signed"
-                                          : hr.minutes.status === "VOID"
-                                              ? "void"
-                                              : `${hr.minutes.signedCount} / ${hr.minutes.totalSignatures} signatures`}
-                                      {hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned && (
-                                          <span className={styles.metaText} style={{ display: "block" }}>
-                                            Read and sign the minutes first. You cannot deliver any asset before you sign.
-                                          </span>
-                                      )}
-                                    </span>
-                                    <button
-                                        className={hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
-                                            ? styles.primaryBtn
-                                            : styles.secondaryBtn}
-                                        onClick={() => handleToggleMinutes(hr.willId)}
-                                    >
-                                      {minutesWillId === hr.willId
-                                          ? "Hide minutes"
-                                          : hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
-                                              ? "Review & sign minutes"
-                                              : "View minutes"}
-                                    </button>
-                                  </div>
-                              )}
-                              {minutesWillId === hr.willId && (
-                                  minutesLoading ? (
-                                      <p className={styles.mutedText}>Loading minutes...</p>
-                                  ) : (
-                                      <>
-                                        <HandoverMinutes
-                                            minutes={minutesData}
-                                            viewer="EXECUTOR"
-                                            confirmText="I have read these minutes. I confirm the assets listed are the ones I will hand over to the named beneficiaries."
-                                            canSign={hr.status === "IN_PROGRESS"}
-                                            signHint="The handover must be in progress to sign."
-                                            signLabel="Sign as Executor"
-                                            signBusy={minutesSigning}
-                                            onSign={() => handleSignMinutes(hr.willId)}
-                                            onDownloadPdf={() => handleMinutesPdf(hr.willId)}
-                                            pdfBusy={minutesPdfBusy}
-                                            error={minutesError}
-                                        />
-                                        {!minutesData && minutesError && (
-                                            <p className={styles.mutedText}>{minutesError}</p>
-                                        )}
-                                      </>
-                                  )
-                              )}
-                              {hr.status === "IN_PROGRESS" &&
-                                  (hr.assets || []).some((a) => a.status !== "DELIVERED") && (
-                                      <div className={styles.detailRow}>
+                      {expandedId === req.id && (
+                        <div className={styles.detailPanel}>
+                          <div className={styles.detailRow}>
+                            <span>Will Title</span>
+                            <span>{req.willTitle || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Email</span>
+                            <span>{req.ownerEmail || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Phone</span>
+                            <span>{req.ownerPhone || "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Assets</span>
+                            <span>{req.assetsCount ?? "—"}</span>
+                          </div>
+                          <div className={styles.detailRow}>
+                            <span>Proposed Fee</span>
+                            <span>{req.proposedFee ? `${req.proposedFee.toLocaleString("vi-VN")} VND` : "—"}</span>
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Assets ({req.assets?.length ?? 0})</strong>
+                            {(req.assets || []).length === 0 ? <p className={styles.metaText}>No assets assigned.</p> :
+                              <ul style={{ paddingLeft: 18 }}>
+                                {req.assets.map(a => <li key={a.willAssetId} style={{ marginTop: 8 }}>
+                                  <strong>{a.assetName}</strong>
+                                  <div className={styles.metaText}>Type: {a.assetType || "—"}{a.provider && a.provider !== a.assetType ? ` · ${a.provider}` : ""}</div>
+                                  <div className={styles.metaText}>Beneficiary: {(a.beneficiaries || []).map(b => `${b.fullName}${b.relationship ? ` (${b.relationship})` : ""}`).join(", ") || "Not assigned"}</div>
+                                </li>)}
+                              </ul>}
+                          </div>
+                          <div style={{ marginTop: 12 }}>
+                            <strong>Beneficiaries ({req.beneficiaries?.length ?? 0})</strong>
+                            {(req.beneficiaries || []).map(b =>
+                              <div className={styles.metaText} key={b.id}>{b.fullName}{b.relationship ? ` · ${b.relationship}` : ""}</div>)}
+                          </div>
+                          {req.message && <p className={styles.metaText}>"{req.message}"</p>}
+                        </div>
+                      )}
+
+                      {req.status === "DECLINED" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.dangerBtn}
+                            onClick={() => startDeleteRequest(req)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+
+                      {req.status === "PENDING" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, true)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className={styles.secondaryBtn}
+                            disabled={busyId === req.id || deadline?.overdue}
+                            onClick={() => handleRequest(req.id, false)}
+                            title={deadline?.overdue ? "Response deadline has passed for this request" : undefined}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className={`${styles.card} ${styles.cardWide}`}>
+            <h2 className={styles.cardTitle}>
+              Handovers <span className={styles.count}>{data.handoverRequests.length}</span>
+            </h2>
+            {data.handoverRequests.length === 0 ? (
+              <p className={styles.mutedText}>No handover has been started yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.handoverRequests.map((hr) => (
+                  <li key={hr.id} className={styles.listItemColumn}>
+                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                      <div>
+                        <strong>{hr.ownerName}</strong>
+                        <div className={styles.metaText}>
+                          {hr.willTitle} ·{" "}
+                          {hr.type === "DEATH" ? "After death (certificate approved)" : "Immediate (Owner still alive)"} ·
+                          Started {formatDate(hr.requestedAt)}
+                        </div>
+                        <div className={styles.metaText}>
+                          {hr.deliveredItems} / {hr.totalItems} assets delivered
+                        </div>
+                      </div>
+                      <div className={styles.itemRight}>
+                        <Badge status={hr.status} />
+                      </div>
+                    </div>
+
+                    <div className={styles.detailPanel}>
+                      {hr.status === "PAUSED" && (
+                        <p className={styles.metaText}>
+                          This handover is paused while a problem is being reviewed by Admin.
+                        </p>
+                      )}
+
+                      {/* C9: Cancel Death Handover */}
+                      {hr.type === "DEATH" &&
+                        hr.status === "IN_PROGRESS" &&
+                        hr.deliveredItems === 0 && (
+                          <div className={styles.actionRow} style={{ marginBottom: 12 }}>
+                            <button
+                              className={styles.secondaryBtn}
+                              disabled={busyId === hr.willId}
+                              onClick={() => handleCancelHandover(hr.willId)}
+                            >
+                              {busyId === hr.willId
+                                ? "Cancelling..."
+                                : "Cancel Handover"}
+                            </button>
+                          </div>
+                        )}
+
+
+                      {hr.minutes && (
+                        <div className={styles.detailRow} style={{ flexWrap: "wrap" }}>
+                          <span>
+                            Handover minutes:{" "}
+                            {hr.minutes.status === "FULLY_SIGNED"
+                              ? "fully signed"
+                              : hr.minutes.status === "VOID"
+                                ? "void"
+                                : `${hr.minutes.signedCount} / ${hr.minutes.totalSignatures} signatures`}
+                            {hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned && (
+                              <span className={styles.metaText} style={{ display: "block" }}>
+                                Read and sign the minutes first. You cannot deliver any asset before you sign.
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            className={hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
+                              ? styles.primaryBtn
+                              : styles.secondaryBtn}
+                            onClick={() => handleToggleMinutes(hr.willId)}
+                          >
+                            {minutesWillId === hr.willId
+                              ? "Hide minutes"
+                              : hr.status === "IN_PROGRESS" && !hr.minutes.executorSigned
+                                ? "Review & sign minutes"
+                                : "View minutes"}
+                          </button>
+                        </div>
+                      )}
+                      {minutesWillId === hr.willId && (
+                        minutesLoading ? (
+                          <p className={styles.mutedText}>Loading minutes...</p>
+                        ) : (
+                          <>
+                            <HandoverMinutes
+                              minutes={minutesData}
+                              viewer="EXECUTOR"
+                              confirmText="I have read these minutes. I confirm the assets listed are the ones I will hand over to the named beneficiaries."
+                              canSign={hr.status === "IN_PROGRESS"}
+                              signHint="The handover must be in progress to sign."
+                              signLabel="Sign as Executor"
+                              signBusy={minutesSigning}
+                              onSign={() => handleSignMinutes(hr.willId)}
+                              onDownloadPdf={() => handleMinutesPdf(hr.willId)}
+                              pdfBusy={minutesPdfBusy}
+                              error={minutesError}
+                            />
+                            {!minutesData && minutesError && (
+                              <p className={styles.mutedText}>{minutesError}</p>
+                            )}
+                          </>
+                        )
+                      )}
+                      {hr.status === "IN_PROGRESS" &&
+                        (hr.assets || []).some((a) => a.status !== "DELIVERED") && (
+                          <div className={styles.detailRow}>
                             <span>
                               Hand everything over at once. Every beneficiary gets
                               their own access code by email.
                             </span>
-                                        <button
-                                            className={styles.primaryBtn}
-                                            disabled={busyId === hr.willId || (hr.minutes && !hr.minutes.executorSigned)}
-                                            title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
-                                            onClick={() => handleDeliverAll(hr.willId)}
-                                        >
-                                          {busyId === hr.willId ? "Delivering..." : "Deliver all"}
-                                        </button>
-                                      </div>
-                                  )}
-                              {(hr.assets || []).map((a) => {
-                                const rs = a.recipientStatus ? RECIPIENT_STATUS[a.recipientStatus] : null;
-                                const canResend =
-                                    hr.status === "IN_PROGRESS" || hr.status === "COMPLETED"
-                                        ? ["CODE_PENDING", "CODE_NOT_EMAILED", "CODE_SENT", "CODE_LOCKED"].includes(
-                                            a.recipientStatus
-                                        )
-                                        : false;
-                                const resendKey = `code:${a.designationId}`;
-                                return (
-                                    <div className={styles.detailRow} key={a.id} style={{ flexWrap: "wrap" }}>
-                          <span>
-                            {a.name} ({a.type}) → {a.beneficiaryName}
-                            {a.relationship ? ` · ${a.relationship}` : ""}
-                            {a.allocationPercentage != null ? ` · ${a.allocationPercentage}%` : ""}
-                            {rs && (
+                            <button
+                              className={styles.primaryBtn}
+                              disabled={busyId === hr.willId || (hr.minutes && !hr.minutes.executorSigned)}
+                              title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
+                              onClick={() => handleDeliverAll(hr.willId)}
+                            >
+                              {busyId === hr.willId ? "Delivering..." : "Deliver all"}
+                            </button>
+                          </div>
+                        )}
+                      {(hr.assets || []).map((a) => {
+                        const rs = a.recipientStatus ? RECIPIENT_STATUS[a.recipientStatus] : null;
+                        const canResend =
+                          hr.status === "IN_PROGRESS" || hr.status === "COMPLETED"
+                            ? ["CODE_PENDING", "CODE_NOT_EMAILED", "CODE_SENT", "CODE_LOCKED"].includes(
+                              a.recipientStatus
+                            )
+                            : false;
+                        const resendKey = `code:${a.designationId}`;
+                        return (
+                          <div className={styles.detailRow} key={a.id} style={{ flexWrap: "wrap" }}>
+                            <span>
+                              {a.name} ({a.type}) → {a.beneficiaryName}
+                              {a.relationship ? ` · ${a.relationship}` : ""}
+                              {a.allocationPercentage != null ? ` · ${a.allocationPercentage}%` : ""}
+                              {rs && (
                                 <span className={styles.metaText} style={{ display: "block" }}>
-                                {a.claimedAt ? "Received by the recipient" : rs.text}
+                                  {a.claimedAt ? "Received by the recipient" : rs.text}
                                   {a.recipientStatus === "CODE_LOCKED" && a.codeLockedUntil
-                                      ? ` until ${formatTime(a.codeLockedUntil)}`
-                                      : ""}
+                                    ? ` until ${formatTime(a.codeLockedUntil)}`
+                                    : ""}
                                   {a.codeIssueCount > 1 ? ` · ${a.codeIssueCount} codes sent` : ""}
                                   {rs.hint ? ` — ${rs.hint}` : ""}
                                   {a.supportRequested
-                                      ? " The recipient asked for help: please send a new code."
-                                      : ""}
-                              </span>
-                            )}
-                          </span>
-                                      {a.status === "DELIVERED" ? (
-                                          <span>
-                              ✓ Delivered
-                                            {canResend && !a.claimedAt && a.designationId && (
-                                                <button
-                                                    className={styles.secondaryBtn}
-                                                    style={{ marginLeft: 8 }}
-                                                    disabled={busyId === resendKey}
-                                                    onClick={() => handleResendCode(hr.willId, a.designationId)}
-                                                >
-                                                  {busyId === resendKey ? "Sending..." : "Send a new code"}
-                                                </button>
-                                            )}
+                                    ? " The recipient asked for help: please send a new code."
+                                    : ""}
+                                </span>
+                              )}
                             </span>
-                                      ) : (
-                                          <button
-                                              className={styles.primaryBtn}
-                                              disabled={
-                                                  busyId === a.id ||
-                                                  hr.status !== "IN_PROGRESS" ||
-                                                  Boolean(hr.minutes && !hr.minutes.executorSigned)
-                                              }
-                                              title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
-                                              onClick={() => handleDeliver(a.id)}
-                                          >
-                                            {busyId === a.id ? "Delivering..." : "Deliver"}
-                                          </button>
-                                      )}
-                                    </div>
-                                );
-                              })}
-                            </div>
-                          </li>
-                      ))}
-                    </ul>
-                )}
-              </section>
 
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>
-                  Active Wills <span className={styles.count}>{data.activeWills.length}</span>
-                </h2>
-                {data.activeWills.length === 0 ? (
-                    <p className={styles.mutedText}>No active wills yet</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.activeWills.map((will) => (
-                          <li key={will.id} className={styles.listItemColumn}>
-                            <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                              <div>
-                                <strong>{will.willTitle}</strong>
-                                <div className={styles.metaText}>Owner: {will.ownerName}</div>
-                              </div>
-                              <div className={styles.itemRight}>
-                                <Badge status={will.status} />
-                                <button className={styles.linkBtn} onClick={() => toggleExpanded(will.id)}>
-                                  {expandedId === will.id ? "Hide Details" : "View Details"}
+
+                            {/* C7: Open name mismatch explanation form */}
+                            {a.recipientStatus === "NAME_MISMATCH" &&
+                              a.designationId && (
+                                <button
+                                  className={styles.secondaryBtn}
+                                  onClick={() => {
+                                    setNameMismatchForm({
+                                      willId: hr.willId,
+                                      designationId: a.designationId,
+                                    });
+                                    setNameMismatchNote("");
+                                    setError("");
+                                  }}
+                                >
+                                  Explain Name Mismatch
                                 </button>
-                              </div>
-                            </div>
-                            {expandedId === will.id && (
-                                <div className={styles.detailPanel}>
-                                  <p className={styles.metaText}>{will.description || "No description provided."}</p>
-                                  <div className={styles.detailRow}>
-                                    <span>Assets</span>
-                                    <span>{will.assetsCount ?? "—"}</span>
-                                  </div>
-                                  <div className={styles.detailRow}>
-                                    <span>Beneficiaries</span>
-                                    <span>{will.beneficiariesCount ?? "—"}</span>
-                                  </div>
-                                  <div className={styles.detailRow}>
-                                    <span>Dead Man's Switch</span>
-                                    <span>{will.dmsStatus || "—"}</span>
-                                  </div>
-                                  <div className={styles.detailRow}>
-                                    <span>Created</span>
-                                    <span>{formatDate(will.createdAt)}</span>
-                                  </div>
-                                  {will.assets && will.assets.length > 0 ? (
-                                      <>
-                                        <p className={styles.metaText} style={{ marginTop: 6 }}>
-                                          Asset breakdown
-                                        </p>
-                                        {will.assets.map((a) => (
-                                            <div className={styles.assetDetailCard} key={a.id}>
-                                              <div className={styles.detailRow}>
+                              )}
+
+
+                            {a.status === "DELIVERED" ? (
+                              <span>
+                                ✓ Delivered
+                                {canResend && !a.claimedAt && a.designationId && (
+                                  <button
+                                    className={styles.secondaryBtn}
+                                    style={{ marginLeft: 8 }}
+                                    disabled={busyId === resendKey}
+                                    onClick={() => handleResendCode(hr.willId, a.designationId)}
+                                  >
+                                    {busyId === resendKey ? "Sending..." : "Send a new code"}
+                                  </button>
+                                )}
+                              </span>
+                            ) : (
+                              <button
+                                className={styles.primaryBtn}
+                                disabled={
+                                  busyId === a.id ||
+                                  hr.status !== "IN_PROGRESS" ||
+                                  Boolean(hr.minutes && !hr.minutes.executorSigned)
+                                }
+                                title={hr.minutes && !hr.minutes.executorSigned ? "Sign the handover minutes first" : undefined}
+                                onClick={() => handleDeliver(a.id)}
+                              >
+                                {busyId === a.id ? "Delivering..." : "Deliver"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Active Wills <span className={styles.count}>{data.activeWills.length}</span>
+            </h2>
+            {data.activeWills.length === 0 ? (
+              <p className={styles.mutedText}>No active wills yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.activeWills.map((will) => (
+                  <li key={will.id} className={styles.listItemColumn}>
+                    <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                      <div>
+                        <strong>{will.willTitle}</strong>
+                        <div className={styles.metaText}>Owner: {will.ownerName}</div>
+                      </div>
+                      <div className={styles.itemRight}>
+                        <Badge status={will.status} />
+                        <button className={styles.linkBtn} onClick={() => toggleExpanded(will.id)}>
+                          {expandedId === will.id ? "Hide Details" : "View Details"}
+                        </button>
+                      </div>
+                    </div>
+                    {expandedId === will.id && (
+                      <div className={styles.detailPanel}>
+                        <p className={styles.metaText}>{will.description || "No description provided."}</p>
+                        <div className={styles.detailRow}>
+                          <span>Assets</span>
+                          <span>{will.assetsCount ?? "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Beneficiaries</span>
+                          <span>{will.beneficiariesCount ?? "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Dead Man's Switch</span>
+                          <span>{will.dmsStatus || "—"}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <span>Created</span>
+                          <span>{formatDate(will.createdAt)}</span>
+                        </div>
+                        {will.assets && will.assets.length > 0 ? (
+                          <>
+                            <p className={styles.metaText} style={{ marginTop: 6 }}>
+                              Asset breakdown
+                            </p>
+                            {will.assets.map((a) => (
+                              <div className={styles.assetDetailCard} key={a.id}>
+                                <div className={styles.detailRow}>
                                   <span>
                                     <strong>{a.name}</strong> ({a.type})
                                   </span>
-                                                <span>{a.status || "—"}</span>
-                                              </div>
-                                              {a.description && (
-                                                  <p className={styles.metaText} style={{ margin: "4px 0" }}>
-                                                    {a.description}
-                                                  </p>
-                                              )}
-                                              <div className={styles.detailRow}>
-                                                <span>Beneficiary</span>
-                                                <span>{a.beneficiaryName || "Unassigned"}</span>
-                                              </div>
-                                              {a.beneficiaryRelationship && (
-                                                  <div className={styles.detailRow}>
-                                                    <span>Relationship</span>
-                                                    <span>{a.beneficiaryRelationship}</span>
-                                                  </div>
-                                              )}
-                                              {a.beneficiaryEmail && (
-                                                  <div className={styles.detailRow}>
-                                                    <span>Contact Email</span>
-                                                    <span>{a.beneficiaryEmail}</span>
-                                                  </div>
-                                              )}
-                                              {a.beneficiaryPhone && (
-                                                  <div className={styles.detailRow}>
-                                                    <span>Contact Phone</span>
-                                                    <span>{a.beneficiaryPhone}</span>
-                                                  </div>
-                                              )}
-                                            </div>
-                                        ))}
-                                      </>
-                                  ) : (
-                                      <p className={styles.metaText}>No individual asset details recorded for this will yet.</p>
-                                  )}
+                                  <span>{a.status || "—"}</span>
                                 </div>
-                            )}
-                          </li>
-                      ))}
-                    </ul>
-                )}
-              </section>
-
-
-
-              <section className={styles.card}>
-                <h2 className={styles.cardTitle}>
-                  Dead Man's Switch Triggers <span className={styles.count}>{dmsTriggers.length}</span>
-                </h2>
-
-                {dmsTriggers.length === 0 ? (
-                    <p className={styles.mutedText}>No triggers</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {dmsTriggers.map((trig) => (
-                          <li
-                              key={trig.assignmentId || trig.id}
-                              className={styles.triggerCardItem}
-                          >
-                            <div>
-                              <strong>
-                                {trig.ownerName || "Unknown Owner"}
-                              </strong>
-
-                              <div className={styles.metaText}>
-                                Will: {trig.willTitle || "—"}
-                              </div>
-
-                              <div className={styles.metaText}>
-                                Triggered:{" "}
-                                {trig.thresholdReachedAt
-                                    ? formatDate(trig.thresholdReachedAt)
-                                    : trig.triggeredAt
-                                        ? formatDate(trig.triggeredAt)
-                                        : "—"}
-                              </div>
-
-                              <div className={styles.metaText}>
-                                Missed check-ins: {trig.missedCheckIns ?? "—"} /{" "}
-                                {trig.maxMissedCheckIns ?? "—"}
-                              </div>
-                            </div>
-
-
-
-                            <div className={styles.triggerActions}>
-                              <Badge status={trig.status || "TRIGGERED"} />
-
-                              {Number(trig.missedCheckIns ?? 0) >=
-                                  Number(trig.maxMissedCheckIns ?? Infinity) &&
-                                  trig.willId && (
-                                      <button
-                                          className={styles.triggerSubmitBtn}
-                                          disabled={busyId === trig.willId}
-                                          onClick={() => openLegalDocumentUpload(trig.willId, trig.ownerName)}
-                                      >
-                                        Submit Legal Document
-                                      </button>
-                                  )}
-                            </div>
-                          </li>
-                      ))}
-                    </ul>
-                )}
-              </section>
-
-
-
-              <section className={`${styles.card} ${styles.cardWide}`}>
-                <h2 className={styles.cardTitle}>
-                  Legal Cases <span className={styles.count}>{data.cases.length}</span>
-                </h2>
-                {data.cases.length === 0 ? (
-                    <p className={styles.mutedText}>No death certificate submitted yet</p>
-                ) : (
-                    <ul className={styles.list}>
-                      {data.cases.map((c) => {
-                        const handoverStarted = data.handoverRequests.some(
-                            (h) => h.willId === c.willId && h.type === "DEATH"
-                        );
-                        return (
-                            <li key={c.id} className={styles.listItemColumn}>
-                              <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
-                                <div>
-                                  <strong>Case for {c.ownerName}</strong>
-                                  <div className={styles.metaText}>
-                                    Will: {c.willTitle || "—"} · Submitted: {formatDate(c.submittedAt)}
-                                  </div>
-                                  {c.reviewedAt && (
-                                      <div className={styles.metaText}>Reviewed: {formatDate(c.reviewedAt)}</div>
-                                  )}
-                                  {c.status === "REJECTED" && c.reviewNote && (
-                                      <div className={styles.deadlineOverdue}>Reason: {c.reviewNote}</div>
-                                  )}
-                                </div>
-                                <div className={styles.itemRight}>
-                                  <Badge status={c.status} />
-                                </div>
-                              </div>
-
-                              {c.status === "PENDING" && (
-                                  <p className={styles.metaText} style={{ marginTop: 8 }}>
-                                    Waiting for Legal Verify to check the certificate.
+                                {a.description && (
+                                  <p className={styles.metaText} style={{ margin: "4px 0" }}>
+                                    {a.description}
                                   </p>
-                              )}
+                                )}
+                                <div className={styles.detailRow}>
+                                  <span>Beneficiary</span>
+                                  <span>{a.beneficiaryName || "Unassigned"}</span>
+                                </div>
+                                {a.beneficiaryRelationship && (
+                                  <div className={styles.detailRow}>
+                                    <span>Relationship</span>
+                                    <span>{a.beneficiaryRelationship}</span>
+                                  </div>
+                                )}
+                                {a.beneficiaryEmail && (
+                                  <div className={styles.detailRow}>
+                                    <span>Contact Email</span>
+                                    <span>{a.beneficiaryEmail}</span>
+                                  </div>
+                                )}
+                                {a.beneficiaryPhone && (
+                                  <div className={styles.detailRow}>
+                                    <span>Contact Phone</span>
+                                    <span>{a.beneficiaryPhone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <p className={styles.metaText}>No individual asset details recorded for this will yet.</p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-                              {c.status === "APPROVED" && !handoverStarted && (
-                                  <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                                    <button
-                                        className={styles.primaryBtn}
-                                        disabled={busyId === c.willId}
-                                        onClick={() => handleStartHandover(c.willId)}
-                                    >
-                                      {busyId === c.willId ? "Starting..." : "Start Handover"}
-                                    </button>
-                                    <span className={styles.metaText}>
+
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>
+              Dead Man's Switch Triggers <span className={styles.count}>{dmsTriggers.length}</span>
+            </h2>
+
+            {dmsTriggers.length === 0 ? (
+              <p className={styles.mutedText}>No triggers</p>
+            ) : (
+              <ul className={styles.list}>
+                {dmsTriggers.map((trig) => (
+                  <li
+                    key={trig.assignmentId || trig.id}
+                    className={styles.triggerCardItem}
+                  >
+                    <div>
+                      <strong>
+                        {trig.ownerName || "Unknown Owner"}
+                      </strong>
+
+                      <div className={styles.metaText}>
+                        Will: {trig.willTitle || "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Triggered:{" "}
+                        {trig.thresholdReachedAt
+                          ? formatDate(trig.thresholdReachedAt)
+                          : trig.triggeredAt
+                            ? formatDate(trig.triggeredAt)
+                            : "—"}
+                      </div>
+
+                      <div className={styles.metaText}>
+                        Missed check-ins: {trig.missedCheckIns ?? "—"} /{" "}
+                        {trig.maxMissedCheckIns ?? "—"}
+                      </div>
+                    </div>
+
+
+
+                    <div className={styles.triggerActions}>
+                      <Badge status={trig.status || "TRIGGERED"} />
+
+                      {Number(trig.missedCheckIns ?? 0) >=
+                        Number(trig.maxMissedCheckIns ?? Infinity) &&
+                        trig.willId && (
+                          <button
+                            className={styles.triggerSubmitBtn}
+                            disabled={busyId === trig.willId}
+                            onClick={() => openLegalDocumentUpload(trig.willId, trig.ownerName)}
+                          >
+                            Submit Legal Document
+                          </button>
+                        )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+
+
+          <section className={`${styles.card} ${styles.cardWide}`}>
+            <h2 className={styles.cardTitle}>
+              Legal Cases <span className={styles.count}>{data.cases.length}</span>
+            </h2>
+            {data.cases.length === 0 ? (
+              <p className={styles.mutedText}>No death certificate submitted yet</p>
+            ) : (
+              <ul className={styles.list}>
+                {data.cases.map((c) => {
+                  const handoverStarted = data.handoverRequests.some(
+                    (h) => h.willId === c.willId && h.type === "DEATH"
+                  );
+                  return (
+                    <li key={c.id} className={styles.listItemColumn}>
+                      <div className={styles.listItem} style={{ border: "none", padding: 0 }}>
+                        <div>
+                          <strong>Case for {c.ownerName}</strong>
+                          <div className={styles.metaText}>
+                            Will: {c.willTitle || "—"} · Submitted: {formatDate(c.submittedAt)}
+                          </div>
+                          {c.reviewedAt && (
+                            <div className={styles.metaText}>Reviewed: {formatDate(c.reviewedAt)}</div>
+                          )}
+                          {c.status === "REJECTED" && c.reviewNote && (
+                            <div className={styles.deadlineOverdue}>Reason: {c.reviewNote}</div>
+                          )}
+                        </div>
+                        <div className={styles.itemRight}>
+                          <Badge status={c.status} />
+                        </div>
+                      </div>
+
+
+                      {c.status === "PENDING" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <span className={styles.metaText}>
+                            Waiting for Legal Verify to check the certificate.
+                          </span>
+
+                          <button
+                            className={styles.secondaryBtn}
+                            disabled={busyId === c.id}
+                            onClick={() => handleWithdrawLegalCase(c.id)}
+                          >
+                            {busyId === c.id
+                              ? "Withdrawing..."
+                              : "Withdraw Certificate"}
+                          </button>
+                        </div>
+                      )}
+
+
+                      {c.status === "APPROVED" && !handoverStarted && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            disabled={busyId === c.willId}
+                            onClick={() => handleStartHandover(c.willId)}
+                          >
+                            {busyId === c.willId ? "Starting..." : "Start Handover"}
+                          </button>
+                          <span className={styles.metaText}>
                             Legal Verify approved the certificate. Starting the handover also checks the Owner is DECEASED.
                           </span>
-                                  </div>
-                              )}
+                        </div>
+                      )}
 
-                              {c.status === "APPROVED" && handoverStarted && (
-                                  <p className={styles.metaText} style={{ marginTop: 8 }}>
-                                    Handover started — deliver the assets in the Handovers card above.
-                                  </p>
-                              )}
+                      {c.status === "APPROVED" && handoverStarted && (
+                        <p className={styles.metaText} style={{ marginTop: 8 }}>
+                          Handover started — deliver the assets in the Handovers card above.
+                        </p>
+                      )}
 
-                              {c.status === "REJECTED" && (
-                                  <div className={styles.actionRow} style={{ marginTop: 8 }}>
-                                    <button
-                                        className={styles.secondaryBtn}
-                                        onClick={() => openLegalDocumentUpload(c.willId, c.ownerName)}
-                                    >
-                                      Submit a new certificate
-                                    </button>
-                                  </div>
-                              )}
-                            </li>
-                        );
-                      })}
-                    </ul>
-                )}
-              </section>
+                      {c.status === "REJECTED" && (
+                        <div className={styles.actionRow} style={{ marginTop: 8 }}>
+                          <button
+                            className={styles.secondaryBtn}
+                            onClick={() => openLegalDocumentUpload(c.willId, c.ownerName)}
+                          >
+                            Submit a new certificate
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      )}
+
+      {deleteConfirmReq && (
+        <div className={styles.overlay} onClick={() => setDeleteConfirmReq(null)}>
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete declined request"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>Delete this request?</h2>
+            <p className={styles.metaText}>
+              You declined the request from <strong>{deleteConfirmReq.ownerName}</strong>
+              {deleteConfirmReq.willTitle ? ` (${deleteConfirmReq.willTitle})` : ""}.
+              Are you sure you want to delete it? It will be removed from your dashboard and this cannot be undone.
+              You will need to enter your Security PIN to confirm.
+            </p>
+            <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
+              <button className={styles.secondaryBtn} onClick={() => setDeleteConfirmReq(null)}>
+                Cancel
+              </button>
+              <button className={styles.dangerBtnSolid} onClick={continueDeleteToPin}>
+                Yes, continue
+              </button>
             </div>
-        )}
+          </div>
+        </div>
+      )}
 
-        {deleteConfirmReq && (
-            <div className={styles.overlay} onClick={() => setDeleteConfirmReq(null)}>
-              <div
-                  className={styles.modal}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Delete declined request"
-                  onClick={(e) => e.stopPropagation()}
+      {deletePinReq && (
+        <SecurityPinModal
+          scope="EXECUTOR_REQUEST_DELETE"
+          resourceId={deletePinReq.id}
+          onVerified={handleDeleteVerified}
+          onClose={() => setDeletePinReq(null)}
+        />
+      )}
+
+      {uploadCaseId && (
+        <div className={styles.overlay} onClick={closeUploadPopup}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Upload Legal Documents</h2>
+            <p className={styles.metaText}>
+              Attach the death certificate and identity verification documents for this case.
+            </p>
+            <label className={styles.uploadArea}>
+              <input type="file" multiple onChange={handleFilesChosen} className={styles.hiddenFileInput} />
+              {uploadFiles.length > 0 ? (
+                <span>{uploadFiles.join(", ")}</span>
+              ) : (
+                <span>Upload file here</span>
+              )}
+            </label>
+            <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
+              <button className={styles.secondaryBtn} disabled={busyId === uploadCaseId} onClick={closeUploadPopup}>
+                Cancel Upload
+              </button>
+              <button className={styles.primaryBtn} disabled={busyId === uploadCaseId} onClick={handleConfirmUpload}>
+                Confirm Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* C7: Beneficiary name mismatch explanation modal */}
+      {nameMismatchForm && (
+        <div
+          className={styles.overlay}
+          onClick={() => {
+            setNameMismatchForm(null);
+            setNameMismatchNote("");
+          }}
+        >
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Explain beneficiary name mismatch"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={styles.modalTitle}>
+              Explain Name Mismatch
+            </h2>
+
+            <p className={styles.metaText}>
+              Explain why the beneficiary's verified identity
+              has a different name from the will designation.
+            </p>
+
+            <textarea
+              value={nameMismatchNote}
+              onChange={(e) => setNameMismatchNote(e.target.value.slice(0, 500))}
+              placeholder="Enter your explanation (5-500 characters)..."
+              rows={5}
+              maxLength={500}
+              style={{
+                width: "100%",
+                padding: 12,
+                marginTop: 12,
+                borderRadius: 8,
+                resize: "vertical",
+                font: "inherit",
+              }}
+            />
+
+            <div className={styles.metaText} style={{ textAlign: "right" }}>
+              {nameMismatchNote.trim().length}/500 characters
+            </div>
+
+            <div
+              className={styles.actionRow}
+              style={{ justifyContent: "flex-end", marginTop: 16 }}
+            >
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => {
+                  setNameMismatchForm(null);
+                  setNameMismatchNote("");
+                }}
               >
-                <h2 className={styles.modalTitle}>Delete this request?</h2>
-                <p className={styles.metaText}>
-                  You declined the request from <strong>{deleteConfirmReq.ownerName}</strong>
-                  {deleteConfirmReq.willTitle ? ` (${deleteConfirmReq.willTitle})` : ""}.
-                  Are you sure you want to delete it? It will be removed from your dashboard and this cannot be undone.
-                  You will need to enter your Security PIN to confirm.
-                </p>
-                <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
-                  <button className={styles.secondaryBtn} onClick={() => setDeleteConfirmReq(null)}>
-                    Cancel
-                  </button>
-                  <button className={styles.dangerBtnSolid} onClick={continueDeleteToPin}>
-                    Yes, continue
-                  </button>
-                </div>
-              </div>
+                Cancel
+              </button>
+
+              <button
+                className={styles.primaryBtn}
+                disabled={
+                  nameMismatchNote.trim().length < 5 ||
+                  busyId === `link:${nameMismatchForm.designationId}`
+                }
+                onClick={handleSubmitNameMismatch}
+              >
+                {busyId === `link:${nameMismatchForm.designationId}`
+                  ? "Submitting..."
+                  : "Submit Explanation"}
+              </button>
             </div>
-        )}
+          </div>
+        </div>
+      )}
 
-        {deletePinReq && (
-            <SecurityPinModal
-                scope="EXECUTOR_REQUEST_DELETE"
-                resourceId={deletePinReq.id}
-                onVerified={handleDeleteVerified}
-                onClose={() => setDeletePinReq(null)}
-            />
-        )}
 
-        {uploadCaseId && (
-            <div className={styles.overlay} onClick={closeUploadPopup}>
-              <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <h2 className={styles.modalTitle}>Upload Legal Documents</h2>
-                <p className={styles.metaText}>
-                  Attach the death certificate and identity verification documents for this case.
-                </p>
-                <label className={styles.uploadArea}>
-                  <input type="file" multiple onChange={handleFilesChosen} className={styles.hiddenFileInput} />
-                  {uploadFiles.length > 0 ? (
-                      <span>{uploadFiles.join(", ")}</span>
-                  ) : (
-                      <span>Upload file here</span>
-                  )}
-                </label>
-                <div className={styles.actionRow} style={{ justifyContent: "flex-end", marginTop: 16 }}>
-                  <button className={styles.secondaryBtn} disabled={busyId === uploadCaseId} onClick={closeUploadPopup}>
-                    Cancel Upload
-                  </button>
-                  <button className={styles.primaryBtn} disabled={busyId === uploadCaseId} onClick={handleConfirmUpload}>
-                    Confirm Upload
-                  </button>
-                </div>
-              </div>
-            </div>
-        )}
+      {uploadWillId && (
+        <DeathCertificateModal
+          ownerName={uploadOwnerName}
+          busy={busyId === uploadWillId}
+          onSubmit={handleCertificateSubmit}
+          onClose={closeLegalDocumentUpload}
+        />
+      )}
 
-        {uploadWillId && (
-            <DeathCertificateModal
-                ownerName={uploadOwnerName}
-                busy={busyId === uploadWillId}
-                onSubmit={handleCertificateSubmit}
-                onClose={closeLegalDocumentUpload}
-            />
-        )}
-
-      </div>
+    </div>
   );
 }
 
