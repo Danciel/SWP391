@@ -64,7 +64,8 @@ namespace LegacyVault.Features.WillManagement.Repositories
             return await _context.Assets
                 .FirstOrDefaultAsync(x =>
                     x.Id == assetId &&
-                    x.OwnerAccountId == ownerAccountId);
+                    x.OwnerAccountId == ownerAccountId &&
+                    x.Status != AssetStatuses.HandedOver);
         }
 
         public async Task<Account?> GetAccountAsync(

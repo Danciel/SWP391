@@ -1,5 +1,6 @@
 import { connectAccountAsset, uploadDocumentAsset, checkDocumentIntegrity, downloadDocument } from "./assetConnectionApi";
 import { request, BASE_URL, getToken } from "./client";
+import { buildAssetLocks, mergeAssetLocks } from "../utils/willHelpers";
 import { unsupported } from "./unsupported";
 const r = (path, method = "GET", body, headers) => request(path, { method, body, headers });
 const TYPE_CODES = { "Online Account": "ACCOUNT", "Crypto Wallet": "DIGITAL_WALLET", "Bank Account": "BANK_ACCOUNT", "Cloud Storage": "CLOUD_STORAGE", "Document": "DOCUMENT", "Other": "OTHER" };
@@ -117,6 +118,21 @@ export const updateAsset = async (userId, id, form, pinGrant) => {
 
 export { checkDocumentIntegrity, downloadDocument };
 
+
+// Asset ids that sit in a not-cancelled will (any status). Needs no Security PIN.
+export const getLockedAssetIds = async () => {
+  const ids = await r("/wills/locked-assets");
+  return Array.isArray(ids) ? ids : [];
+};
+
+// Locks for the asset pickers: { assetId -> { willId, willName } }.
+export const getAssetLocks = async (exceptWillId = null) => {
+  const [wills, ids] = await Promise.all([
+    getWills().catch(() => []),
+    getLockedAssetIds().catch(() => []),
+  ]);
+  return mergeAssetLocks(ids, buildAssetLocks(wills, exceptWillId));
+};
 
 export const getWills = async () => {
   const summaries = await r("/wills");

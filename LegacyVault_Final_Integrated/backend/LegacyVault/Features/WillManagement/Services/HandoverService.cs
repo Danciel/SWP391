@@ -308,6 +308,8 @@ namespace LegacyVault.Features.WillManagement.Services
             if (rows == 0)
                 throw new WillConflictException("Item was already delivered.");
 
+            await HideDeliveredAssetsAsync(item.HandoverCaseId);
+
             var pending = await _db.HandoverItems.CountAsync(x =>
                 x.HandoverCaseId == item.HandoverCaseId &&
                 x.Status == "PENDING");
@@ -387,6 +389,8 @@ namespace LegacyVault.Features.WillManagement.Services
             if (delivered == 0)
                 throw new WillConflictException("There is nothing left to deliver.");
 
+            await HideDeliveredAssetsAsync(handoverCase.Id);
+
             var pending = await _db.HandoverItems.CountAsync(x =>
                 x.HandoverCaseId == handoverCase.Id &&
                 x.Status == "PENDING");
@@ -407,6 +411,29 @@ namespace LegacyVault.Features.WillManagement.Services
             await _db.SaveChangesAsync();
 
             return await BuildResponseAsync(handoverCase.Id);
+        }
+
+        // An asset whose every handover item is DELIVERED has left the Owner's vault: it is
+        // hidden from the asset list and closed for reveal / edit / reuse. The row and its
+        // encrypted secret stay, because the beneficiaries read them. An asset split between
+        // several people stays visible until the LAST of them has been handed their share.
+        private async Task HideDeliveredAssetsAsync(Guid caseId)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            await _db.Assets
+                .Where(a =>
+                    a.Status != AssetStatuses.HandedOver &&
+                    _db.HandoverItems.Any(i =>
+                        i.HandoverCaseId == caseId &&
+                        i.AssetAssignment!.WillAsset!.AssetId == a.Id) &&
+                    !_db.HandoverItems.Any(i =>
+                        i.HandoverCaseId == caseId &&
+                        i.AssetAssignment!.WillAsset!.AssetId == a.Id &&
+                        i.Status != "DELIVERED"))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, AssetStatuses.HandedOver)
+                    .SetProperty(a => a.UpdatedAt, now));
         }
 
         private async Task CompleteAsync(
@@ -432,6 +459,15 @@ namespace LegacyVault.Features.WillManagement.Services
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(x => x.Status, "HANDED_OVER")
                     .SetProperty(x => x.UpdatedAt, now));
+
+            // The assets of this will leave the Owner's vault: no longer listed, revealed,
+            // edited, verified or put into another will. Rows stay for the beneficiaries.
+            await _db.Assets
+                .Where(a => _db.WillAssets.Any(wa =>
+                    wa.WillId == willId && wa.AssetId == a.Id))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, AssetStatuses.HandedOver)
+                    .SetProperty(a => a.UpdatedAt, now));
 
             await _db.ExecutorProfiles
                 .Where(x => x.AccountId == executorAccountId)
@@ -476,6 +512,14 @@ namespace LegacyVault.Features.WillManagement.Services
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(x => x.Status, "ACTIVE")
                     .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow));
+
+            // The handover is cancelled: assets already hidden after delivery return to the Owner.
+            await _db.Assets
+                .Where(a => a.Status == AssetStatuses.HandedOver &&
+                            _db.WillAssets.Any(wa => wa.WillId == willId && wa.AssetId == a.Id))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, AssetStatuses.Active)
+                    .SetProperty(a => a.UpdatedAt, DateTimeOffset.UtcNow));
 
             _db.AuditLogs.Add(new AuditLog
             {

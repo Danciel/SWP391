@@ -1,4 +1,5 @@
 using LegacyVault.Data;
+using LegacyVault.Models;
 using LegacyVault.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -102,7 +103,8 @@ public class RelationshipsController : ControllerBase
         var me = _user.GetRequiredAccountId();
 
         var owned = await _db.Assets.AsNoTracking()
-            .AnyAsync(a => a.Id == assetId && a.OwnerAccountId == me);
+            .AnyAsync(a => a.Id == assetId && a.OwnerAccountId == me &&
+                           a.Status != AssetStatuses.HandedOver);
         if (!owned) return NotFound(new { message = "Asset not found." });
 
         var wills = await _db.WillAssets.AsNoTracking()
