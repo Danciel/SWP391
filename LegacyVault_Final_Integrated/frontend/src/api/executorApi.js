@@ -267,3 +267,60 @@ export const startDeathHandover = (willId) => {
 
 export const getExecutorDmsTriggers = () =>
     request("/executor-inbox/triggers");
+
+
+// C9: Executor cancels death handover
+export const cancelDeathHandover = (willId, reason) => {
+  if (!willId) {
+    throw new Error("Missing Will ID.");
+  }
+
+  if (!reason || reason.trim().length < 3) {
+    throw new Error("Cancellation reason must contain at least 3 characters.");
+  }
+
+  return request(`/handover/${willId}/cancel`, {
+    method: "POST",
+    body: {
+      reason: reason.trim(),
+    },
+  });
+};
+
+
+// C9: Executor withdraws death certificate
+export const withdrawExecutorLegalCase = (caseId) => {
+  if (!caseId) {
+    throw new Error("Missing Legal Case ID.");
+  }
+
+  return request(`/legal-cases/${caseId}/withdraw`, {
+    method: "POST",
+  });
+};
+
+
+// C7: Executor explains beneficiary name mismatch
+export const confirmBeneficiaryNameMismatch = (
+  willId,
+  designationId,
+  note
+) => {
+  if (!willId || !designationId) {
+    throw new Error("Missing Will or Beneficiary ID.");
+  }
+
+  if (!note || note.trim().length < 5 || note.trim().length > 500) {
+    throw new Error("Explanation must contain 5 to 500 characters.");
+  }
+
+  return request(
+    `/handover/${willId}/recipients/${designationId}/confirm-link`,
+    {
+      method: "POST",
+      body: {
+        note: note.trim(),
+      },
+    }
+  );
+};
