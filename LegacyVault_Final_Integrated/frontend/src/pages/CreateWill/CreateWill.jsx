@@ -320,7 +320,7 @@ function AssetsStep({ will, assets, locks, userId, onAssetsChanged, onSave, onNe
                   {asset.type === "Online Account" && asset.accountType ? ` · ${providerLabel(asset.accountType)}` : ""}
                   {" · "}
                   {verificationInfo(asset).label}
-                  {lock ? ` · 🔒 Used in will "${lock.willName}"` : ""}
+                  {lock ? " · 🔒 Used in another will" : ""}
                   {attached ? " · In this will (untick to remove)" : ""}
                 </span>
               </span>
