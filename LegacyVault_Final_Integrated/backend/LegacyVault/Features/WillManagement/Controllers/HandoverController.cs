@@ -15,15 +15,18 @@ namespace LegacyVault.Features.WillManagement.Controllers
         private readonly IHandoverService _service;
         private readonly IHandoverCodeService _codes;
         private readonly ICurrentUserService _user;
+        private readonly IBeneficiaryAutoLinkService _autoLink;
 
         public HandoverController(
             IHandoverService service,
             IHandoverCodeService codes,
-            ICurrentUserService user)
+            ICurrentUserService user,
+            IBeneficiaryAutoLinkService autoLink)
         {
             _service = service;
             _codes = codes;
             _user = user;
+            _autoLink = autoLink;
         }
 
         // LV-32: Owner, still alive, presses Immediate Handover.
@@ -70,6 +73,63 @@ namespace LegacyVault.Features.WillManagement.Controllers
                     lockedUntil = result.LockedUntil
                 });
         }
+
+        // C9: the Executor's handovers, each with the next step to take.
+        [HttpGet("mine")]
+        public Task<IActionResult> Mine()
+            => Run(() => _service.GetExecutorHandoversAsync(
+                _user.GetRequiredAccountId()));
+
+        // C9: the Executor cancels a death handover that delivered nothing yet.
+        [HttpPost("{willId:guid}/cancel")]
+        public Task<IActionResult> Cancel(
+            Guid willId, [FromBody] HandoverReasonRequest request)
+            => Run(() => _service.CancelDeathHandoverAsync(
+                willId, _user.GetRequiredAccountId(), request.Reason.Trim()));
+
+        // C7: the account email matches but the name differs; the Executor links
+        // the person by hand, with a written reason.
+        [HttpPost("{willId:guid}/recipients/{designationId:guid}/confirm-link")]
+        public Task<IActionResult> ConfirmLink(
+            Guid willId, Guid designationId,
+            [FromBody] ConfirmRecipientLinkRequest request)
+            => Run(async () =>
+            {
+                var me = _user.GetRequiredAccountId();
+                await _autoLink.ConfirmByExecutorAsync(
+                    willId, designationId, me, request.Note);
+                return await _service.GetAsync(willId, me);
+            });
+
+        // C2: minutes (content, hash, signature status) of the latest handover.
+        [HttpGet("{willId:guid}/minutes")]
+        public Task<IActionResult> GetMinutes(Guid willId)
+            => Run(() => _service.GetMinutesAsync(
+                willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN")));
+
+        // C2: sealed PDF. Owner, Executor and Admin only.
+        [HttpGet("{willId:guid}/minutes/pdf")]
+        public async Task<IActionResult> GetMinutesPdf(Guid willId)
+        {
+            try
+            {
+                var file = await _service.GetMinutesPdfAsync(
+                    willId, _user.GetRequiredAccountId(), User.IsInRole("ADMIN"));
+
+                Response.Headers["X-Content-SHA256"] = file.Sha256;
+                return File(file.Pdf, "application/pdf", file.FileName);
+            }
+            catch (KeyNotFoundException ex)
+            { return NotFound(new { message = ex.Message }); }
+        }
+
+        // C3: the Executor signs. Without it no item can be delivered (C4).
+        [HttpPost("{willId:guid}/minutes/executor-sign")]
+        public Task<IActionResult> ExecutorSign(Guid willId)
+            => Run(() => _service.SignAsExecutorAsync(
+                willId,
+                _user.GetRequiredAccountId(),
+                HttpContext.Connection.RemoteIpAddress?.ToString()));
 
         // Executor marks one asset-to-beneficiary item as delivered.
         [HttpPost("items/{itemId:guid}/deliver")]

@@ -48,5 +48,31 @@
             string toName,
             string recipientName,
             string willTitle);
+    
+
+        // C8: a death certificate was submitted (toOwner=true: sent to the Owner
+        // so they can say "I'm alive"; false: sent to a Legal Verifier).
+        Task SendDeathCertificateSubmittedEmailAsync(
+            string toEmail,
+            string recipientName,
+            string ownerName,
+            string willTitle,
+            bool toOwner);
+
+        // C8: the Legal Verifier approved / rejected the certificate.
+        Task SendLegalDecisionEmailAsync(
+            string toEmail,
+            string executorName,
+            string ownerName,
+            string willTitle,
+            bool approved,
+            string? note);
+
+        // C6: the Owner confirmed they are alive.
+        Task SendOwnerAliveConfirmedEmailAsync(
+            string toEmail,
+            string executorName,
+            string ownerName,
+            string willTitle);
     }
 }

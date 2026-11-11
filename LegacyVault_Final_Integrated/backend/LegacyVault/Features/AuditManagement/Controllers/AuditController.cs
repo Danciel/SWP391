@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LegacyVault.Features.AuditManagement.Controllers;
 
 [ApiController]
-[Route("api/admin/audit-logs")]
+[Route("api/admin/auditlogs")]
 [Authorize(Roles = "ADMIN")]
 public class AuditController : ControllerBase
 {

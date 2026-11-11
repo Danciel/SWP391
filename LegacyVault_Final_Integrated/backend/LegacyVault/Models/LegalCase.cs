@@ -9,6 +9,9 @@ namespace LegacyVault.Models
         public string FilePath { get; set; } = string.Empty;
         public string OriginalFileName { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
+        // C8: SHA-256 of the original file and whether it is stored encrypted.
+        public string? FileSha256 { get; set; }
+        public bool IsEncrypted { get; set; }
         public string Status { get; set; } = "PENDING"; // PENDING | APPROVED | REJECTED
         public Guid? ReviewedByAccountId { get; set; }
         public string? ReviewNote { get; set; }

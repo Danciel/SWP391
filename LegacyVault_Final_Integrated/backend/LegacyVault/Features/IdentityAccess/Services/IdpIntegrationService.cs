@@ -5,6 +5,8 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using LegacyVault.Features.IdentityAccess.Contracts;
+using Microsoft.EntityFrameworkCore;
+using LegacyVault.Data;
 
 namespace LegacyVault.Features.IdentityAccess.Services
 {
@@ -17,16 +19,19 @@ namespace LegacyVault.Features.IdentityAccess.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<IdpIntegrationService> _logger;
         private readonly IAccountRepository _accountRepository;
+        private readonly LegacyVaultDbContext _db;
 
         public IdpIntegrationService(
             HttpClient httpClient,
             IConfiguration config,
             ILogger<IdpIntegrationService> logger,
-            IAccountRepository accountRepository)
+            IAccountRepository accountRepository,
+            LegacyVaultDbContext db)
         {
             _httpClient = httpClient;
             _logger = logger;
             _accountRepository = accountRepository;
+            _db = db;
 
             // IdpApiSettings:BaseUrl wins; "Idp:BaseUrl" (used by IdpLifeStatusClient) is the fallback,
             // so one setting is enough to point LegacyVault at MockIdpApi.
@@ -39,6 +44,7 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
             // First call loads the face models; do not let the UI hang forever if the IdP is stuck.
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
+
         }
 
         public async Task<IdpFaceResult> VerifyFaceAsync(Guid idpUserId, Stream faceImageStream, CancellationToken cancellationToken = default)
@@ -100,6 +106,14 @@ namespace LegacyVault.Features.IdentityAccess.Services
 
         public async Task<IdpFaceResult> LinkIdpUserAsync(Guid legacyVaultUserId, string externalIdentityId, Stream faceImageStream, CancellationToken cancellationToken = default)
         {
+            var isAlreadyLinked = await _db.Accounts
+                .AnyAsync(x => x.ExternalIdentityId == externalIdentityId && x.Id != legacyVaultUserId, cancellationToken);
+
+            if (isAlreadyLinked)
+            {
+                throw new InvalidOperationException("This Identity Provider ID is already linked to another account.");
+            }
+
             if (!Guid.TryParse(externalIdentityId?.Trim(), out var idpUserId))
                 return IdpFaceResult.Fail(400, "The IDP User ID is not a valid UUID."); // Invalid format
 

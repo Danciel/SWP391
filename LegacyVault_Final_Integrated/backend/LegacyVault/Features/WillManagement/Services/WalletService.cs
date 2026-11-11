@@ -249,6 +249,27 @@ namespace LegacyVault.Features.WillManagement.Services
 
         private async Task SettleAsync(Guid willId, bool release, bool ignoreOpenDispute)
         {
+            // C5: the fee is never released while handover minutes are still
+            // waiting for a signature (Executor or any Beneficiary).
+            if (release)
+            {
+                var waitingForSignatures = await _db.HandoverMinutesDocs
+                    .AnyAsync(x => x.WillId == willId &&
+                                   x.Status == "PENDING_SIGNATURES");
+
+                if (waitingForSignatures)
+                {
+                    Guid? signatureActor;
+                    try { signatureActor = _user.GetRequiredAccountId(); }
+                    catch { signatureActor = null; }
+
+                    AddAudit(signatureActor, "PAYMENT_RELEASE_BLOCKED_BY_SIGNATURES",
+                        "ServicePayment", willId, new { willId });
+                    await _db.SaveChangesAsync();
+                    return;
+                }
+            }
+
             await using var tx = await _db.Database.BeginTransactionAsync();
 
             var now = DateTimeOffset.UtcNow;

@@ -29,7 +29,7 @@ public class DocumentController : ControllerBase
 
     [HttpPost("upload")]
     [RequestSizeLimit(3 * 1024 * 1024)]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file,
+    public async Task<IActionResult> Upload(IFormFile file,
         [FromForm] string? name, [FromForm] string? description)
     {
         if (file == null || file.Length == 0 || file.Length > MaxBytes)

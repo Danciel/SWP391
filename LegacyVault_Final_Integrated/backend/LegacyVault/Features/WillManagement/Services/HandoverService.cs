@@ -10,7 +10,7 @@ namespace LegacyVault.Features.WillManagement.Services
     // Handover state machine (kept separate from DMS):
     //   Will ACTIVE --start--> HANDOVER_IN_PROGRESS --all items delivered--> HANDED_OVER
     //   HANDOVER_IN_PROGRESS --admin abort--> ACTIVE (fee refunded)
-    public class HandoverService : IHandoverService
+    public partial class HandoverService : IHandoverService
     {
         private readonly LegacyVaultDbContext _db;
         private readonly IWalletService _wallet;
@@ -163,6 +163,11 @@ namespace LegacyVault.Features.WillManagement.Services
                 CreatedAt = now
             });
             await _db.SaveChangesAsync();
+
+            // C1/C2: minutes (content + SHA-256 + PDF) and the signature rows.
+            // Same transaction: a handover never exists without its minutes.
+            await EnsureMinutesAsync(handover.Id);
+
             await tx.CommitAsync();
 
             // People who already have a verified account with the same email and
@@ -287,6 +292,9 @@ namespace LegacyVault.Features.WillManagement.Services
             if (item.HandoverCase.Status != "IN_PROGRESS")
                 throw new WillConflictException("Handover is not in progress.");
 
+            // C4: the Executor must have signed the minutes first.
+            await EnsureExecutorSignedAsync(item.HandoverCaseId);
+
             var now = DateTimeOffset.UtcNow;
 
             // Atomic: an item can be delivered once.
@@ -305,7 +313,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 x.Status == "PENDING");
 
             if (pending == 0)
-                await CompleteAsync(item.HandoverCaseId, willId, executorAccountId);
+                await TryCompleteAsync(item.HandoverCaseId, willId, executorAccountId);
 
             // The recipient of this item gets the access code (once per person).
             await _codes.IssueForCaseAsync(item.HandoverCaseId);
@@ -363,6 +371,9 @@ namespace LegacyVault.Features.WillManagement.Services
             if (handoverCase.Status != "IN_PROGRESS")
                 throw new WillConflictException("Handover is not in progress.");
 
+            // C4: the Executor must have signed the minutes first.
+            await EnsureExecutorSignedAsync(handoverCase.Id);
+
             var now = DateTimeOffset.UtcNow;
 
             // Atomic: every item is delivered once.
@@ -381,7 +392,7 @@ namespace LegacyVault.Features.WillManagement.Services
                 x.Status == "PENDING");
 
             if (pending == 0)
-                await CompleteAsync(handoverCase.Id, willId, executorAccountId);
+                await TryCompleteAsync(handoverCase.Id, willId, executorAccountId);
 
             // One email with one code per recipient.
             await _codes.IssueForCaseAsync(handoverCase.Id);
@@ -412,6 +423,9 @@ namespace LegacyVault.Features.WillManagement.Services
                     .SetProperty(x => x.CompletedAt, now));
 
             if (done == 0) return;
+
+            // C2: final sealed PDF with every signature, before the fee moves.
+            await SealMinutesAsync(caseId);
 
             await _db.Wills
                 .Where(x => x.Id == willId)
@@ -454,6 +468,8 @@ namespace LegacyVault.Features.WillManagement.Services
 
             if (rows == 0)
                 throw new WillConflictException("Handover is no longer in progress.");
+
+            await VoidMinutesAsync(caseId);
 
             await _db.Wills
                 .Where(x => x.Id == willId)
@@ -542,7 +558,7 @@ namespace LegacyVault.Features.WillManagement.Services
                     .Select(x => x.ExecutorAccountId)
                     .FirstAsync();
 
-                await CompleteAsync(caseId, willId, executorId);
+                await TryCompleteAsync(caseId, willId, executorId);
             }
 
             return await BuildResponseAsync(caseId);
@@ -665,6 +681,8 @@ namespace LegacyVault.Features.WillManagement.Services
                 if (aborted == 0)
                     throw new WillConflictException(
                         "Handover changed; refresh and retry.");
+
+                await VoidMinutesAsync(pausedCaseId.Value);
             }
 
             var oldExecutorId = current.ExecutorAccountId;
@@ -805,7 +823,8 @@ namespace LegacyVault.Features.WillManagement.Services
                 CompletedAt = c.CompletedAt,
                 TotalItems = items.Count,
                 DeliveredItems = items.Count(x => x.Status == "DELIVERED"),
-                Items = items
+                Items = items,
+                Minutes = await GetMinutesSummaryAsync(caseId)
             };
         }
     }

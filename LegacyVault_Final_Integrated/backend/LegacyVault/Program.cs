@@ -124,6 +124,14 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     LegacyVault.Features.WillManagement.Contracts.IBeneficiaryAutoLinkService,
     LegacyVault.Features.WillManagement.Services.BeneficiaryAutoLinkService>();
+// N7 (Nhien): MOCK. Swap MockAccountLockService for the real account-lock class.
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IAccountLockService,
+    LegacyVault.Features.WillManagement.Services.MockAccountLockService>();
+// C6: Owner "I'm alive" after a DMS trigger.
+builder.Services.AddScoped<
+    LegacyVault.Features.WillManagement.Contracts.IOwnerAliveService,
+    LegacyVault.Features.WillManagement.Services.OwnerAliveService>();
 builder.Services.AddScoped<IWillRepository, WillRepository>();
 builder.Services.AddScoped<IWillService, WillService>();
 // D05: LifeStatus comes from the separate MockIdpApi over HTTP

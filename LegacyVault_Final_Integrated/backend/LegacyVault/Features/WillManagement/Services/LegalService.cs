@@ -1,4 +1,5 @@
 using LegacyVault.Data;
+using LegacyVault.Features.IdentityAccess.Contracts;
 using LegacyVault.Features.WillManagement.Contracts;
 using LegacyVault.Features.WillManagement.DTOs;
 using LegacyVault.Models;
@@ -22,15 +23,24 @@ namespace LegacyVault.Features.WillManagement.Services
         private readonly LegacyVaultDbContext _db;
         private readonly ILifeStatusClient _lifeStatus;
         private readonly IConfiguration _config;
+        private readonly IEmailSender _email;
+        private readonly IAccountLockService _lock;
+        private readonly ILogger<LegalService> _logger;
 
         public LegalService(
             LegacyVaultDbContext db,
             ILifeStatusClient lifeStatus,
-            IConfiguration config)
+            IConfiguration config,
+            IEmailSender email,
+            IAccountLockService accountLock,
+            ILogger<LegalService> logger)
         {
             _db = db;
             _lifeStatus = lifeStatus;
             _config = config;
+            _email = email;
+            _lock = accountLock;
+            _logger = logger;
         }
 
         private string StorageRoot =>
@@ -114,16 +124,32 @@ namespace LegacyVault.Features.WillManagement.Services
                 }
             }
 
+            // C8: the content must really be a PDF / JPG / PNG, is hashed, and is
+            // stored ENCRYPTED. We never fall back to storing plain text.
+            byte[] plain;
+            await using (var input = file.OpenReadStream())
+            using (var buffer = new MemoryStream())
+            {
+                await input.CopyToAsync(buffer);
+                plain = buffer.ToArray();
+            }
+
+            if (!CertificateCrypto.MatchesExtension(ext, plain))
+            {
+                throw new InvalidOperationException(
+                    "The file content does not match a PDF, JPG or PNG.");
+            }
+
             var caseId = Guid.NewGuid();
+            var fileSha256 = HandoverMinutesBuilder.Sha256Hex(plain);
+            var encrypted = CertificateCrypto.Encrypt(GetKey(), caseId, plain);
+
+            // Random name, no original name or extension on disk.
             var relative = Path.Combine(
-                "death-certificates", caseId.ToString("N") + ext.ToLowerInvariant());
+                "death-certificates", caseId.ToString("N") + ".enc");
             var full = Path.Combine(StorageRoot, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-
-            await using (var fs = File.Create(full))
-            {
-                await file.CopyToAsync(fs);
-            }
+            await File.WriteAllBytesAsync(full, encrypted);
 
             var legalCase = new LegalCase
             {
@@ -134,6 +160,8 @@ namespace LegacyVault.Features.WillManagement.Services
                 // Never trust the client path; keep only the file name.
                 OriginalFileName = Path.GetFileName(file.FileName),
                 ContentType = contentType,
+                FileSha256 = fileSha256,
+                IsEncrypted = true,
                 CertificateData = cleanData,
                 Status = "PENDING",
                 SubmittedAt = DateTimeOffset.UtcNow
@@ -147,7 +175,19 @@ namespace LegacyVault.Features.WillManagement.Services
                 Details = System.Text.Json.JsonSerializer.Serialize(new { willId, legalCase.ContentType, fileLength = file.Length }),
                 CreatedAt = DateTimeOffset.UtcNow
             });
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch
+            {
+                // No database row -> do not leave an orphan file behind.
+                try { File.Delete(full); } catch { /* best effort */ }
+                throw;
+            }
+
+            // C8: tell the Owner (they may be alive) and the Legal Verifiers.
+            await NotifySubmittedAsync(will);
 
             return new LegalCaseSummaryResponse
             {
@@ -241,7 +281,7 @@ namespace LegacyVault.Features.WillManagement.Services
             };
         }
 
-        public async Task<(string Path, string ContentType, string FileName)>
+        public async Task<(byte[] Content, string ContentType, string FileName)>
             GetCertificateAsync(
                 Guid caseId,
                 Guid accountId,
@@ -258,7 +298,76 @@ namespace LegacyVault.Features.WillManagement.Services
                 throw new KeyNotFoundException("Certificate file not found.");
             }
 
-            return (full, c.ContentType, c.OriginalFileName);
+            var stored = await File.ReadAllBytesAsync(full);
+
+            // Old files (before C8) are plain; new ones are encrypted.
+            var content = c.IsEncrypted
+                ? CertificateCrypto.Decrypt(GetKey(), c.Id, stored)
+                : stored;
+
+            if (!string.IsNullOrEmpty(c.FileSha256) &&
+                !string.Equals(
+                    HandoverMinutesBuilder.Sha256Hex(content),
+                    c.FileSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "The stored certificate failed its integrity check.");
+            }
+
+            _db.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorAccountId = accountId,
+                Action = "LEGAL_CERTIFICATE_VIEWED",
+                EntityType = "LegalCase",
+                EntityId = caseId,
+                Details = System.Text.Json.JsonSerializer.Serialize(
+                    new { c.WillId, isLegalVerifier }),
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await _db.SaveChangesAsync();
+
+            return (content, c.ContentType, c.OriginalFileName);
+        }
+
+        public async Task<LegalCaseDetailResponse> WithdrawAsync(
+            Guid caseId,
+            Guid executorAccountId)
+        {
+            var exists = await _db.LegalCases.AnyAsync(x =>
+                x.Id == caseId && x.ExecutorAccountId == executorAccountId);
+
+            if (!exists)
+                throw new KeyNotFoundException("Legal case not found.");
+
+            var now = DateTimeOffset.UtcNow;
+
+            // Atomic: only a PENDING case can be withdrawn.
+            var rows = await _db.LegalCases
+                .Where(x => x.Id == caseId && x.Status == "PENDING")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "CANCELLED")
+                    .SetProperty(x => x.ReviewNote, "Withdrawn by the Executor.")
+                    .SetProperty(x => x.ReviewedAt, now));
+
+            if (rows == 0)
+                throw new WillConflictException(
+                    "Only a pending legal case can be withdrawn.");
+
+            _db.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorAccountId = executorAccountId,
+                Action = "LEGAL_CASE_WITHDRAWN",
+                EntityType = "LegalCase",
+                EntityId = caseId,
+                Details = "{}",
+                CreatedAt = now
+            });
+            await _db.SaveChangesAsync();
+
+            return await GetAsync(caseId, executorAccountId, false);
         }
 
         public async Task<LegalCaseDetailResponse> DecideAsync(
@@ -303,9 +412,118 @@ namespace LegacyVault.Features.WillManagement.Services
             });
             await _db.SaveChangesAsync();
 
+            // C8 + N7: lock the Owner on approval and e-mail the Executor.
+            await AfterDecisionAsync(caseId, request.Approve, note, reviewerAccountId);
+
             // Approval alone does NOT hand anything over (R05): the
             // Executor must still start handover, which re-checks LifeStatus.
             return await GetAsync(caseId, reviewerAccountId, true);
+        }
+
+        private byte[] GetKey()
+        {
+            var kek = _config["Encryption:KekBase64"];
+
+            if (string.IsNullOrWhiteSpace(kek))
+            {
+                throw new InvalidOperationException(
+                    "Certificate storage is not configured (Encryption:KekBase64 is missing).");
+            }
+
+            return CertificateCrypto.DeriveKey(kek);
+        }
+
+        private async Task TrySendAsync(Func<Task> send, string what)
+        {
+            try { await send(); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "{What} e-mail failed.", what);
+            }
+        }
+
+        // The Owner may be alive, so they are told first; Legal gets the review request.
+        private async Task NotifySubmittedAsync(Will will)
+        {
+            var ownerName = will.OwnerAccount?.FullName ?? string.Empty;
+
+            if (will.OwnerAccount != null)
+            {
+                var owner = will.OwnerAccount;
+                await TrySendAsync(() =>
+                    _email.SendDeathCertificateSubmittedEmailAsync(
+                        owner.Email, owner.FullName, ownerName, will.Title, true),
+                    "Death certificate (owner)");
+            }
+
+            var verifiers = await _db.Accounts
+                .AsNoTracking()
+                .Where(a => a.Role == "LEGAL_VERIFIER" && a.EmailVerified)
+                .Select(a => new { a.Email, a.FullName })
+                .ToListAsync();
+
+            foreach (var v in verifiers)
+            {
+                await TrySendAsync(() =>
+                    _email.SendDeathCertificateSubmittedEmailAsync(
+                        v.Email, v.FullName, ownerName, will.Title, false),
+                    "Death certificate (legal)");
+            }
+        }
+
+        private async Task AfterDecisionAsync(
+            Guid caseId, bool approved, string? note, Guid reviewerAccountId)
+        {
+            var c = await _db.LegalCases
+                .AsNoTracking()
+                .Include(x => x.Will)
+                    .ThenInclude(w => w!.OwnerAccount)
+                .Include(x => x.ExecutorAccount)
+                .FirstOrDefaultAsync(x => x.Id == caseId);
+
+            if (c?.Will == null) return;
+
+            if (approved)
+            {
+                try
+                {
+                    await _lock.LockOwnerAsync(
+                        c.Will.OwnerAccountId, c.Id,
+                        "Death certificate approved", CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // The approval stands; the failure is visible so it can be retried.
+                    _logger.LogError(ex, "Owner lock failed for case {CaseId}.", c.Id);
+
+                    _db.AuditLogs.Add(new AuditLog
+                    {
+                        Id = Guid.NewGuid(),
+                        ActorAccountId = reviewerAccountId,
+                        Action = "OWNER_LOCK_FAILED",
+                        EntityType = "LegalCase",
+                        EntityId = c.Id,
+                        Details = System.Text.Json.JsonSerializer.Serialize(
+                            new { c.Will.OwnerAccountId }),
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
+                    await _db.SaveChangesAsync();
+                }
+            }
+
+            var executor = c.ExecutorAccount;
+            if (executor != null)
+            {
+                await TrySendAsync(() =>
+                    _email.SendLegalDecisionEmailAsync(
+                        executor.Email,
+                        executor.FullName,
+                        c.Will.OwnerAccount?.FullName ?? string.Empty,
+                        c.Will.Title,
+                        approved,
+                        note),
+                    "Legal decision");
+            }
         }
 
         private async Task<LegalCase> LoadForAccessAsync(
