@@ -98,8 +98,8 @@ namespace LegacyVault.Features.WillManagement.Services
                         Info(column, "Started at (UTC)",
                             content.StartedAt.UtcDateTime.ToString(
                                 "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture));
-                        Info(column, "Will ID", content.WillId.ToString("D"));
-                        Info(column, "Handover case ID", content.HandoverCaseId.ToString("D"));
+//                        Info(column, "Will ID", content.WillId.ToString("D"));
+//                        Info(column, "Handover case ID", content.HandoverCaseId.ToString("D"));
 
                         Heading(column, "II. ASSETS HANDED OVER");
                         column.Item().Table(table =>
@@ -140,16 +140,16 @@ namespace LegacyVault.Features.WillManagement.Services
                             }
                         });
 
-                        Heading(column, "III. HASH AND CONTENT INTEGRITY");
-                        column.Item().Text("SHA-256 of the original minutes:").Bold();
-                        column.Item().Text(contentSha256).FontSize(9);
-                        column.Item().Text(
-                                "This hash is taken from the content of the original minutes. Every " +
-                                "electronic signature is bound to it when it is created; changing the " +
-                                "content may make the signatures no longer match.")
-                            .FontSize(9).FontColor(Colors.Grey.Darken2);
+//                        Heading(column, "III. HASH AND CONTENT INTEGRITY");
+//                        column.Item().Text("SHA-256 of the original minutes:").Bold();
+//                        column.Item().Text(contentSha256).FontSize(9);
+//                        column.Item().Text(
+//                                "This hash is taken from the content of the original minutes. Every " +
+//                                "electronic signature is bound to it when it is created; changing the " +
+//                                "content may make the signatures no longer match.")
+//                            .FontSize(9).FontColor(Colors.Grey.Darken2);
 
-                        Heading(column, "IV. CONFIRMATION AND SIGNATURES");
+                        Heading(column, "III. CONFIRMATION AND SIGNATURES");
                         column.Item().ShowEntire().Row(row =>
                         {
                             row.Spacing(10);
