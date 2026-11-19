@@ -51,7 +51,7 @@ export default function IdpRegister() {
         throw new Error("API did not return an identifier (id).");
       }
 
-      navigate(`/idp/profile/${encodeURIComponent(result.id)}`);
+      navigate(`/idp/face-enroll/${encodeURIComponent(result.id)}`);
     } catch (err) {
       setError(err.message || "Unable to create an identification profile.");
     } finally {

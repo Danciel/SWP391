@@ -99,6 +99,15 @@ export default function IdpProfile() {
           </button>
         </div>
 
+        {!profile.faceId && (
+        <Link
+          className="idp-profile-enroll-button"
+          to={`/idp/face-enroll/${encodeURIComponent(profile.id)}`}
+        >
+          Đăng ký khuôn mặt ngay
+        </Link>
+        )}
+
         <div className="idp-profile-details">
           <p><strong>Họ tên:</strong> {profile.fullName}</p>
           <p><strong>Email:</strong> {profile.email}</p>

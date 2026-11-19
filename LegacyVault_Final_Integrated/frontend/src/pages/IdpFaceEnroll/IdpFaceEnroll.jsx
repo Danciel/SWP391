@@ -1,11 +1,12 @@
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { enrollIdpFace } from "../../api/idpUserApi";
 import "./IdpFaceEnroll.css";
 
 export default function IdpFaceEnroll() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -110,7 +111,10 @@ export default function IdpFaceEnroll() {
 
       await enrollIdpFace(id, photoFile);
 
-      setMessage("Đăng ký khuôn mặt thành công.");
+      setMessage("Đăng ký khuôn mặt thành công. Đang chuyển đến hồ sơ định danh của bạn…");
+      window.setTimeout(() => {
+        navigate(`/idp/profile/${encodeURIComponent(id)}`, { replace: true });
+      }, 1200);
     } catch (error) {
       setCameraError(error.message || "Đăng ký khuôn mặt thất bại.");
     } finally {
