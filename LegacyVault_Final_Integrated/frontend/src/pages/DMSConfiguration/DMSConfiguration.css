@@ -1,0 +1,256 @@
+
+.dms-config-page {
+  width: 100%;
+  padding: 24px;
+  color: #153d35;
+}
+
+.dms-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.dms-config-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #153d35;
+}
+
+.dms-config-header p {
+  margin: 0;
+  color: #75847e;
+  font-size: 14px;
+}
+
+.dms-global-badge {
+  background: #e2f2e9;
+  color: #17634e;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dms-config-container {
+  background: #ffffff;
+  border: 1px solid #e0e8e3;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.dms-global-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #e5f2eb;
+  color: #245c4c;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 22px;
+  font-size: 14px;
+}
+
+.dms-global-notice span {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.dms-config-card {
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.dms-section-heading {
+  margin-bottom: 24px;
+}
+
+.dms-section-heading h3 {
+  font-size: 20px;
+  margin: 0 0 7px;
+  color: #153d35;
+}
+
+.dms-section-heading p {
+  margin: 0;
+  color: #77847e;
+  font-size: 14px;
+}
+
+.dms-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.dms-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.dms-form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #29483f;
+}
+
+.dms-form-group input,
+.dms-form-group select {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid #cbd8d0;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #203c34;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.dms-form-group input:focus,
+.dms-form-group select:focus {
+  border-color: #176b53;
+  box-shadow: 0 0 0 2px rgba(23, 107, 83, 0.12);
+}
+
+.dms-info-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #e4f1eb;
+  color: #285e4d;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-top: 22px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dms-info-notice span {
+  font-weight: bold;
+}
+
+.dms-info-notice p {
+  margin: 0;
+}
+
+.dms-config-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e5ebe7;
+}
+
+.dms-config-actions button {
+  min-width: 150px;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.dms-reset-button {
+  background: #ffffff;
+  color: #36594e;
+  border: 1px solid #cbd8d0;
+}
+
+.dms-reset-button:hover {
+  background: #f1f6f3;
+}
+
+.dms-save-button {
+  background: #176b53;
+  color: #ffffff;
+  border: 1px solid #176b53;
+}
+
+.dms-save-button:hover {
+  background: #105640;
+}
+
+@media (max-width: 768px) {
+  .dms-config-page {
+    padding: 14px;
+  }
+
+  .dms-config-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dms-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dms-config-actions {
+    flex-direction: column;
+  }
+
+  .dms-config-actions button {
+    width: 100%;
+  }
+}
+
+
+.dms-form-group small {
+  color: #82918a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dms-message {
+  padding: 13px 16px;
+  border-radius: 8px;
+  margin-top: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dms-error {
+  background: #fce8e8;
+  color: #a52d2d;
+  border: 1px solid #f2caca;
+}
+
+.dms-success {
+  background: #e4f2e9;
+  color: #176b53;
+  border: 1px solid #c9e5d5;
+}
+
+.dms-save-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dms-loading {
+  padding: 40px;
+  text-align: center;
+  color: #176b53;
+  font-size: 16px;
+}
+
+@media (max-width: 900px) {
+  .dms-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .dms-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -20,6 +20,7 @@ import InheritedWillDetails from "./pages/InheritedWillDetails/InheritedWillDeta
 import ExecutorDashboard from "./pages/ExecutorDashboard/ExecutorDashboard";
 import LegalVerifierDashboard from "./pages/LegalVerifierDashboard/LegalVerifierDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import DMSConfiguration from "./pages/DMSConfiguration/DMSConfiguration";
 import FaceRecognitionTestPage from "./pages/FaceRecognitionTestPage/FaceRecognitionTestPage";
 import IdpRegister from "./pages/IdpRegister/IdpRegister";
 import IdpProfile from "./pages/IdpProfile/IdpProfile";
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="executor" element={<ExecutorDashboard />} />
             <Route path="verifier" element={<LegalVerifierDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/dms-settings" element={<DMSConfiguration />} />
             <Route path="admin/face-test" element={<FaceRecognitionTestPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />

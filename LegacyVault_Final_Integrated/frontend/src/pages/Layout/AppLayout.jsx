@@ -20,7 +20,18 @@ const NAV_ITEMS_BY_ROLE = {
     { to: "/dashboard/wallet", label: "Wallet", icon: "wallet" },
   ],
   LEGAL_VERIFIER: [{ to: "/dashboard/verifier", label: "Legal Cases", icon: "scale" }],
-  ADMIN: [{ to: "/dashboard/admin", label: "Admin Dashboard", icon: "admin" }],
+  ADMIN: [
+    {
+      to: "/dashboard/admin",
+      label: "Admin Dashboard",
+      icon: "admin",
+    },
+    {
+      to: "/dashboard/admin/dms-settings",
+      label: "DMS Configuration",
+      icon: "settings",
+    },
+  ],
 };
 
 const ROLE_LABEL = { OWNER: "Vault owner", EXECUTOR: "Executor", LEGAL_VERIFIER: "Legal verifier", ADMIN: "Administrator" };
@@ -180,7 +191,12 @@ export default function AppLayout() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => (isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem)}
+              end
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navItem} ${styles.navItemActive}`
+                  : styles.navItem
+              }
             >
               <Icon name={item.icon} size={18} />
               <span className={styles.navText}>{item.label}</span>
