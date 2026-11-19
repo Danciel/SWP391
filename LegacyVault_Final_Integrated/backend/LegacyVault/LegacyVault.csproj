@@ -23,6 +23,7 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="4.1.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.0" />
     <PackageReference Include="Twilio" Version="8.1.0" />
+    <None Include="logo.jpg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
