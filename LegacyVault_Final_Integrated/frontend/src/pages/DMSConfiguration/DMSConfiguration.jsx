@@ -192,7 +192,7 @@ export default function DMSConfiguration() {
               <input
                 type="number"
                 min="1"
-                max="3650"
+                max="365"
                 step="1"
                 required
                 value={config.minCheckInIntervalDays}
@@ -211,7 +211,7 @@ export default function DMSConfiguration() {
               <input
                 type="number"
                 min="1"
-                max="3650"
+                max="365"
                 step="1"
                 required
                 value={config.maxCheckInIntervalDays}
@@ -230,7 +230,7 @@ export default function DMSConfiguration() {
               <input
                 type="number"
                 min="0"
-                max="3649"
+                max="14"
                 step="1"
                 required
                 value={config.reminderBeforeDays}
@@ -248,7 +248,7 @@ export default function DMSConfiguration() {
               <input
                 type="number"
                 min="1"
-                max="100"
+                max="3"
                 step="1"
                 required
                 value={config.maxMissedCheckIns}
